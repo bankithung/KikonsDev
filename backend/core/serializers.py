@@ -31,19 +31,105 @@ class UserSerializer(serializers.ModelSerializer):
         return user
 
 class EnquirySerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.username if obj.created_by else '-'
+
     class Meta:
         model = Enquiry
         fields = '__all__'
 
 class RegistrationSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.username if obj.created_by else '-'
+
     class Meta:
         model = Registration
         fields = '__all__'
 
 class EnrollmentSerializer(serializers.ModelSerializer):
+    # Map frontend fields to backend fields
+    studentId = serializers.PrimaryKeyRelatedField(source='student', queryset=Registration.objects.all(), write_only=True)
+    programName = serializers.CharField(source='program_name', write_only=True)
+    programDuration = serializers.IntegerField(source='duration_months', write_only=True)
+    startDate = serializers.DateField(source='start_date', write_only=True)
+    serviceCharge = serializers.DecimalField(source='commission_amount', max_digits=10, decimal_places=2, write_only=True, required=False)
+    
+    created_by_name = serializers.SerializerMethodField()
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.username if obj.created_by else '-'
+    
+    # Extra fields for fee calculation
+    schoolFees = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False, default=0)
+    hostelFees = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False, default=0)
+    
+    # Payment fields (write_only)
+    paymentType = serializers.ChoiceField(choices=['Full', 'Installment'], write_only=True, required=False, default='Full')
+    installmentsCount = serializers.IntegerField(write_only=True, required=False, min_value=1)
+    installmentAmount = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False)
+    
+    # Read-only fields
+    enrollmentNo = serializers.CharField(source='enrollment_no', read_only=True)
+    studentName = serializers.CharField(source='student.student_name', read_only=True)
+    
     class Meta:
         model = Enrollment
-        fields = '__all__'
+        fields = [
+            'id', 'enrollmentNo', 'studentId', 'student', 'studentName', 'programName', 
+            'programDuration', 'startDate', 'serviceCharge', 'schoolFees', 
+            'hostelFees', 'total_fees', 'status', 'company_id',
+            'university', 'country', 'paymentType', 'installmentsCount', 'installmentAmount',
+            'created_by_name'
+        ]
+        extra_kwargs = {
+            'total_fees': {'read_only': True},
+            'enrollment_no': {'read_only': True},
+            'student': {'read_only': True}
+        }
+
+    def create(self, validated_data):
+        # Extract extra fields
+        school_fees = validated_data.pop('schoolFees', 0)
+        hostel_fees = validated_data.pop('hostelFees', 0)
+        commission_amount = validated_data.get('commission_amount', 0)
+        
+        payment_type = validated_data.pop('paymentType', 'Full')
+        installments_count = validated_data.pop('installmentsCount', 0)
+        installment_amount = validated_data.pop('installmentAmount', 0)
+        
+        # Calculate total fees
+        total_fees = school_fees + hostel_fees + commission_amount
+        validated_data['total_fees'] = total_fees
+        
+        # Generate Enrollment No
+        import uuid
+        validated_data['enrollment_no'] = f"ENR-{uuid.uuid4().hex[:8].upper()}"
+        
+        enrollment = super().create(validated_data)
+        
+        # Create Installments if applicable
+        if payment_type == 'Installment' and installments_count and installments_count > 0:
+            from datetime import date, timedelta
+            from .models import Installment
+            
+            amount_per_installment = installment_amount or (total_fees / installments_count)
+            start_date = validated_data.get('start_date', date.today())
+            
+            for i in range(installments_count):
+                due_date = start_date + timedelta(days=30 * (i + 1))
+                Installment.objects.create(
+                    enrollment=enrollment,
+                    number=i + 1,
+                    due_date=due_date,
+                    amount=amount_per_installment,
+                    status='Pending'
+                )
+                
+        return enrollment
 
 class InstallmentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -91,6 +177,11 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 class FollowUpSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.username if obj.created_by else '-'
+
     class Meta:
         model = FollowUp
         fields = '__all__'

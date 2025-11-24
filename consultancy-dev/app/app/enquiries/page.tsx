@@ -202,6 +202,7 @@ export default function EnquiriesPage() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden md:table-cell">Contact</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">Academic</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden sm:table-cell">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden sm:table-cell">Added By</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
               </tr>
@@ -241,6 +242,9 @@ export default function EnquiriesPage() {
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-600 hidden sm:table-cell">
                       {format(new Date(enquiry.date), 'dd MMM yyyy')}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-slate-600 hidden sm:table-cell">
+                      {enquiry.created_by_name || '-'}
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${enquiry.status === 'New' ? 'bg-blue-100 text-blue-700' :

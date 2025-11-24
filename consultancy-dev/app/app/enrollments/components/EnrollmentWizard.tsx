@@ -72,6 +72,15 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
     queryFn: apiClient.registrations.list,
   });
 
+  const { data: enrollments } = useQuery({
+    queryKey: ['enrollments-list-check'],
+    queryFn: apiClient.enrollments.list,
+  });
+
+  // Filter out students who are already enrolled
+  const enrolledStudentIds = new Set(enrollments?.map((e: any) => e.studentId || e.student));
+  const availableRegistrations = registrations?.filter(reg => !enrolledStudentIds.has(reg.id));
+
   const serviceCharge = watch('serviceCharge');
   const schoolFees = watch('schoolFees');
   const hostelFees = watch('hostelFees');
@@ -79,12 +88,25 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
 
   const paymentType = watch('paymentType');
   const installmentsCount = watch('installmentsCount');
+  const installmentAmount = watch('installmentAmount');
 
-  useEffect(() => {
-    if (paymentType === 'Installment' && installmentsCount && installmentsCount > 0) {
-      setValue('installmentAmount', Math.ceil(totalFees / installmentsCount));
+  // Handle Installment Count Change -> Calculate Amount
+  const handleInstallmentCountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const count = Number(e.target.value);
+    setValue('installmentsCount', count);
+    if (count > 0 && totalFees > 0) {
+      setValue('installmentAmount', Math.ceil(totalFees / count));
     }
-  }, [totalFees, paymentType, installmentsCount, setValue]);
+  };
+
+  // Handle Installment Amount Change -> Calculate Count
+  const handleInstallmentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const amount = Number(e.target.value);
+    setValue('installmentAmount', amount);
+    if (amount > 0 && totalFees > 0) {
+      setValue('installmentsCount', Math.ceil(totalFees / amount));
+    }
+  };
 
   const handleNext = async () => {
     let fieldsToValidate: any[] = [];
@@ -136,27 +158,38 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
                   <Controller
                     name="studentId"
                     control={control}
-                    render={({ field }) => (
-                      <Select
-                        onValueChange={(val: string) => {
-                          field.onChange(val);
-                          const student = registrations?.find(r => r.id === val);
-                          if (student) setValue('studentName', student.studentName);
-                        }}
-                        defaultValue={field.value}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Search or Select Student..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {registrations?.map((reg) => (
-                            <SelectItem key={reg.id} value={reg.id}>
-                              {reg.studentName} ({reg.registrationNo})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
+                    render={({ field }) => {
+                      const selectedStudent = registrations?.find(r => String(r.id) === String(field.value));
+                      return (
+                        <Select
+                          onValueChange={(val: string) => {
+                            field.onChange(val);
+                            const student = registrations?.find(r => String(r.id) === val);
+                            if (student) setValue('studentName', student.studentName);
+                          }}
+                          value={field.value}
+                        >
+                          <SelectTrigger
+                            className="w-full bg-white border-slate-300 !text-black !opacity-100"
+                            style={{ color: 'black' }}
+                          >
+                            <SelectValue placeholder="Search or Select Student...">
+                              {selectedStudent ? `${selectedStudent.studentName} (${selectedStudent.registrationNo})` : <span className="text-slate-500">Search or Select Student...</span>}
+                            </SelectValue>
+                          </SelectTrigger>
+                          <SelectContent>
+                            {availableRegistrations?.map((reg) => (
+                              <SelectItem key={reg.id} value={String(reg.id)}>
+                                {reg.studentName} ({reg.registrationNo})
+                              </SelectItem>
+                            ))}
+                            {availableRegistrations?.length === 0 && (
+                              <div className="p-2 text-sm text-gray-500 text-center">No available students</div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      );
+                    }}
                   />
                   {errors.studentId && <p className="text-sm text-red-500">{errors.studentId.message}</p>}
                 </div>
@@ -220,8 +253,8 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
                       name="paymentType"
                       control={control}
                       render={({ field }) => (
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <SelectTrigger>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger className="w-full bg-white border-slate-300 text-slate-900 !opacity-100">
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
@@ -237,11 +270,19 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pl-4 border-l-2 border-blue-100">
                       <div className="space-y-2">
                         <Label>Number of Installments</Label>
-                        <Input type="number" {...register('installmentsCount')} />
+                        <Input
+                          type="number"
+                          {...register('installmentsCount')}
+                          onChange={handleInstallmentCountChange}
+                        />
                       </div>
                       <div className="space-y-2">
                         <Label>Amount Per Installment (Approx)</Label>
-                        <Input type="number" {...register('installmentAmount')} />
+                        <Input
+                          type="number"
+                          {...register('installmentAmount')}
+                          onChange={handleInstallmentAmountChange}
+                        />
                       </div>
                     </div>
                   )}
@@ -282,11 +323,11 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
           </Button>
 
           {step < STEPS.length - 1 ? (
-            <Button type="button" onClick={handleNext}>
+            <Button type="button" onClick={handleNext} className="bg-green-600 hover:bg-green-700 text-white">
               Next <ChevronRight className="ml-2 h-4 w-4" />
             </Button>
           ) : (
-            <Button type="submit" disabled={isLoading} className="bg-green-600 hover:bg-green-700">
+            <Button type="submit" disabled={isLoading} className="bg-green-600 hover:bg-green-700 text-white">
               {isLoading ? 'Creating Enrollment...' : 'Complete Enrollment'}
             </Button>
           )}

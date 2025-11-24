@@ -132,6 +132,7 @@ export function EnrollmentList() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Student</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">Program</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden md:table-cell">Start Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden md:table-cell">Added By</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Fees</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
@@ -157,7 +158,10 @@ export function EnrollmentList() {
                       <p className="text-xs text-slate-500">{enr.durationMonths} months</p>
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-600 hidden md:table-cell">
-                      {format(new Date(enr.startDate), 'dd MMM yyyy')}
+                      {enr.startDate ? format(new Date(enr.startDate), 'dd MMM yyyy') : 'N/A'}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-slate-600 hidden md:table-cell">
+                      {enr.created_by_name || '-'}
                     </td>
                     <td className="px-4 py-4">
                       <p className="text-sm font-bold text-slate-900">₹{enr.totalFees.toLocaleString()}</p>
@@ -230,7 +234,7 @@ export function EnrollmentList() {
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-slate-500">Start Date</p>
-                      <p className="text-sm text-slate-900">{format(new Date(viewEnroll.startDate), 'dd MMM yyyy')}</p>
+                      <p className="text-sm text-slate-900">{viewEnroll.startDate ? format(new Date(viewEnroll.startDate), 'dd MMM yyyy') : 'N/A'}</p>
                     </div>
                     <div className="space-y-1">
                       <p className="text-xs text-slate-500">Total Fees</p>

@@ -32,6 +32,7 @@ class Enquiry(models.Model):
     preferred_locations = models.JSONField(default=list)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='New')
     company_id = models.CharField(max_length=100, default='')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_enquiries')
 
 class Registration(models.Model):
     registration_no = models.CharField(max_length=50, unique=True)
@@ -51,6 +52,7 @@ class Registration(models.Model):
     preferences = models.JSONField(default=list)
     company_id = models.CharField(max_length=100, default='')
     enquiry = models.ForeignKey(Enquiry, on_delete=models.SET_NULL, null=True, blank=True)
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_registrations')
 
 class Enrollment(models.Model):
     enrollment_no = models.CharField(max_length=50, unique=True)
@@ -64,6 +66,7 @@ class Enrollment(models.Model):
     commission_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, default='Active')
     company_id = models.CharField(max_length=100, default='')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_enrollments')
 
 class Installment(models.Model):
     enrollment = models.ForeignKey(Enrollment, related_name='installments', on_delete=models.CASCADE)
@@ -239,6 +242,7 @@ class FollowUp(models.Model):
     notes = models.TextField(blank=True)
     assigned_to = models.CharField(max_length=255)
     company_id = models.CharField(max_length=100, default='')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_followups')
 
 class ChatConversation(models.Model):
     participants = models.ManyToManyField(User, related_name='conversations')

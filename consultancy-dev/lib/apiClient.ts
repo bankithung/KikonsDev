@@ -82,13 +82,17 @@ export const apiClient = {
           return d;
         });
 
-        return last7Days.map(date => {
+        return last7Days.map((date, index) => {
           const dateStr = date.toISOString().split('T')[0];
+          const isToday = index === last7Days.length - 1;
+
           return {
             name: days[date.getDay()],
-            enquiries: enq.data.filter((i: any) => i.created_at?.startsWith(dateStr)).length,
+            enquiries: enq.data.filter((i: any) => i.date?.startsWith(dateStr)).length,
             registrations: reg.data.filter((i: any) => i.registration_date?.startsWith(dateStr)).length,
-            enrollments: enr.data.filter((i: any) => i.start_date?.startsWith(dateStr)).length,
+            // Enrollments don't have created_at, only start_date (future date)
+            // Show all enrollments on today's bar as a workaround
+            enrollments: isToday ? enr.data.length : 0,
           };
         });
       } catch (e) {
@@ -141,8 +145,8 @@ export const apiClient = {
           ...enq.data.map((i: any) => ({
             id: `enq-${i.id}`,
             text: `New enquiry from ${i.candidate_name || i.candidateName}`,
-            time: new Date(i.created_at).toLocaleDateString(),
-            timestamp: new Date(i.created_at).getTime()
+            time: new Date(i.date).toLocaleDateString(),
+            timestamp: new Date(i.date).getTime()
           })),
           ...reg.data.map((i: any) => ({
             id: `reg-${i.id}`,
@@ -171,12 +175,12 @@ export const apiClient = {
         const res = await api.get('enquiries/');
         // Return top 5 most recent
         return res.data
-          .sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+          .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 5)
           .map((e: any) => ({
             name: e.candidate_name || e.candidateName,
             course: e.course_interested || e.courseInterested,
-            time: new Date(e.created_at).toLocaleDateString(),
+            time: new Date(e.date).toLocaleDateString(),
             status: e.status || 'New'
           }));
       } catch (e) {

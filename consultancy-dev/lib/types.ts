@@ -42,6 +42,7 @@ export interface Enquiry {
   otherLocation?: string;
   paymentAmount?: number;
   status: 'New' | 'Converted' | 'Closed';
+  created_by_name?: string;
 }
 
 export interface Registration {
@@ -59,6 +60,7 @@ export interface Registration {
   motherName: string;
   permanentAddress: string;
   preferences: StudyPreference[];
+  created_by_name?: string;
 }
 
 export interface StudyPreference {
@@ -84,6 +86,7 @@ export interface Enrollment {
   installments?: Installment[];
   loanRequired: boolean;
   loanAmount?: number;
+  created_by_name?: string;
 }
 
 export interface Installment {
@@ -151,5 +154,7 @@ export interface ApprovalRequest {
   requested_by: number;
   created_at: string;
   reviewed_at?: string;
+  reviewed_at?: string;
   reviewed_by?: number;
+  pending_changes?: any;
 }

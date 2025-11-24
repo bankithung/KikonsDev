@@ -10,6 +10,7 @@ from .views import (
     AgentViewSet, ChatConversationViewSet, ChatMessageViewSet,
     GroupChatViewSet, SignupRequestViewSet, ApprovalRequestViewSet
 )
+from .earnings_view import EarningsRevenueView
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -41,4 +42,5 @@ router.register(r'approval-requests', ApprovalRequestViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('earnings/revenue/', EarningsRevenueView.as_view(), name='earnings-revenue'),
 ]

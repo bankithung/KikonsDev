@@ -1,127 +1,25 @@
 'use client';
 
 import Link from "next/link";
-import { useState } from "react";
 import {
-    ArrowRight,
     CheckCircle2,
     BarChart3,
-    Shield,
-    Zap,
     Users,
     Banknote,
-    MessageCircle,
-    CalendarDays,
-    FileText,
-    Settings,
-    ChevronRight,
-    Menu,
-    Bell,
-    Phone,
-    UserCheck,
-    DollarSign,
-    BookOpen,
-    Clock,
-    GraduationCap,
-    Plane,
-    TrendingUp,
-    X
+    ChevronRight
 } from "lucide-react";
 import { FEATURES, PRICING_PLANS } from '@/lib/mockData';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { InteractiveDashboardPreview } from "@/components/InteractiveDashboardPreview";
-import { motion, AnimatePresence } from "framer-motion";
+import { LandingHeader } from "@/components/layout/LandingHeader";
+import { LandingFooter } from "@/components/layout/LandingFooter";
 
 export default function LandingPage() {
-    const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
     return (
         <div className="min-h-screen bg-white flex flex-col text-slate-900 selection:bg-teal-100">
-            {/* Header */}
-            <header className="sticky top-0 z-50 w-full border-b border-slate-200 bg-white/95 backdrop-blur-md supports-[backdrop-filter]:bg-white/80">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-                    <div className="flex items-center gap-2.5">
-                        <div className="w-9 h-9 bg-teal-600 rounded-lg flex items-center justify-center shadow-sm">
-                            <BarChart3 className="text-white h-5 w-5" />
-                        </div>
-                        <span className="text-xl font-bold tracking-tight text-slate-900">Consultancy<span className="text-teal-600">Dev</span></span>
-                    </div>
-
-                    {/* Desktop Nav */}
-                    <nav className="hidden md:flex items-center gap-8">
-                        <Link href="#product" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Product</Link>
-                        <Link href="#solutions" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Solutions</Link>
-                        <Link href="#pricing" className="text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">Pricing</Link>
-                    </nav>
-
-                    <div className="flex items-center gap-4">
-                        <Link href="/login" className="hidden md:block text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">
-                            Sign In
-                        </Link>
-                        <Link href="/signup" className="hidden md:inline-flex text-sm font-medium text-slate-600 hover:text-teal-600 transition-colors">
-                            Sign Up
-                        </Link>
-                        <button
-                            className="md:hidden p-2 text-slate-600 hover:bg-slate-100 rounded-md transition-colors"
-                            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                        >
-                            {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
-                        </button>
-                    </div>
-                </div>
-
-                {/* Mobile Menu Overlay */}
-                <AnimatePresence>
-                    {isMobileMenuOpen && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="md:hidden border-t border-slate-200 bg-white overflow-hidden"
-                        >
-                            <div className="px-4 py-6 space-y-4 flex flex-col">
-                                <Link
-                                    href="#product"
-                                    className="text-base font-medium text-slate-600 hover:text-teal-600 transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    Product
-                                </Link>
-                                <Link
-                                    href="#solutions"
-                                    className="text-base font-medium text-slate-600 hover:text-teal-600 transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    Solutions
-                                </Link>
-                                <Link
-                                    href="#pricing"
-                                    className="text-base font-medium text-slate-600 hover:text-teal-600 transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    Pricing
-                                </Link>
-                                <hr className="border-slate-100" />
-                                <Link
-                                    href="/login"
-                                    className="text-base font-medium text-slate-600 hover:text-teal-600 transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    Sign In
-                                </Link>
-                                <Link
-                                    href="/signup"
-                                    className="text-base font-medium text-teal-600 hover:text-teal-700 transition-colors"
-                                    onClick={() => setIsMobileMenuOpen(false)}
-                                >
-                                    Sign Up
-                                </Link>
-                            </div>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-            </header>
+            <LandingHeader />
 
             <main className="flex-1">
                 {/* Hero Section */}
@@ -144,9 +42,9 @@ export default function LandingPage() {
                             The all-in-one platform for educational consultancies. 11 powerful features to streamline enquiries, registrations, documents, payments, and more with enterprise-grade security.
                         </p>
 
-                        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300">
+                        <div className="flex flex-col sm:flex-row gap-4 justify-center animate-in fade-in slide-in-from-bottom-10 duration-700 delay-300 relative z-20">
                             <Button size="lg" className="h-14 px-8 text-lg rounded-full bg-teal-600 hover:bg-teal-700 text-white font-semibold shadow-lg hover:shadow-teal-200/50 transition-all" asChild>
-                                <Link href="/login">
+                                <Link href="/signup">
                                     Start 14 Day Free Trial
                                 </Link>
                             </Button>
@@ -541,7 +439,7 @@ export default function LandingPage() {
                                     </CardContent>
                                     <CardFooter className="p-8 pt-0">
                                         <Button className={`w-full h-12 text-base font-semibold rounded-xl ${plan.popular ? 'bg-teal-600 hover:bg-teal-700' : 'bg-slate-50 hover:bg-slate-100 text-slate-900 border border-slate-200'}`} asChild>
-                                            <Link href="/login">{plan.price === 'Custom' ? 'Contact Sales' : 'Get Started'}</Link>
+                                            <Link href="/signup">{plan.price === 'Custom' ? 'Contact Sales' : 'Get Started'}</Link>
                                         </Button>
                                     </CardFooter>
                                 </Card>
@@ -559,73 +457,14 @@ export default function LandingPage() {
                             Join over 150+ consultancies that trust Consultancy Dev for their operations.
                         </p>
                         <Button size="lg" variant="secondary" className="h-14 px-10 text-lg rounded-full font-bold text-teal-600 bg-white hover:bg-teal-50 shadow-2xl" asChild>
-                            <Link href="/login">Start 14 Day Free Trial</Link>
+                            <Link href="/signup">Start 14 Day Free Trial</Link>
                         </Button>
                         <p className="mt-6 text-sm text-teal-200 font-medium">No credit card required • Cancel anytime</p>
                     </div>
                 </section>
             </main>
 
-            {/* Footer */}
-            <footer className="bg-white border-t border-slate-200 pt-16 pb-12">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
-                        <div>
-                            <h4 className="font-bold text-slate-900 mb-6 font-heading">Product</h4>
-                            <ul className="space-y-4 text-sm text-slate-500 font-body">
-                                <li><Link href="#product" className="hover:text-teal-600 transition-colors">Features</Link></li>
-                                <li><Link href="#pricing" className="hover:text-teal-600 transition-colors">Pricing</Link></li>
-                                <li><Link href="/signup" className="hover:text-teal-600 transition-colors">Sign Up</Link></li>
-                                <li><Link href="/help" className="hover:text-teal-600 transition-colors">Documentation</Link></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-slate-900 mb-6 font-heading">Company</h4>
-                            <ul className="space-y-4 text-sm text-slate-500 font-body">
-                                <li><Link href="/about" className="hover:text-teal-600 transition-colors">About Us</Link></li>
-                                <li><Link href="/contact" className="hover:text-teal-600 transition-colors">Contact Us</Link></li>
-                                <li><Link href="#" className="hover:text-teal-600 transition-colors">Careers</Link></li>
-                                <li><Link href="#" className="hover:text-teal-600 transition-colors">Partners</Link></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-slate-900 mb-6 font-heading">Resources</h4>
-                            <ul className="space-y-4 text-sm text-slate-500 font-body">
-                                <li><Link href="/help" className="hover:text-teal-600 transition-colors">Help Center</Link></li>
-                                <li><Link href="#" className="hover:text-teal-600 transition-colors">Blog</Link></li>
-                                <li><Link href="#" className="hover:text-teal-600 transition-colors">Success Stories</Link></li>
-                                <li><Link href="#" className="hover:text-teal-600 transition-colors">Tutorials</Link></li>
-                            </ul>
-                        </div>
-                        <div>
-                            <h4 className="font-bold text-slate-900 mb-6 font-heading">Legal</h4>
-                            <ul className="space-y-4 text-sm text-slate-500 font-body">
-                                <li><Link href="/privacy" className="hover:text-teal-600 transition-colors">Privacy Policy</Link></li>
-                                <li><Link href="/terms" className="hover:text-teal-600 transition-colors">Terms of Service</Link></li>
-                                <li><Link href="#" className="hover:text-teal-600 transition-colors">Cookie Policy</Link></li>
-                            </ul>
-                        </div>
-                    </div>
-
-                    <div className="pt-8 border-t border-slate-200 flex flex-col md:flex-row justify-between items-center gap-4">
-                        <div className="flex items-center gap-2">
-                            <BarChart3 className="h-5 w-5 text-slate-400" />
-                            <span className="text-sm text-slate-500 font-medium">&copy; 2025 Consultancy Dev. All rights reserved.</span>
-                        </div>
-                        <div className="flex gap-6">
-                            {/* Socials */}
-                            <a href="#" className="text-slate-400 hover:text-slate-600 transition-colors">
-                                <span className="sr-only">Twitter</span>
-                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M8.29 20.251c7.547 0 11.675-6.253 11.675-11.675 0-.178 0-.355-.012-.53A8.348 8.348 0 0022 5.92a8.19 8.19 0 01-2.357.646 4.118 4.118 0 001.804-2.27 8.224 8.224 0 01-2.605.996 4.107 4.118 0 00-6.993 3.743 11.65 11.65 0 01-8.457-4.287 4.106 4.106 0 001.27 5.477A4.072 4.072 0 012.8 9.713v.052a4.105 4.105 0 003.292 4.022 4.095 4.095 0 01-1.853.07 4.108 4.108 0 003.834 2.85A8.233 8.233 0 012 18.407a11.616 11.616 0 006.29 1.84" /></svg>
-                            </a>
-                            <a href="#" className="text-slate-400 hover:text-slate-600 transition-colors">
-                                <span className="sr-only">GitHub</span>
-                                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path fillRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" clipRule="evenodd" /></svg>
-                            </a>
-                        </div>
-                    </div>
-                </div>
-            </footer>
+            <LandingFooter />
         </div>
     );
 }

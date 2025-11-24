@@ -202,6 +202,7 @@ export function RegistrationList() {
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden md:table-cell">Contact</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">Reg. No</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden sm:table-cell">Date</th>
+                <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden sm:table-cell">Added By</th>
                 <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Payment</th>
                 <th className="px-4 py-3 text-right text-xs font-semibold text-slate-700 uppercase tracking-wider">Actions</th>
               </tr>
@@ -244,6 +245,9 @@ export function RegistrationList() {
                     </td>
                     <td className="px-4 py-4 text-sm text-slate-600 hidden sm:table-cell">
                       {format(new Date(reg.registrationDate), 'dd MMM yyyy')}
+                    </td>
+                    <td className="px-4 py-4 text-sm text-slate-600 hidden sm:table-cell">
+                      {reg.created_by_name || '-'}
                     </td>
                     <td className="px-4 py-4">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${reg.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' :

@@ -93,6 +93,9 @@ class EnquiryViewSet(viewsets.ModelViewSet):
     queryset = Enquiry.objects.all()
     serializer_class = EnquirySerializer
     
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, company_id=self.request.user.company_id)
+    
     def update(self, request, *args, **kwargs):
         # Check if user is an employee
         if request.user.role == 'EMPLOYEE':
@@ -107,6 +110,21 @@ class RegistrationViewSet(viewsets.ModelViewSet):
     queryset = Registration.objects.all()
     serializer_class = RegistrationSerializer
     
+    def perform_create(self, serializer):
+        # Save registration with company_id and created_by
+        instance = serializer.save(company_id=self.request.user.company_id, created_by=self.request.user)
+        
+        # Auto-create payment
+        if instance.registration_fee > 0:
+            Payment.objects.create(
+                student_name=instance.student_name,
+                amount=instance.registration_fee,
+                type='Registration',
+                status='Success',
+                method='Cash', # Default
+                company_id=instance.company_id
+            )
+    
     def update(self, request, *args, **kwargs):
         # Check if user is an employee
         if request.user.role == 'EMPLOYEE':
@@ -120,6 +138,21 @@ class RegistrationViewSet(viewsets.ModelViewSet):
 class EnrollmentViewSet(viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
+    
+    def perform_create(self, serializer):
+        # Save enrollment with company_id and created_by
+        instance = serializer.save(company_id=self.request.user.company_id, created_by=self.request.user)
+        
+        # Auto-create payment
+        if instance.total_fees > 0:
+            Payment.objects.create(
+                student_name=instance.student.student_name,
+                amount=instance.total_fees,
+                type='Enrollment',
+                status='Success',
+                method='Cash', # Default
+                company_id=instance.company_id
+            )
     
     def update(self, request, *args, **kwargs):
         # Check if user is an employee
@@ -257,6 +290,9 @@ class VisaTrackingViewSet(viewsets.ModelViewSet):
 class FollowUpViewSet(viewsets.ModelViewSet):
     queryset = FollowUp.objects.all()
     serializer_class = FollowUpSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(created_by=self.request.user, company_id=self.request.user.company_id)
 
 # New ViewSets
 class AgentViewSet(viewsets.ModelViewSet):

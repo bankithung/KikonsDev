@@ -25,6 +25,7 @@ interface FollowUp {
   priority: 'High' | 'Medium' | 'Low';
   notes?: string;
   assignedTo: string;
+  created_by_name?: string;
 }
 
 export default function FollowUpsPage() {
@@ -291,6 +292,7 @@ export default function FollowUpsPage() {
                           {format(new Date(followUp.scheduledFor), 'dd MMM yyyy, HH:mm')}
                         </span>
                         <span>Assigned: {followUp.assignedTo}</span>
+                        <span className="ml-2">Added By: {followUp.created_by_name || '-'}</span>
                       </div>
                     </div>
                   </div>
