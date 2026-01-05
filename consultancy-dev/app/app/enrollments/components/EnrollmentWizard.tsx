@@ -38,6 +38,7 @@ const enrollmentSchema = z.object({
   installmentAmount: z.coerce.number().optional(),
 
   loanRequired: z.boolean().default(false),
+  loanAmount: z.coerce.number().optional(),
   documents: z.array(z.any()).optional(),
 });
 
@@ -87,6 +88,7 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
       hostelFees: 0,
       paymentType: 'Full',
       loanRequired: false,
+      loanAmount: 0,
       documents: [],
       university: '',
     },
