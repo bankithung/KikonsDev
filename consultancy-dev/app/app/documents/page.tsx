@@ -22,12 +22,12 @@ export default function DocumentsPage() {
                     >
                         All Documents
                     </TabsTrigger>
-                    <TabsTrigger
+                    {/* <TabsTrigger
                         value="expiry"
                         className="rounded-md data-[state=active]:bg-teal-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
                     >
                         Expiry
-                    </TabsTrigger>
+                    </TabsTrigger> */}
                     <TabsTrigger
                         value="transfer"
                         className="rounded-md data-[state=active]:bg-teal-600 data-[state=active]:text-white data-[state=active]:shadow-sm transition-all"
@@ -46,9 +46,9 @@ export default function DocumentsPage() {
                     <DocumentList />
                 </TabsContent>
 
-                <TabsContent value="expiry" className="outline-none">
+                {/* <TabsContent value="expiry" className="outline-none">
                     <DocumentExpiry />
-                </TabsContent>
+                </TabsContent> */}
 
                 <TabsContent value="transfer" className="outline-none">
                     <DocumentTransfer />

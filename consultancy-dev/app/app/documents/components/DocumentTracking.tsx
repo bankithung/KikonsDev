@@ -4,19 +4,58 @@ import { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/apiClient';
+import { FileText, ArrowRight, CheckCircle, XCircle, Clock } from 'lucide-react';
 
 export function DocumentTracking() {
     const [filterType, setFilterType] = useState('all');
 
-    // Mock data for tracking
-    const events = [
-        { id: 1, date: new Date(), title: 'Document Uploaded', desc: '10th Marksheet uploaded by Admin', status: 'done', type: 'upload' },
-        { id: 2, date: new Date(Date.now() - 86400000), title: 'Status Changed to OUT', desc: 'Given to verification team', status: 'done', type: 'status' },
-        { id: 3, date: new Date(Date.now() - 172800000), title: 'Transfer Initiated', desc: 'Sent to Main Branch', status: 'done', type: 'transfer' },
-        { id: 4, date: new Date(Date.now() - 259200000), title: 'Document Received', desc: 'Acknowledged by branch manager', status: 'done', type: 'receive' },
-    ];
+    // Fetch transfers to show as tracking events
+    const { data: transfers, isLoading } = useQuery({
+        queryKey: ['document-transfers'],
+        queryFn: apiClient.documentTransfers.list,
+    });
 
-    const filteredEvents = filterType === 'all' ? events : events.filter(e => e.type === filterType);
+    if (isLoading) {
+        return (
+            <div className="max-w-4xl space-y-6">
+                <div className="flex items-center justify-center py-12">
+                    <div className="animate-pulse text-slate-500">Loading tracking data...</div>
+                </div>
+            </div>
+        );
+    }
+
+    // Convert transfers to events
+    const events = transfers?.map((t: any) => ({
+        id: t.id,
+        date: new Date(t.created_at),
+        title: `Document Transfer: ${t.status}`,
+        desc: `${t.sender_name} → ${t.receiver_name} (${t.documents.length} documents)`,
+        status: t.status,
+        type: t.status === 'Accepted' ? 'accepted' : t.status === 'Rejected' ? 'rejected' : 'pending',
+    })) || [];
+
+    const filteredEvents = filterType === 'all' ? events : events.filter((e: any) => e.type === filterType);
+
+    const getIcon = (type: string) => {
+        switch (type) {
+            case 'accepted': return <CheckCircle size={16} className="text-green-600" />;
+            case 'rejected': return <XCircle size={16} className="text-red-600" />;
+            case 'pending': return <Clock size={16} className="text-yellow-600" />;
+            default: return <FileText size={16} className="text-blue-600" />;
+        }
+    };
+
+    const getColor = (type: string) => {
+        switch (type) {
+            case 'accepted': return 'bg-green-600';
+            case 'rejected': return 'bg-red-600';
+            case 'pending': return 'bg-yellow-600';
+            default: return 'bg-blue-600';
+        }
+    };
 
     return (
         <div className="max-w-4xl space-y-6">
@@ -32,9 +71,9 @@ export function DocumentTracking() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Activities</SelectItem>
-                            <SelectItem value="upload">Uploads</SelectItem>
-                            <SelectItem value="status">Status Changes</SelectItem>
-                            <SelectItem value="transfer">Transfers</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                            <SelectItem value="accepted">Accepted</SelectItem>
+                            <SelectItem value="rejected">Rejected</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>
@@ -45,28 +84,34 @@ export function DocumentTracking() {
                     <CardTitle className="text-lg font-semibold font-heading">Activity Timeline</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    <div className="relative border-l-2 border-slate-200 ml-4 space-y-8 py-2">
-                        {filteredEvents.map((event, idx) => (
-                            <div key={event.id} className="relative pl-8">
-                                <span className={`absolute -left-[9px] top-1 h-4 w-4 rounded-full ring-4 ring-white ${event.type === 'upload' ? 'bg-blue-600' :
-                                        event.type === 'status' ? 'bg-teal-600' :
-                                            event.type === 'transfer' ? 'bg-purple-600' :
-                                                'bg-green-600'
-                                    }`}></span>
-                                <div className="pb-8 border-b border-slate-100 last:border-0">
-                                    <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
-                                        <div>
-                                            <h3 className="text-base font-bold text-slate-900 font-heading">{event.title}</h3>
-                                            <p className="text-sm text-slate-600 font-body mt-1">{event.desc}</p>
+                    {filteredEvents.length === 0 ? (
+                        <div className="text-center py-12">
+                            <Clock size={40} className="mx-auto mb-3 text-slate-300" />
+                            <p className="text-slate-500 font-body">No tracking events found</p>
+                        </div>
+                    ) : (
+                        <div className="relative border-l-2 border-slate-200 ml-4 space-y-8 py-2">
+                            {filteredEvents.map((event: any) => (
+                                <div key={event.id} className="relative pl-8">
+                                    <span className={`absolute -left-[9px] top-1 h-4 w-4 rounded-full ring-4 ring-white ${getColor(event.type)}`}></span>
+                                    <div className="pb-8 border-b border-slate-100 last:border-0">
+                                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-2 mb-2">
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2 mb-1">
+                                                    {getIcon(event.type)}
+                                                    <h3 className="text-base font-bold text-slate-900 font-heading">{event.title}</h3>
+                                                </div>
+                                                <p className="text-sm text-slate-600 font-body mt-1">{event.desc}</p>
+                                            </div>
+                                            <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
+                                                {format(event.date, 'dd MMM yyyy, HH:mm')}
+                                            </span>
                                         </div>
-                                        <span className="text-xs text-slate-500 font-medium whitespace-nowrap">
-                                            {format(event.date, 'dd MMM yyyy, HH:mm')}
-                                        </span>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
-                    </div>
+                            ))}
+                        </div>
+                    )}
                 </CardContent>
             </Card>
         </div>

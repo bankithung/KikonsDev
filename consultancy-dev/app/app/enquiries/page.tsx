@@ -36,20 +36,24 @@ export default function EnquiriesPage() {
     queryFn: apiClient.enquiries.list,
   });
 
+  const { data: registrations } = useQuery({
+    queryKey: ['registrations-check'],
+    queryFn: apiClient.registrations.list,
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiClient.enquiries.delete(id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['enquiries'] });
-      queryClient.invalidateQueries({ queryKey: ['enquiries'] });
       setShowConfirm(false);
       setActionEnquiry(null);
-      alert('Enquiry deleted successfully');
+      toast.success('Enquiry deleted successfully');
     },
     onError: (error) => {
       console.error("Failed to delete enquiry", error);
-      alert('Failed to delete enquiry');
+      toast.error('Failed to delete enquiry');
     }
   });
 
@@ -99,6 +103,15 @@ export default function EnquiriesPage() {
     const matchesSearch = enq.candidateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       enq.mobile.includes(searchTerm) ||
       enq.email.toLowerCase().includes(searchTerm.toLowerCase());
+
+    // Check if enquiry is already registered
+    const isRegistered = registrations?.some((reg: any) =>
+      reg.enquiry === Number(enq.id) ||
+      (reg.mobile === enq.mobile && reg.studentName === enq.candidateName) // Fallback check
+    );
+
+    if (isRegistered || enq.status === 'Converted') return false;
+
     const matchesStatus = filterStatus === 'all' || enq.status === filterStatus;
     const matchesStream = filterStream === 'all' || enq.stream === filterStream;
 
@@ -328,7 +341,7 @@ export default function EnquiriesPage() {
                     </div>
                   </div>
 
-                  {/* Details Grid */}
+                  {/* Contact & Basic Details */}
                   <div className="grid grid-cols-2 gap-4">
                     <InfoItem label="Mobile" value={viewEnquiry.mobile} icon={Phone} />
                     <InfoItem label="Email" value={viewEnquiry.email} icon={Mail} />
@@ -336,16 +349,111 @@ export default function EnquiriesPage() {
                     <InfoItem label="Stream" value={viewEnquiry.stream} />
                     <InfoItem label="School" value={viewEnquiry.schoolName} />
                     <InfoItem label="Date" value={format(new Date(viewEnquiry.date), 'dd MMM yyyy')} />
+                    {viewEnquiry.class12PassingYear && (
+                      <InfoItem label="Class 12 Year" value={viewEnquiry.class12PassingYear} />
+                    )}
+                    {viewEnquiry.paymentAmount && (
+                      <InfoItem label="Payment Amount" value={`₹${viewEnquiry.paymentAmount}`} />
+                    )}
                   </div>
+
+                  {/* Academic Performance - Only show if any data exists */}
+                  {(viewEnquiry.pcbPercentage || viewEnquiry.pcmPercentage || viewEnquiry.physicsMarks ||
+                    viewEnquiry.chemistryMarks || viewEnquiry.biologyMarks || viewEnquiry.mathsMarks ||
+                    viewEnquiry.previousNeetMarks || viewEnquiry.presentNeetMarks) && (
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Academic Performance</h4>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            {viewEnquiry.pcbPercentage && (
+                              <InfoItem label="PCB Percentage" value={`${viewEnquiry.pcbPercentage}%`} />
+                            )}
+                            {viewEnquiry.pcmPercentage && (
+                              <InfoItem label="PCM Percentage" value={`${viewEnquiry.pcmPercentage}%`} />
+                            )}
+                            {viewEnquiry.physicsMarks && (
+                              <InfoItem label="Physics Marks" value={viewEnquiry.physicsMarks} />
+                            )}
+                            {viewEnquiry.chemistryMarks && (
+                              <InfoItem label="Chemistry Marks" value={viewEnquiry.chemistryMarks} />
+                            )}
+                            {viewEnquiry.biologyMarks && (
+                              <InfoItem label="Biology Marks" value={viewEnquiry.biologyMarks} />
+                            )}
+                            {viewEnquiry.mathsMarks && (
+                              <InfoItem label="Maths Marks" value={viewEnquiry.mathsMarks} />
+                            )}
+                            {viewEnquiry.previousNeetMarks && (
+                              <InfoItem label="Previous NEET Marks" value={viewEnquiry.previousNeetMarks} />
+                            )}
+                            {viewEnquiry.presentNeetMarks && (
+                              <InfoItem label="Present NEET Marks" value={viewEnquiry.presentNeetMarks} />
+                            )}
+                          </div>
+                          {(viewEnquiry.gapYear || viewEnquiry.collegeDropout) && (
+                            <div className="flex gap-3 mt-4 pt-4 border-t border-blue-300">
+                              {viewEnquiry.gapYear && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
+                                  Gap Year
+                                </span>
+                              )}
+                              {viewEnquiry.collegeDropout && (
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
+                                  College Dropout
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
 
                   {/* Family Details */}
                   <div>
                     <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Family Details</h4>
-                    <div className="bg-slate-50 rounded-lg p-4 space-y-2 text-sm">
-                      <p className="text-slate-700"><span className="font-semibold">Father:</span> {viewEnquiry.fatherName}</p>
-                      <p className="text-slate-700"><span className="font-semibold">Mother:</span> {viewEnquiry.motherName}</p>
-                      <p className="text-slate-600 text-xs">{viewEnquiry.permanentAddress}</p>
+                    <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Father's Name</p>
+                          <p className="text-sm text-slate-900 font-semibold">{viewEnquiry.fatherName}</p>
+                          {viewEnquiry.fatherOccupation && (
+                            <p className="text-xs text-slate-600 mt-1">{viewEnquiry.fatherOccupation}</p>
+                          )}
+                          {viewEnquiry.fatherMobile && (
+                            <p className="text-xs text-slate-600 flex items-center gap-1 mt-1">
+                              <Phone size={10} className="text-slate-400" /> {viewEnquiry.fatherMobile}
+                            </p>
+                          )}
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Mother's Name</p>
+                          <p className="text-sm text-slate-900 font-semibold">{viewEnquiry.motherName}</p>
+                          {viewEnquiry.motherOccupation && (
+                            <p className="text-xs text-slate-600 mt-1">{viewEnquiry.motherOccupation}</p>
+                          )}
+                          {viewEnquiry.motherMobile && (
+                            <p className="text-xs text-slate-600 flex items-center gap-1 mt-1">
+                              <Phone size={10} className="text-slate-400" /> {viewEnquiry.motherMobile}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-slate-200">
+                        <p className="text-xs text-slate-500 font-medium mb-1">Permanent Address</p>
+                        <p className="text-sm text-slate-700">{viewEnquiry.permanentAddress}</p>
+                      </div>
                     </div>
+                  </div>
+
+                  {/* Status */}
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-slate-600 font-medium">Status:</p>
+                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${viewEnquiry.status === 'New' ? 'bg-blue-100 text-blue-700' :
+                      viewEnquiry.status === 'Converted' ? 'bg-green-100 text-green-700' :
+                        'bg-slate-100 text-slate-700'
+                      }`}>
+                      {viewEnquiry.status}
+                    </span>
                   </div>
                 </div>
 
@@ -360,11 +468,11 @@ export default function EnquiriesPage() {
                   <Button
                     className="flex-1 h-11 bg-teal-600 hover:bg-teal-700"
                     onClick={() => {
-                      router.push(`/app/enquiries/${viewEnquiry.id}`);
+                      router.push(`/app/student-profile/enquiry/${viewEnquiry.id}`);
                       setViewEnquiry(null);
                     }}
                   >
-                    <Edit size={16} className="mr-2" /> Edit Details
+                    <Edit size={16} className="mr-2" /> View Full Profile
                   </Button>
                 </div>
 

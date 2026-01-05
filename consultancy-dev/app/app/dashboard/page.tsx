@@ -304,7 +304,7 @@ export default function DashboardPage() {
                         </CardHeader>
                         <CardContent>
                             <div className="space-y-3">
-                                <div className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-xl hover:bg-yellow-100 transition-colors cursor-pointer">
+                                <Link href="/app/payments" className="flex items-center justify-between p-4 bg-yellow-50 border border-yellow-200 rounded-xl hover:bg-yellow-100 transition-colors cursor-pointer">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-white p-2 rounded-lg">
                                             <CreditCard size={18} className="text-yellow-600" />
@@ -315,9 +315,9 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                     <ArrowUpRight size={16} className="text-yellow-600" />
-                                </div>
+                                </Link>
 
-                                <div className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors cursor-pointer">
+                                <Link href="/app/documents" className="flex items-center justify-between p-4 bg-purple-50 border border-purple-200 rounded-xl hover:bg-purple-100 transition-colors cursor-pointer">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-white p-2 rounded-lg">
                                             <FileText size={18} className="text-purple-600" />
@@ -328,9 +328,9 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                     <ArrowUpRight size={16} className="text-purple-600" />
-                                </div>
+                                </Link>
 
-                                <div className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer">
+                                <Link href="/app/follow-ups" className="flex items-center justify-between p-4 bg-blue-50 border border-blue-200 rounded-xl hover:bg-blue-100 transition-colors cursor-pointer">
                                     <div className="flex items-center gap-3">
                                         <div className="bg-white p-2 rounded-lg">
                                             <MessageSquare size={18} className="text-blue-600" />
@@ -341,7 +341,7 @@ export default function DashboardPage() {
                                         </div>
                                     </div>
                                     <ArrowUpRight size={16} className="text-blue-600" />
-                                </div>
+                                </Link>
                             </div>
                         </CardContent>
                     </Card>

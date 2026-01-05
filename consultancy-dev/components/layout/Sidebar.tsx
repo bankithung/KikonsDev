@@ -29,7 +29,8 @@ import {
   Building2,
   Plane,
   TrendingUp,
-  Mail
+  Mail,
+  ArrowRightLeft
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
@@ -45,19 +46,21 @@ interface SidebarProps {
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard, roles: ['ALL'] },
+  { label: 'Students', href: '/app/students', icon: Users, roles: ['ALL'] },
   { label: 'Enquiries', href: '/app/enquiries', icon: MessageSquare, roles: ['ALL'] },
   { label: 'Follow-ups', href: '/app/follow-ups', icon: Bell, roles: ['ALL'] },
   { label: 'Registrations', href: '/app/registrations', icon: UserPlus, roles: ['ALL'] },
   { label: 'Enrollments', href: '/app/enrollments', icon: GraduationCap, roles: ['ALL'] },
   { label: 'Documents', href: '/app/documents', icon: FileText, roles: ['ALL'] },
+  // { label: 'Doc Transfer', href: '/app/document-transfer', icon: ArrowRightLeft, roles: ['ALL'] },
   { label: 'Payments', href: '/app/payments', icon: CreditCard, roles: ['ALL'] },
-  { label: 'Commissions', href: '/app/commissions', icon: DollarSign, roles: ['COMPANY_ADMIN'] },
+  // { label: 'Commissions', href: '/app/commissions', icon: DollarSign, roles: ['COMPANY_ADMIN'] },
   { label: 'Appointments', href: '/app/appointments', icon: Calendar, roles: ['ALL'] },
   { label: 'My Requests', href: '/app/my-requests', icon: CheckSquare, roles: ['EMPLOYEE'] },
   { label: 'Universities', href: '/app/universities', icon: Building2, roles: ['ALL'] },
-  { label: 'Visa Tracking', href: '/app/visa-tracking', icon: Plane, roles: ['ALL'] },
-  { label: 'Templates', href: '/app/templates', icon: Mail, roles: ['ALL'] },
-  { label: 'Reports', href: '/app/reports', icon: BarChart3, roles: ['ALL'] },
+  // { label: 'Visa Tracking', href: '/app/visa-tracking', icon: Plane, roles: ['ALL'] },
+  // { label: 'Templates', href: '/app/templates', icon: Mail, roles: ['ALL'] },
+  // { label: 'Reports', href: '/app/reports', icon: BarChart3, roles: ['ALL'] },
 ];
 
 const ADMIN_ITEMS = [

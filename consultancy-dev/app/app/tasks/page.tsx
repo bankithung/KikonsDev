@@ -1,3 +1,5 @@
+'use client';
+
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
@@ -20,6 +22,12 @@ export default function TasksPage() {
     });
 
     const queryClient = useQueryClient();
+
+    // Fetch Users for Assignment
+    const { data: users = [] } = useQuery({
+        queryKey: ['users'],
+        queryFn: apiClient.users.list,
+    });
 
     const { data: tasks = [], isLoading } = useQuery<Task[]>({
         queryKey: ['tasks'],
@@ -110,7 +118,7 @@ export default function TasksPage() {
                                                     <span>{task.dueDate}</span>
                                                 </div>
                                                 <div className="bg-teal-50 text-teal-700 px-2 py-1 rounded-md font-medium">
-                                                    {task.assignedTo}
+                                                    {task.assigned_to_name || task.assignedTo}
                                                 </div>
                                             </div>
                                         </CardContent>
@@ -150,12 +158,16 @@ export default function TasksPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="font-body">Assigned To</Label>
-                                <Input
-                                    placeholder="Assignee name"
-                                    value={newTask.assignedTo}
-                                    onChange={(e) => setNewTask({ ...newTask, assignedTo: e.target.value })}
-                                    required
-                                />
+                                <Select value={newTask.assignedTo} onValueChange={(val: string) => setNewTask({ ...newTask, assignedTo: val })}>
+                                    <SelectTrigger><SelectValue placeholder="Select Assignee" /></SelectTrigger>
+                                    <SelectContent>
+                                        {users.map((user: any) => (
+                                            <SelectItem key={user.id} value={String(user.id)}>
+                                                {user.username} {user.first_name ? `(${user.first_name})` : ''}
+                                            </SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
                             </div>
                             <div className="space-y-2">
                                 <Label className="font-body">Due Date</Label>
@@ -168,7 +180,7 @@ export default function TasksPage() {
                             </div>
                             <div className="space-y-2">
                                 <Label className="font-body">Status</Label>
-                                <Select value={newTask.status} onValueChange={(val) => setNewTask({ ...newTask, status: val })}>
+                                <Select value={newTask.status} onValueChange={(val: string) => setNewTask({ ...newTask, status: val })}>
                                     <SelectTrigger><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Todo">Todo</SelectItem>

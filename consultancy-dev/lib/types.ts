@@ -51,6 +51,7 @@ export interface Registration {
   studentName: string;
   mobile: string;
   email: string;
+  dateOfBirth?: string;
   registrationDate: string;
   needsLoan: boolean;
   paymentStatus: 'Paid' | 'Pending' | 'Partial';
@@ -60,7 +61,9 @@ export interface Registration {
   motherName: string;
   permanentAddress: string;
   preferences: StudyPreference[];
+  documents?: any[]; // Backend returns snake_case document objects
   created_by_name?: string;
+  enquiry?: number; // ID of linked enquiry
 }
 
 export interface StudyPreference {
@@ -75,6 +78,7 @@ export interface Enrollment {
   studentId: string; // Links to Registration? Or just name for now mock
   studentName: string;
   programName: string;
+  university?: string;
   startDate: string;
   durationMonths: number;
   totalFees: number;
@@ -102,18 +106,27 @@ export interface Document {
   type: string;
   status: 'IN' | 'OUT';
   uploadedBy: string;
+  uploadedByName?: string;
+  currentHolder?: string;
+  currentHolderName?: string;
   uploadedAt: string; // ISO
   studentName?: string; // Associated student
   registrationNo?: string;
+  file?: string;
+  expiryDate?: string;
 }
 
 export interface DocumentTransfer {
   id: string;
-  senderId: string;
-  receiverId: string;
-  documentIds: string[];
-  status: 'Pending' | 'Sent' | 'Received';
-  createdAt: string;
+  sender: number;
+  sender_name: string;
+  receiver: number;
+  receiver_name: string;
+  documents: number[];
+  documents_details?: Document[];
+  status: 'Pending' | 'Accepted' | 'Rejected';
+  created_at: string;
+  accepted_at?: string;
 }
 
 export interface Payment {
@@ -129,7 +142,8 @@ export interface Payment {
 export interface Task {
   id: string;
   title: string;
-  assignedTo: string; // User ID or Name
+  assignedTo: string; // User ID
+  assigned_to_name?: string; // User Name
   dueDate: string;
   status: 'Todo' | 'In Progress' | 'Done';
 }
@@ -153,7 +167,6 @@ export interface ApprovalRequest {
   review_note?: string;
   requested_by: number;
   created_at: string;
-  reviewed_at?: string;
   reviewed_at?: string;
   reviewed_by?: number;
   pending_changes?: any;

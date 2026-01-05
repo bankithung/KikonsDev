@@ -4,8 +4,13 @@ from .models import (
     DocumentTransfer, Task, Appointment, University, Template,
     Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp,
     Installment, Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest,
-    ApprovalRequest
+    ApprovalRequest, Company
 )
+
+class CompanySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Company
+        fields = '__all__'
 
 class UserSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True, required=False)
@@ -40,23 +45,50 @@ class EnquirySerializer(serializers.ModelSerializer):
         model = Enquiry
         fields = '__all__'
 
+class DocumentSerializer(serializers.ModelSerializer):
+    uploaded_by_name = serializers.SerializerMethodField()
+    current_holder_name = serializers.SerializerMethodField()
+
+    def get_uploaded_by_name(self, obj):
+        return obj.uploaded_by.username if obj.uploaded_by else '-'
+
+    def get_current_holder_name(self, obj):
+        return obj.current_holder.username if obj.current_holder else '-'
+
+    class Meta:
+        model = Document
+        fields = ['id', 'file_name', 'file', 'description', 'type', 'status', 'uploaded_at', 'student_name', 'registration', 'expiry_date', 'company_id', 'uploaded_by', 'current_holder', 'uploaded_by_name', 'current_holder_name']
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        if not ret.get('student_name') and instance.registration:
+            ret['student_name'] = instance.registration.student_name
+        return ret
+
 class RegistrationSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
 
     def get_created_by_name(self, obj):
         return obj.created_by.username if obj.created_by else '-'
 
+    documents = DocumentSerializer(many=True, read_only=True)
+
     class Meta:
         model = Registration
         fields = '__all__'
 
+class InstallmentSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Installment
+        fields = '__all__'
+
 class EnrollmentSerializer(serializers.ModelSerializer):
     # Map frontend fields to backend fields
-    studentId = serializers.PrimaryKeyRelatedField(source='student', queryset=Registration.objects.all(), write_only=True)
-    programName = serializers.CharField(source='program_name', write_only=True)
-    programDuration = serializers.IntegerField(source='duration_months', write_only=True)
-    startDate = serializers.DateField(source='start_date', write_only=True)
-    serviceCharge = serializers.DecimalField(source='commission_amount', max_digits=10, decimal_places=2, write_only=True, required=False)
+    studentId = serializers.PrimaryKeyRelatedField(source='student', queryset=Registration.objects.all())
+    programName = serializers.CharField(source='program_name')
+    programDuration = serializers.IntegerField(source='duration_months')
+    startDate = serializers.DateField(source='start_date')
+    serviceCharge = serializers.DecimalField(source='commission_amount', max_digits=10, decimal_places=2, required=False)
     
     created_by_name = serializers.SerializerMethodField()
 
@@ -67,7 +99,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     schoolFees = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False, default=0)
     hostelFees = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False, default=0)
     
-    # Payment fields (write_only)
+    # Payment fields (write_only for input)
     paymentType = serializers.ChoiceField(choices=['Full', 'Installment'], write_only=True, required=False, default='Full')
     installmentsCount = serializers.IntegerField(write_only=True, required=False, min_value=1)
     installmentAmount = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False)
@@ -75,6 +107,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     # Read-only fields
     enrollmentNo = serializers.CharField(source='enrollment_no', read_only=True)
     studentName = serializers.CharField(source='student.student_name', read_only=True)
+    installments = InstallmentSerializer(many=True, read_only=True)
     
     class Meta:
         model = Enrollment
@@ -83,13 +116,19 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'programDuration', 'startDate', 'serviceCharge', 'schoolFees', 
             'hostelFees', 'total_fees', 'status', 'company_id',
             'university', 'country', 'paymentType', 'installmentsCount', 'installmentAmount',
-            'created_by_name'
+            'created_by_name', 'installments'
         ]
         extra_kwargs = {
             'total_fees': {'read_only': True},
             'enrollment_no': {'read_only': True},
             'student': {'read_only': True}
         }
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Determine payment type based on installments existence
+        ret['paymentType'] = 'Installment' if instance.installments.exists() else 'Full'
+        return ret
 
     def create(self, validated_data):
         # Extract extra fields
@@ -131,30 +170,31 @@ class EnrollmentSerializer(serializers.ModelSerializer):
                 
         return enrollment
 
-class InstallmentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Installment
-        fields = '__all__'
-
 class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = '__all__'
 
-class DocumentSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Document
-        fields = '__all__'
-
 class DocumentTransferSerializer(serializers.ModelSerializer):
+    sender = serializers.PrimaryKeyRelatedField(read_only=True)
+    sender_name = serializers.CharField(source='sender.username', read_only=True)
+    receiver_name = serializers.CharField(source='receiver.username', read_only=True)
+    documents_details = DocumentSerializer(source='documents', many=True, read_only=True)
+
     class Meta:
         model = DocumentTransfer
         fields = '__all__'
 
 class TaskSerializer(serializers.ModelSerializer):
+    assigned_to_name = serializers.CharField(source='assigned_to.username', read_only=True)
+
     class Meta:
         model = Task
         fields = '__all__'
+        extra_kwargs = {
+            'company_id': {'read_only': True},
+            'assigned_to_name': {'read_only': True}
+        }
 
 class AppointmentSerializer(serializers.ModelSerializer):
     class Meta:

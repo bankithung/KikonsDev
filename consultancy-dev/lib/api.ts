@@ -85,6 +85,12 @@ api.interceptors.response.use(
                 // Update the authorization header
                 if (originalRequest.headers) {
                     originalRequest.headers['Authorization'] = `Bearer ${access}`;
+
+                    // Fix for multipart/form-data: remove Content-Type header to let browser/axios generate it with correct boundary
+                    // If we reuse the old header, it might have an incorrect boundary
+                    if (originalRequest.headers['Content-Type']?.toString().includes('multipart/form-data')) {
+                        delete originalRequest.headers['Content-Type'];
+                    }
                 }
 
                 processQueue(null);

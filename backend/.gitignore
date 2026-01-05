@@ -1,0 +1,63 @@
+# Python
+*.py[cod]
+*$py.class
+*.so
+.Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Django
+*.log
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+/media
+/staticfiles
+*.pot
+
+# Environment variables
+.env
+.env.local
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Testing
+.coverage
+htmlcov/
+.pytest_cache/
+.tox/
+
+# Deployment
+*.pid
+gunicorn.log
+access.log
+error.log
+
+# Backfill scripts (optional - remove if you want to keep them)
+backfill_*.py
+check_*.py
+debug_*.py
+fix_*.py
+verify_*.py
+
+# Deployment scripts (keep these commented out if you want them in repo)
+# deploy_backend.sh
+# nginx_backend.conf

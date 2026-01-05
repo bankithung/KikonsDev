@@ -9,7 +9,24 @@ const mapEnquiry = (data: any): Enquiry => ({
   courseInterested: data.course_interested || data.courseInterested,
   fatherName: data.father_name || data.fatherName,
   motherName: data.mother_name || data.motherName,
+  fatherOccupation: data.father_occupation || data.fatherOccupation,
+  motherOccupation: data.mother_occupation || data.motherOccupation,
+  fatherMobile: data.father_mobile || data.fatherMobile,
+  motherMobile: data.mother_mobile || data.motherMobile,
   permanentAddress: data.permanent_address || data.permanentAddress,
+  class12PassingYear: data.class12_passing_year || data.class12PassingYear,
+  pcbPercentage: data.pcb_percentage || data.pcbPercentage,
+  pcmPercentage: data.pcm_percentage || data.pcmPercentage,
+  physicsMarks: data.physics_marks || data.physicsMarks,
+  mathsMarks: data.maths_marks || data.mathsMarks,
+  chemistryMarks: data.chemistry_marks || data.chemistryMarks,
+  biologyMarks: data.biology_marks || data.biologyMarks,
+  previousNeetMarks: data.previous_neet_marks || data.previousNeetMarks,
+  presentNeetMarks: data.present_neet_marks || data.presentNeetMarks,
+  gapYear: data.gap_year !== undefined ? data.gap_year : (data.gapYear || false),
+  collegeDropout: data.college_dropout !== undefined ? data.college_dropout : (data.collegeDropout || false),
+  paymentAmount: data.payment_amount || data.paymentAmount,
+  otherLocation: data.other_location || data.otherLocation,
   preferredLocations: typeof data.preferred_locations === 'string' ? JSON.parse(data.preferred_locations) : (data.preferred_locations || []),
 });
 
@@ -30,11 +47,18 @@ const mapRegistration = (data: any): Registration => ({
 const mapEnrollment = (data: any): Enrollment => ({
   ...data,
   enrollmentNo: data.enrollment_no || data.enrollmentNo,
-  studentName: data.student_name || data.studentName, // Backend might need to return this from relation
+  studentName: data.student_name || data.studentName,
   programName: data.program_name || data.programName,
   startDate: data.start_date || data.startDate,
   durationMonths: data.duration_months || data.durationMonths,
   totalFees: data.total_fees || data.totalFees,
+  serviceCharge: data.commission_amount || data.serviceCharge,
+  schoolFees: data.schoolFees,
+  hostelFees: data.hostelFees,
+  paymentType: data.paymentType,
+  installmentsCount: data.installmentsCount,
+  installmentAmount: data.installmentAmount,
+  installments: data.installments,
 });
 
 export const apiClient = {
@@ -103,28 +127,16 @@ export const apiClient = {
 
     getRevenueData: async () => {
       try {
-        const res = await api.get('payments/');
-        const payments = res.data;
+        // Use the dedicated earnings endpoint which properly aggregates revenue data
+        const res = await api.get('earnings/revenue/');
 
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const currentYear = new Date().getFullYear();
+        // Backend returns: { currentMonth: {...}, monthlyEarnings: [{month, revenue, profit}], revenueBySource: [...] }
+        const monthlyEarnings = res.data.monthlyEarnings || [];
 
-        // Group by month
-        const monthlyRevenue = new Array(12).fill(0);
-        payments.forEach((p: any) => {
-          if (p.status === 'Completed' && p.payment_date) {
-            const date = new Date(p.payment_date);
-            if (date.getFullYear() === currentYear) {
-              monthlyRevenue[date.getMonth()] += parseFloat(p.amount);
-            }
-          }
-        });
-
-        // Return data for chart (current year up to current month)
-        const currentMonth = new Date().getMonth();
-        return months.slice(0, currentMonth + 1).map((month, index) => ({
-          month,
-          revenue: monthlyRevenue[index]
+        // Transform to chart format (keep only month and revenue)
+        return monthlyEarnings.map((item: any) => ({
+          month: item.month,
+          revenue: item.revenue
         }));
       } catch (e) {
         console.error("Failed to fetch revenue data", e);
@@ -162,8 +174,8 @@ export const apiClient = {
           }))
         ];
 
-        // Sort by newest first and take top 10
-        return activities.sort((a, b) => b.timestamp - a.timestamp).slice(0, 10);
+        // Sort by newest first and take top 5
+        return activities.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
       } catch (e) {
         console.error("Failed to fetch activity", e);
         return [];
@@ -212,7 +224,24 @@ export const apiClient = {
         course_interested: data.courseInterested,
         father_name: data.fatherName,
         mother_name: data.motherName,
+        father_occupation: data.fatherOccupation,
+        mother_occupation: data.motherOccupation,
+        father_mobile: data.fatherMobile,
+        mother_mobile: data.motherMobile,
         permanent_address: data.permanentAddress,
+        class12_passing_year: data.class12PassingYear,
+        pcb_percentage: data.pcbPercentage,
+        pcm_percentage: data.pcmPercentage,
+        physics_marks: data.physicsMarks,
+        maths_marks: data.mathsMarks,
+        chemistry_marks: data.chemistryMarks,
+        biology_marks: data.biologyMarks,
+        previous_neet_marks: data.previousNeetMarks,
+        present_neet_marks: data.presentNeetMarks,
+        gap_year: data.gapYear,
+        college_dropout: data.collegeDropout,
+        payment_amount: data.paymentAmount,
+        other_location: data.otherLocation,
         preferred_locations: JSON.stringify(data.preferredLocations),
       };
       const res = await api.post('enquiries/', payload);
@@ -230,7 +259,24 @@ export const apiClient = {
         course_interested: data.courseInterested,
         father_name: data.fatherName,
         mother_name: data.motherName,
+        father_occupation: data.fatherOccupation,
+        mother_occupation: data.motherOccupation,
+        father_mobile: data.fatherMobile,
+        mother_mobile: data.motherMobile,
         permanent_address: data.permanentAddress,
+        class12_passing_year: data.class12PassingYear,
+        pcb_percentage: data.pcbPercentage,
+        pcm_percentage: data.pcmPercentage,
+        physics_marks: data.physicsMarks,
+        maths_marks: data.mathsMarks,
+        chemistry_marks: data.chemistryMarks,
+        biology_marks: data.biologyMarks,
+        previous_neet_marks: data.previousNeetMarks,
+        present_neet_marks: data.presentNeetMarks,
+        gap_year: data.gapYear,
+        college_dropout: data.collegeDropout,
+        payment_amount: data.paymentAmount,
+        other_location: data.otherLocation,
         preferred_locations: JSON.stringify(data.preferredLocations),
       };
       const res = await api.put(`enquiries/${id}/`, payload);
@@ -261,6 +307,10 @@ export const apiClient = {
         permanent_address: data.permanentAddress,
       };
       const res = await api.post('registrations/', payload);
+      return mapRegistration(res.data);
+    },
+    get: async (id: string | number): Promise<Registration> => {
+      const res = await api.get(`registrations/${id}/`);
       return mapRegistration(res.data);
     },
     update: async (id: string, data: any): Promise<Registration> => {
@@ -327,11 +377,32 @@ export const apiClient = {
       return res.data.map((d: any) => ({
         ...d,
         fileName: d.file_name,
-        uploadedBy: 'User', // Backend doesn't return user name yet
+        uploadedBy: d.uploaded_by,
+        uploadedByName: d.uploaded_by_name,
+        currentHolder: d.current_holder,
+        currentHolderName: d.current_holder_name,
         uploadedAt: d.uploaded_at,
         studentName: d.student_name,
         expiryDate: d.expiry_date
       }));
+    },
+    create: async (data: FormData): Promise<Document> => {
+      const res = await api.post('documents/', data, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      return {
+        ...res.data,
+        fileName: res.data.file_name,
+        uploadedBy: res.data.uploaded_by,
+        uploadedByName: res.data.uploaded_by_name,
+        currentHolder: res.data.current_holder,
+        currentHolderName: res.data.current_holder_name,
+        uploadedAt: res.data.uploaded_at,
+        studentName: res.data.student_name,
+        expiryDate: res.data.expiry_date
+      };
     },
     uploadMock: async (file: { name: string }, type: string, studentName: string): Promise<Document> => {
       // Real upload would use FormData
@@ -510,9 +581,13 @@ export const apiClient = {
     create: async (data: any) => {
       const payload = {
         ...data,
-        tuition_fee_min: data.tuitionFee?.min,
-        tuition_fee_max: data.tuitionFee?.max,
-        admission_deadline: data.admissionDeadline
+        tuition_fee_min: data.tuitionFee?.min || 0,
+        tuition_fee_max: data.tuitionFee?.max || 0,
+        admission_deadline: data.admissionDeadline || data.deadline || '',
+        ranking: data.ranking || 0,
+        rating: data.rating || 0,
+        programs: data.programs || [],
+        requirements: data.requirements || []
       };
       const res = await api.post('universities/', payload);
       return res.data;
@@ -842,8 +917,8 @@ export const apiClient = {
       return res.data;
     },
     getCurrent: async () => {
-      const res = await api.get('companies/');
-      return res.data[0];
+      const res = await api.get('companies/current/');
+      return res.data;
     }
   },
 
@@ -879,6 +954,7 @@ export const apiClient = {
       entity_id: number;
       entity_name: string;
       message: string;
+      pending_changes?: any;
     }) => {
       const res = await api.post('approval-requests/', data);
       return res.data;
@@ -897,6 +973,29 @@ export const apiClient = {
     },
     reject: async (id: number, note: string) => {
       const res = await api.post(`approval-requests/${id}/reject/`, { review_note: note });
+      return res.data;
+    }
+  },
+
+  documentTransfers: {
+    list: async () => {
+      const res = await api.get('document-transfers/');
+      return res.data;
+    },
+    create: async (data: any) => {
+      const payload = {
+        receiver: parseInt(data.receiver),
+        documents: data.documents.map((id: string) => parseInt(id))
+      };
+      const res = await api.post('document-transfers/', payload);
+      return res.data;
+    },
+    accept: async (id: string | number) => {
+      const res = await api.post(`document-transfers/${id}/accept/`);
+      return res.data;
+    },
+    reject: async (id: string | number) => {
+      const res = await api.post(`document-transfers/${id}/reject/`);
       return res.data;
     }
   }

@@ -15,8 +15,11 @@ import { useAuthStore } from '@/store/authStore';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RequestActionModal } from '@/components/ui/RequestActionModal';
 import { toast } from '@/store/toastStore';
+import { useRouter } from 'next/navigation';
+import { ExistingDocumentsList } from '@/components/common/ExistingDocumentsList';
 
 export function EnrollmentList() {
+  const router = useRouter();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,6 +98,13 @@ export function EnrollmentList() {
       enr.enrollmentNo.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'all' || enr.status === filterStatus;
     return matchesSearch && matchesStatus;
+  });
+
+  // Fetch registration details for the selected enrollment
+  const { data: registrationData } = useQuery({
+    queryKey: ['registration', viewEnroll?.studentId],
+    queryFn: () => apiClient.registrations.get(viewEnroll!.studentId),
+    enabled: !!viewEnroll?.studentId,
   });
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="animate-pulse text-slate-500">Loading enrollments...</div></div>;
@@ -199,7 +209,7 @@ export function EnrollmentList() {
                 ))
               ) : (
                 <tr>
-                  <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                  <td colSpan={7} className="px-4 py-12 text-center text-slate-500">
                     <GraduationCap size={40} className="mx-auto mb-2 text-slate-300" />
                     <p className="font-medium">No enrollments found</p>
                   </td>
@@ -214,42 +224,133 @@ export function EnrollmentList() {
       <Dialog.Root open={!!viewEnroll} onOpenChange={() => setViewEnroll(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[600px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
+          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[90vh] w-[95vw] max-w-[800px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
             {viewEnroll && (
               <>
-                <Dialog.Title className="text-xl font-bold text-slate-900 mb-4 font-heading">
-                  Enrollment Details
+                <Dialog.Title className="text-xl font-bold text-slate-900 mb-4 font-heading flex justify-between items-center">
+                  <span>Enrollment Details</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${viewEnroll.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}`}>
+                    {viewEnroll.status}
+                  </span>
                 </Dialog.Title>
 
-                <div className="space-y-4">
-                  <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
-                    <h3 className="text-lg font-bold text-slate-900 mb-1 font-heading">{viewEnroll.studentName}</h3>
-                    <p className="text-sm text-slate-600">{viewEnroll.programName}</p>
+                <div className="space-y-6">
+                  {/* Student Profile Section */}
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Student Profile</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Name</p>
+                        <p className="text-sm font-medium text-slate-900">{viewEnroll.studentName}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Registration No</p>
+                        <p className="text-sm font-mono text-slate-700">{registrationData?.registrationNo || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Mobile</p>
+                        <p className="text-sm text-slate-700">{registrationData?.mobile || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Email</p>
+                        <p className="text-sm text-slate-700">{registrationData?.email || '-'}</p>
+                      </div>
+                      <div className="md:col-span-2">
+                        <p className="text-xs text-slate-500">Address</p>
+                        <p className="text-sm text-slate-700">{registrationData?.permanentAddress || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Father's Name</p>
+                        <p className="text-sm text-slate-700">{registrationData?.fatherName || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Mother's Name</p>
+                        <p className="text-sm text-slate-700">{registrationData?.motherName || '-'}</p>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500">Enrollment No</p>
-                      <code className="text-sm font-mono text-slate-900">{viewEnroll.enrollmentNo}</code>
+                  {/* Enrollment Info */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Program Details</h4>
+                      <div className="bg-white border border-slate-200 p-3 rounded space-y-2">
+                        <div>
+                          <p className="text-xs text-slate-500">Program Name</p>
+                          <p className="text-sm font-medium">{viewEnroll.programName}</p>
+                        </div>
+                        <div className="flex justify-between">
+                          <div>
+                            <p className="text-xs text-slate-500">Enrollment No</p>
+                            <code className="text-sm font-mono">{viewEnroll.enrollmentNo}</code>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500">Start Date</p>
+                            <p className="text-sm">{viewEnroll.startDate ? format(new Date(viewEnroll.startDate), 'dd MMM yyyy') : 'N/A'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Duration</p>
+                          <p className="text-sm">{viewEnroll.durationMonths} Months</p>
+                        </div>
+                      </div>
                     </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500">Start Date</p>
-                      <p className="text-sm text-slate-900">{viewEnroll.startDate ? format(new Date(viewEnroll.startDate), 'dd MMM yyyy') : 'N/A'}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500">Total Fees</p>
-                      <p className="text-sm font-bold text-slate-900">₹{viewEnroll.totalFees.toLocaleString()}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500">Payment Type</p>
-                      <p className="text-sm text-slate-900">{viewEnroll.paymentType}</p>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Financials</h4>
+                      <div className="bg-white border border-slate-200 p-3 rounded space-y-2">
+                        <div className="flex justify-between border-b border-slate-100 pb-2">
+                          <span className="text-xs text-slate-500">Total Fees</span>
+                          <span className="text-sm font-bold text-blue-600">₹{viewEnroll.totalFees.toLocaleString()}</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 text-xs">
+                          <div>
+                            <span className="text-slate-500 block">Service Charge</span>
+                            <span>₹{viewEnroll.serviceCharge?.toLocaleString() || 0}</span>
+                          </div>
+                          <div>
+                            <span className="text-slate-500 block">School Fees</span>
+                            <span>₹{viewEnroll.schoolFees?.toLocaleString() || 0}</span>
+                          </div>
+                        </div>
+                        <div className="pt-2 border-t border-slate-100">
+                          <p className="text-xs text-slate-500">Payment Type</p>
+                          <p className="text-sm font-medium">{viewEnroll.paymentType} {viewEnroll.paymentType === 'Installment' && `(${viewEnroll.installments?.length || 0} installments)`}</p>
+                        </div>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Loan Info if applicable */}
+                  {viewEnroll.loanRequired && (
+                    <div className="bg-amber-50 border border-amber-200 p-3 rounded flex justify-between items-center">
+                      <div>
+                        <p className="text-xs text-amber-800 font-semibold">Loan Required</p>
+                        <p className="text-sm text-amber-900">Amount: ₹{viewEnroll.loanAmount?.toLocaleString()}</p>
+                      </div>
+                      <span className="text-xs bg-amber-200 text-amber-800 px-2 py-1 rounded">Pending Approval</span>
+                    </div>
+                  )}
+
+                  {/* Documents */}
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Documents</h4>
+                    <ExistingDocumentsList studentId={viewEnroll.studentId} />
+                  </div>
+
                 </div>
 
                 <div className="flex gap-3 mt-6 pt-6 border-t">
                   <Button variant="outline" className="flex-1 h-11" onClick={() => setViewEnroll(null)}>Close</Button>
-                  <Button className="flex-1 h-11 bg-teal-600 hover:bg-teal-700">Print Receipt</Button>
+                  <Button
+                    className="flex-1 h-11 bg-teal-600 hover:bg-teal-700"
+                    onClick={() => {
+                      router.push(`/app/student-profile/enrollment/${viewEnroll.id}`);
+                      setViewEnroll(null);
+                    }}
+                  >
+                    <Edit size={16} className="mr-2" /> View Full Profile
+                  </Button>
                 </div>
 
                 <Dialog.Close asChild>

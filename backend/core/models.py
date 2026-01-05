@@ -29,6 +29,24 @@ class Enquiry(models.Model):
     father_mobile = models.CharField(max_length=20, blank=True, default='')
     mother_mobile = models.CharField(max_length=20, blank=True, default='')
     permanent_address = models.TextField()
+    
+    # Academic Fields
+    class12_passing_year = models.CharField(max_length=10, blank=True, default='')
+    pcb_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    pcm_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    physics_marks = models.IntegerField(null=True, blank=True)
+    maths_marks = models.IntegerField(null=True, blank=True)
+    chemistry_marks = models.IntegerField(null=True, blank=True)
+    biology_marks = models.IntegerField(null=True, blank=True)
+    previous_neet_marks = models.IntegerField(null=True, blank=True)
+    present_neet_marks = models.IntegerField(null=True, blank=True)
+    gap_year = models.BooleanField(default=False)
+    college_dropout = models.BooleanField(default=False)
+    
+    # Other optional fields
+    other_location = models.CharField(max_length=255, blank=True, default='')
+    payment_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    
     preferred_locations = models.JSONField(default=list)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='New')
     company_id = models.CharField(max_length=100, default='')
@@ -86,10 +104,15 @@ class Payment(models.Model):
 
 class Document(models.Model):
     file_name = models.CharField(max_length=255)
+    file = models.FileField(upload_to='documents/', null=True, blank=True)
+    description = models.CharField(max_length=255, blank=True, default='')
     type = models.CharField(max_length=50)
     status = models.CharField(max_length=10, choices=(('IN', 'IN'), ('OUT', 'OUT')), default='IN')
     uploaded_at = models.DateTimeField(auto_now_add=True)
+    uploaded_by = models.ForeignKey(User, related_name='uploaded_documents', on_delete=models.SET_NULL, null=True, blank=True)
+    current_holder = models.ForeignKey(User, related_name='held_documents', on_delete=models.SET_NULL, null=True, blank=True)
     student_name = models.CharField(max_length=255, blank=True)
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='documents', null=True, blank=True)
     expiry_date = models.DateField(blank=True, null=True)
     company_id = models.CharField(max_length=100, default='')
 
@@ -97,8 +120,9 @@ class DocumentTransfer(models.Model):
     sender = models.ForeignKey(User, related_name='sent_transfers', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_transfers', on_delete=models.CASCADE)
     documents = models.ManyToManyField(Document)
-    status = models.CharField(max_length=20, default='Pending')
+    status = models.CharField(max_length=20, default='Pending') # Pending, Accepted, Rejected
     created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
 
 class Task(models.Model):
     title = models.CharField(max_length=255)
@@ -343,3 +367,18 @@ class ApprovalRequest(models.Model):
     
     def __str__(self):
         return f"{self.action} {self.entity_type} #{self.entity_id} by {self.requested_by.username}"
+
+class Company(models.Model):
+    name = models.CharField(max_length=255)
+    email = models.EmailField(blank=True, default='')
+    phone = models.CharField(max_length=50, blank=True, default='')
+    website = models.URLField(blank=True, default='')
+    address = models.TextField(blank=True, default='')
+    currency = models.CharField(max_length=10, default='INR (₹)')
+    timezone = models.CharField(max_length=50, default='Asia/Kolkata (GMT+5:30)')
+    company_id = models.CharField(max_length=100, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.name

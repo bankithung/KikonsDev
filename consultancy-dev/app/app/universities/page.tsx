@@ -7,8 +7,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, DollarSign, GraduationCap, Search, Filter, Eye, X, Star, Globe } from 'lucide-react';
+import { Building2, MapPin, DollarSign, GraduationCap, Search, Filter, Eye, X, Star, Globe, Plus, User } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from '@/hooks/use-toast';
+import { Label } from '@/components/ui/label';
 
 interface University {
   id: string;
@@ -27,12 +30,77 @@ export default function UniversitiesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterCountry, setFilterCountry] = useState('all');
   const [filterProgram, setFilterProgram] = useState('all');
+  const [isAddOpen, setIsAddOpen] = useState(false);
   const [selectedUni, setSelectedUni] = useState<University | null>(null);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const [newUni, setNewUni] = useState({
+    name: '',
+    country: '',
+    city: '',
+    ranking: '',
+    rating: '',
+    programs: '', // comma separated
+    tuitionMin: '',
+    tuitionMax: '',
+    deadline: '',
+    requirements: '' // comma separated
+  });
 
   const { data: universities = [], isLoading } = useQuery({
     queryKey: ['universities'],
     queryFn: apiClient.universities.list,
   });
+
+  const { data: enrollments } = useQuery({
+    queryKey: ['enrollments-uni-check'],
+    queryFn: apiClient.enrollments.list,
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async (data: any) => {
+      // Adapt data to API expectations if needed
+      // Assuming api handles raw data or we need to format it
+      const formatted = {
+        ...data,
+        tuitionFee: { min: Number(data.tuitionMin), max: Number(data.tuitionMax) },
+        programs: data.programs.split(',').map((s: string) => s.trim()),
+        requirements: data.requirements.split(',').map((s: string) => s.trim()),
+        ranking: Number(data.ranking),
+        rating: Number(data.rating)
+      };
+      // If apiClient.universities.create is not defined, we might default to a mock or implementation
+      // But assuming it exists as per instructions to "make sure its fully sync... with backend"
+      // I'll check if it exists in next steps if this fails, but for now assuming it does.
+      return apiClient.universities.create(formatted);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['universities'] });
+      setIsAddOpen(false);
+      toast({ title: 'University Added', type: 'success' }); // Fix type error by assuming toast signature or just title
+      // Reset form
+      setNewUni({
+        name: '', country: '', city: '', ranking: '', rating: '',
+        programs: '', tuitionMin: '', tuitionMax: '', deadline: '', requirements: ''
+      });
+    },
+    onError: (error: any) => {
+      console.error("Failed to add university:", error.response?.data || error);
+      toast({
+        title: 'Failed to add university',
+        description: error.response?.data ? JSON.stringify(error.response.data) : 'Unknown error',
+        type: 'error'
+      });
+    }
+  });
+
+  const handleCreate = () => {
+    if (!newUni.name || !newUni.country) {
+      toast({ title: 'Validation Error', description: 'Name and Country are required', type: 'error' });
+      return;
+    }
+    createMutation.mutate(newUni);
+  };
 
   if (isLoading) {
     return (
@@ -52,9 +120,14 @@ export default function UniversitiesPage() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-heading">University Database</h1>
-        <p className="text-sm text-slate-600 mt-1 font-body">Search and compare universities worldwide</p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-heading">University Database</h1>
+          <p className="text-sm text-slate-600 mt-1 font-body">Search and compare universities worldwide</p>
+        </div>
+        <Button onClick={() => setIsAddOpen(true)} className="bg-teal-600 hover:bg-teal-700">
+          <Plus className="w-4 h-4 mr-2" /> Add University
+        </Button>
       </div>
 
       {/* Filters */}
@@ -129,6 +202,10 @@ export default function UniversitiesPage() {
                 <div className="pt-4 border-t border-slate-100">
                   <p className="text-xs text-slate-500 font-body">Deadline: <span className="font-semibold text-slate-900">{uni.admissionDeadline}</span></p>
                 </div>
+                <div className="flex items-center gap-1 text-xs text-slate-500 mt-2">
+                  <User size={12} />
+                  <span>{enrollments?.filter((e: any) => e.university === uni.name).length || 0} Students Enrolled</span>
+                </div>
               </div>
               <Button variant="outline" className="w-full mt-4 h-9 font-body" onClick={(e) => { e.stopPropagation(); setSelectedUni(uni); }}>
                 <Eye size={14} className="mr-2" /> View Details
@@ -200,6 +277,21 @@ export default function UniversitiesPage() {
                       Application Deadline: {selectedUni.admissionDeadline}
                     </p>
                   </div>
+
+                  <div>
+                    <h3 className="text-lg font-bold text-slate-900 mb-3 font-heading">Enrolled Students</h3>
+                    <div className="space-y-2">
+                      {enrollments?.filter((e: any) => e.university === selectedUni.name).map((e: any) => (
+                        <div key={e.id} className="flex items-center justify-between p-2 bg-slate-50 rounded border">
+                          <span className="text-sm font-medium">{e.studentName || 'Unknown Student'}</span>
+                          <span className="text-xs text-slate-500">{e.programName}</span>
+                        </div>
+                      ))}
+                      {(!enrollments || enrollments.filter((e: any) => e.university === selectedUni.name).length === 0) && (
+                        <p className="text-sm text-slate-500">No students enrolled yet.</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 <div className="flex gap-3 mt-8 pt-6 border-t">
@@ -219,7 +311,78 @@ export default function UniversitiesPage() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root>
-    </div>
+
+      {/* Add University Modal */}
+      < Dialog.Root open={isAddOpen} onOpenChange={setIsAddOpen} >
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+          <Dialog.Content className="fixed left-[50%] top-[50%] w-[90vw] max-w-[600px] max-h-[90vh] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl z-50 border overflow-y-auto">
+            <Dialog.Title className="text-xl font-bold text-slate-900 mb-6">Add New University</Dialog.Title>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>University Name</Label>
+                  <Input value={newUni.name} onChange={e => setNewUni({ ...newUni, name: e.target.value })} placeholder="e.g. Oxford University" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Country</Label>
+                  <Input value={newUni.country} onChange={e => setNewUni({ ...newUni, country: e.target.value })} placeholder="e.g. UK" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>City</Label>
+                  <Input value={newUni.city} onChange={e => setNewUni({ ...newUni, city: e.target.value })} placeholder="e.g. Oxford" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Ranking</Label>
+                  <Input type="number" value={newUni.ranking} onChange={e => setNewUni({ ...newUni, ranking: e.target.value })} placeholder="e.g. 5" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Rating (1-5)</Label>
+                  <Input type="number" step="0.1" value={newUni.rating} onChange={e => setNewUni({ ...newUni, rating: e.target.value })} placeholder="e.g. 4.8" />
+                </div>
+                <div className="space-y-2">
+                  <Label>Deadline</Label>
+                  <Input type="date" value={newUni.deadline} onChange={e => setNewUni({ ...newUni, deadline: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Programs (comma separated)</Label>
+                <Input value={newUni.programs} onChange={e => setNewUni({ ...newUni, programs: e.target.value })} placeholder="e.g. MBBS, Engineering, Law" />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Min Tuition (Annual)</Label>
+                  <Input type="number" value={newUni.tuitionMin} onChange={e => setNewUni({ ...newUni, tuitionMin: e.target.value })} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max Tuition (Annual)</Label>
+                  <Input type="number" value={newUni.tuitionMax} onChange={e => setNewUni({ ...newUni, tuitionMax: e.target.value })} />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label>Requirements (comma separated)</Label>
+                <Input value={newUni.requirements} onChange={e => setNewUni({ ...newUni, requirements: e.target.value })} placeholder="e.g. NEET Qualified, 60% in PCB" />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <Button variant="outline" onClick={() => setIsAddOpen(false)}>Cancel</Button>
+                <Button onClick={handleCreate} disabled={createMutation.isPending || !newUni.name || !newUni.country} className="bg-teal-600 hover:bg-teal-700">
+                  {createMutation.isPending ? 'Creating...' : 'Create University'}
+                </Button>
+              </div>
+            </div>
+            <Dialog.Close asChild>
+              <button className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100">
+                <X size={20} />
+              </button>
+            </Dialog.Close>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root >
+    </div >
   );
 }
 

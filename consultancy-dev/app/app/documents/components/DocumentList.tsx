@@ -10,31 +10,29 @@ import { Label } from '@/components/ui/label';
 import { Upload, FileText, Search, CheckCircle, ArrowRightLeft, Printer, Filter } from 'lucide-react';
 import { Document } from '@/lib/types';
 import { format } from 'date-fns';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DocumentUpload } from '@/components/common/DocumentUpload';
 
 export function DocumentList() {
     const queryClient = useQueryClient();
     const [searchTerm, setSearchTerm] = useState('');
-    const [selectedFile, setSelectedFile] = useState<File | null>(null);
-    const [docType, setDocType] = useState('General');
-    const [studentName, setStudentName] = useState('');
+    const [selectedRegistrationId, setSelectedRegistrationId] = useState<string>('');
+    const [studentSearch, setStudentSearch] = useState('');
 
     const { data: documents, isLoading } = useQuery({
         queryKey: ['documents'],
         queryFn: apiClient.documents.list,
     });
 
-    const uploadMutation = useMutation({
-        mutationFn: async () => {
-            if (!selectedFile) return;
-            return apiClient.documents.uploadMock({ name: selectedFile.name }, docType, studentName);
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({ queryKey: ['documents'] });
-            setSelectedFile(null);
-            setStudentName('');
-            alert('Document Uploaded Successfully');
-        },
+    const { data: registrations } = useQuery({
+        queryKey: ['registrations'],
+        queryFn: apiClient.registrations.list,
     });
+
+    const filteredRegistrations = registrations?.filter(reg =>
+        reg.studentName.toLowerCase().includes(studentSearch.toLowerCase()) ||
+        reg.registrationNo.toLowerCase().includes(studentSearch.toLowerCase())
+    );
 
     const toggleStatusMutation = useMutation({
         mutationFn: async ({ id, status }: { id: string, status: 'IN' | 'OUT' }) => {
@@ -96,6 +94,8 @@ export function DocumentList() {
                                                 <th className="px-4 py-3 hidden sm:table-cell">Type</th>
                                                 <th className="px-4 py-3">Status</th>
                                                 <th className="px-4 py-3 hidden lg:table-cell">Date</th>
+                                                <th className="px-4 py-3 hidden xl:table-cell">Uploaded By</th>
+                                                <th className="px-4 py-3 hidden xl:table-cell">Current Holder</th>
                                                 <th className="px-4 py-3">Action</th>
                                             </tr>
                                         </thead>
@@ -119,6 +119,8 @@ export function DocumentList() {
                                                     <td className="px-4 py-3 text-slate-500 text-xs hidden lg:table-cell">
                                                         {format(new Date(doc.uploadedAt), 'dd MMM')}
                                                     </td>
+                                                    <td className="px-4 py-3 text-slate-600 hidden xl:table-cell">{doc.uploadedByName || '-'}</td>
+                                                    <td className="px-4 py-3 text-slate-600 hidden xl:table-cell">{doc.currentHolderName || '-'}</td>
                                                     <td className="px-4 py-3">
                                                         <Button
                                                             variant="ghost"
@@ -149,55 +151,63 @@ export function DocumentList() {
                 </div>
 
                 {/* Right: Uploader (Sticky on desktop) */}
-                <div className="lg:sticky lg:top-24 lg:self-start">
+                <div className="lg:sticky lg:top-24 lg:self-start space-y-6">
                     <Card className="border-slate-200">
                         <CardHeader>
                             <CardTitle className="text-lg font-semibold">Upload Document</CardTitle>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="space-y-2">
-                                <Label className="text-slate-700 font-medium">Student Name</Label>
-                                <Input
-                                    placeholder="Search student..."
-                                    value={studentName}
-                                    onChange={(e) => setStudentName(e.target.value)}
-                                    className="h-11"
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label className="text-slate-700 font-medium">Document Type</Label>
-                                <select
-                                    className="w-full h-11 rounded-md border border-slate-300 bg-white px-3 py-2 text-sm focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none"
-                                    value={docType}
-                                    onChange={(e) => setDocType(e.target.value)}
-                                >
-                                    <option value="General">General</option>
-                                    <option value="Marksheet">Marksheet</option>
-                                    <option value="ID Proof">ID Proof</option>
-                                    <option value="Certificate">Certificate</option>
-                                </select>
-                            </div>
-
-                            <div className="border-2 border-dashed border-slate-300 rounded-xl p-8 text-center hover:bg-slate-50 hover:border-teal-300 transition-all cursor-pointer relative group">
-                                <input
-                                    type="file"
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                                    onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
-                                />
-                                <Upload className="mx-auto h-10 w-10 text-slate-400 group-hover:text-teal-500 transition-colors mb-2" />
-                                <p className="text-sm font-medium text-slate-600">
-                                    {selectedFile ? selectedFile.name : "Drop file or click to upload"}
-                                </p>
-                                <p className="text-xs text-slate-400 mt-1">PDF, DOC, JPG up to 10MB</p>
+                                <Label className="text-slate-700 font-medium">Select Student</Label>
+                                <Select value={selectedRegistrationId} onValueChange={setSelectedRegistrationId}>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a student..." />
+                                    </SelectTrigger>
+                                    <SelectContent className="max-h-[300px]">
+                                        <div className="p-2">
+                                            <Input
+                                                placeholder="Search students..."
+                                                className="h-8"
+                                                value={studentSearch}
+                                                onChange={(e) => setStudentSearch(e.target.value)}
+                                                onKeyDown={(e) => e.stopPropagation()}
+                                            />
+                                        </div>
+                                        {filteredRegistrations?.length === 0 ? (
+                                            <div className="p-2 text-sm text-slate-500 text-center">No students found</div>
+                                        ) : (
+                                            filteredRegistrations?.map((reg) => (
+                                                <SelectItem key={reg.id} value={reg.id}>
+                                                    {reg.studentName} ({reg.registrationNo})
+                                                </SelectItem>
+                                            ))
+                                        )}
+                                    </SelectContent>
+                                </Select>
                             </div>
 
-                            <Button
-                                className="w-full h-11 bg-teal-600 hover:bg-teal-700 font-semibold"
-                                disabled={!selectedFile || uploadMutation.isPending}
-                                onClick={() => uploadMutation.mutate()}
-                            >
-                                {uploadMutation.isPending ? 'Uploading...' : 'Upload Document'}
-                            </Button>
+                            {selectedRegistrationId && (
+                                <div className="pt-2">
+                                    <Label className="text-slate-700 font-medium mb-2 block">Documents</Label>
+                                    <DocumentUpload
+                                        registrationId={selectedRegistrationId}
+                                        initialDocuments={[]}
+                                        onDocumentsChange={() => {
+                                            queryClient.invalidateQueries({ queryKey: ['documents'] });
+                                        }}
+                                        onUploadSuccess={() => {
+                                            setSelectedRegistrationId('');
+                                            queryClient.invalidateQueries({ queryKey: ['documents'] });
+                                        }}
+                                    />
+                                </div>
+                            )}
+
+                            {!selectedRegistrationId && (
+                                <div className="text-sm text-slate-500 text-center py-4 border-2 border-dashed rounded-lg">
+                                    Select a student to start uploading documents
+                                </div>
+                            )}
                         </CardContent>
                     </Card>
                 </div>

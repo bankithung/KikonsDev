@@ -4,7 +4,7 @@ from .models import (
     DocumentTransfer, Task, Appointment, University, Template,
     Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp,
     Installment, Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest,
-    ApprovalRequest
+    ApprovalRequest, Company
 )
 from .serializers import (
     UserSerializer, EnquirySerializer, RegistrationSerializer, 
@@ -15,7 +15,8 @@ from .serializers import (
     VisaTrackingSerializer, FollowUpSerializer, InstallmentSerializer,
     AgentSerializer, ChatConversationSerializer, ChatMessageSerializer,
 
-    GroupChatSerializer, SignupRequestSerializer, ApprovalRequestSerializer
+    GroupChatSerializer, SignupRequestSerializer, ApprovalRequestSerializer,
+    CompanySerializer
 )
 
 from rest_framework.decorators import action
@@ -24,6 +25,24 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Sum, Avg, Q
 from datetime import datetime, timedelta
 from django.utils import timezone
+
+class CompanyViewSet(viewsets.ModelViewSet):
+    queryset = Company.objects.all()
+    serializer_class = CompanySerializer
+    
+    @action(detail=False, methods=['get'])
+    def current(self, request):
+        company_id = request.user.company_id
+        if not company_id:
+            return Response({'error': 'No company associated with user'}, status=404)
+        
+        company = Company.objects.filter(company_id=company_id).first()
+        if not company:
+            # Auto-create if not found but user has company_id (safe fallback)
+            company = Company.objects.create(name=company_id, company_id=company_id)
+            
+        serializer = self.get_serializer(company)
+        return Response(serializer.data)
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -35,10 +54,10 @@ class UserViewSet(viewsets.ModelViewSet):
         # DEV_ADMIN sees all users
         if user.role == 'DEV_ADMIN':
             return User.objects.all()
-        # COMPANY_ADMIN and MANAGER see only their company's users
-        elif user.role in ['COMPANY_ADMIN', 'MANAGER']:
+        # COMPANY_ADMIN, MANAGER, and EMPLOYEE see only their company's users
+        elif user.role in ['COMPANY_ADMIN', 'MANAGER', 'EMPLOYEE']:
             return User.objects.filter(company_id=user.company_id)
-        # EMPLOYEE sees only themselves
+        # Fallback
         return User.objects.filter(id=user.id)
     
     def perform_create(self, serializer):
@@ -204,6 +223,9 @@ class PaymentViewSet(viewsets.ModelViewSet):
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
+
+    def perform_create(self, serializer):
+        serializer.save(uploaded_by=self.request.user, current_holder=self.request.user)
     
     @action(detail=False, methods=['get'])
     def expiring_soon(self, request):
@@ -229,10 +251,102 @@ class DocumentViewSet(viewsets.ModelViewSet):
 class DocumentTransferViewSet(viewsets.ModelViewSet):
     queryset = DocumentTransfer.objects.all()
     serializer_class = DocumentTransferSerializer
+    pagination_class = None  # Disable pagination for transfers
+
+    def get_queryset(self):
+        user = self.request.user
+        # Return transfers where user is either sender or receiver
+        # Also filter by company
+        if user.role == 'DEV_ADMIN':
+            return DocumentTransfer.objects.all().select_related('sender', 'receiver').prefetch_related('documents')
+        else:
+            return DocumentTransfer.objects.filter(
+                Q(sender__company_id=user.company_id) |
+                Q(receiver__company_id=user.company_id)
+            ).select_related('sender', 'receiver').prefetch_related('documents')
+
+    def perform_create(self, serializer):
+        instance = serializer.save(sender=self.request.user)
+        # Send notification to receiver
+        Notification.objects.create(
+            user=instance.receiver,
+            title='New Document Transfer',
+            message=f'{self.request.user.username} has sent you documents.',
+            type='info'
+        )
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'Pending':
+            return Response({'error': 'Transfer already processed'}, status=400)
+        
+        if request.user != transfer.receiver:
+            return Response({'error': 'Not authorized'}, status=403)
+
+        transfer.status = 'Accepted'
+        transfer.accepted_at = timezone.now()
+        transfer.save()
+
+        # Update documents holder
+        for doc in transfer.documents.all():
+            doc.current_holder = request.user
+            doc.save()
+
+        # Notify sender
+        Notification.objects.create(
+            user=transfer.sender,
+            title='Transfer Accepted',
+            message=f'{request.user.username} accepted your document transfer.',
+            type='success'
+        )
+        
+        return Response({'status': 'accepted'})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'Pending':
+            return Response({'error': 'Transfer already processed'}, status=400)
+
+        if request.user != transfer.receiver:
+            return Response({'error': 'Not authorized'}, status=403)
+
+        transfer.status = 'Rejected'
+        transfer.save()
+
+        # Notify sender
+        Notification.objects.create(
+            user=transfer.sender,
+            title='Transfer Rejected',
+            message=f'{request.user.username} rejected your document transfer.',
+            type='error'
+        )
+        
+        return Response({'status': 'rejected'})
 
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'DEV_ADMIN':
+            return Task.objects.all()
+        return Task.objects.filter(company_id=user.company_id)
+
+    def perform_create(self, serializer):
+        instance = serializer.save(company_id=self.request.user.company_id)
+        
+        # Create Notification for the assigned user
+        Notification.objects.create(
+            user=instance.assigned_to,
+            title='New Task Assigned',
+            message=f'You have been assigned a new task: {instance.title}',
+            type='Info',
+            action_url='/app/tasks'
+        )
 
 class AppointmentViewSet(viewsets.ModelViewSet):
     queryset = Appointment.objects.all()

@@ -10,7 +10,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Registration } from '@/lib/types';
 import { format } from 'date-fns';
-import { Eye, Edit, Trash2, Phone, Mail, FileText, Search, X, GraduationCap } from 'lucide-react';
+import { Eye, Edit, Trash2, Phone, Mail, FileText, Search, X, GraduationCap, UserCircle } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -139,6 +139,7 @@ export function RegistrationList() {
   };
 
   const handleEditClick = (reg: Registration) => {
+    console.log('Editing registration:', reg);
     // Both admins and employees can open the edit form now
     setEditReg(reg);
   };
@@ -155,13 +156,24 @@ export function RegistrationList() {
     }
   };
 
+  const { data: enrollments } = useQuery({
+    queryKey: ['enrollments-check-list'],
+    queryFn: apiClient.enrollments.list,
+  });
 
-  const filteredRegs = registrations?.filter(reg => {
-    const matchesSearch = reg.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      reg.mobile.includes(searchTerm) ||
-      reg.registrationNo.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesPayment = filterPaymentStatus === 'all' || reg.paymentStatus === filterPaymentStatus;
-    return matchesSearch && matchesPayment;
+  const enrolledStudentIds = new Set(enrollments?.map((e: any) => String(e.studentId || e.student)) || []);
+
+  const filteredRegs = (registrations || []).filter((reg) => {
+    // Filter out if enrolled
+    if (enrolledStudentIds.has(String(reg.id))) return false;
+
+    const matchesSearch =
+      reg.studentName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reg.registrationNo.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      reg.mobile.includes(searchTerm);
+    const matchesStatus = filterPaymentStatus === 'all' || reg.paymentStatus === filterPaymentStatus;
+
+    return matchesSearch && matchesStatus;
   });
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="animate-pulse text-slate-500">Loading registrations...</div></div>;
@@ -186,14 +198,12 @@ export function RegistrationList() {
           <SelectContent>
             <SelectItem value="all">All Payment Status</SelectItem>
             <SelectItem value="Paid">Paid</SelectItem>
-            <SelectItem value="Pending">Pending</SelectItem>
-            <SelectItem value="Partial">Partial</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+          </SelectContent >
+        </Select >
+      </div >
 
       {/* Table */}
-      <Card className="border-slate-200">
+      < Card className="border-slate-200" >
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-200">
@@ -271,24 +281,6 @@ export function RegistrationList() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 w-8 p-0 hover:bg-teal-50 hover:text-teal-600"
-                          onClick={() => handleEditClick(reg)}
-                          title="Edit"
-                        >
-                          <Edit size={16} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 hover:bg-purple-50 hover:text-purple-600"
-                          onClick={() => router.push(`/app/enrollments/new?regId=${reg.id}`)}
-                          title="Enroll Student"
-                        >
-                          <GraduationCap size={16} />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
                           className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
                           onClick={() => handleDeleteClick(reg)}
                           title="Delete"
@@ -309,60 +301,179 @@ export function RegistrationList() {
             </tbody>
           </table>
         </div>
-      </Card>
+      </Card >
 
       {/* Quick View Modal */}
-      <Dialog.Root open={!!viewReg} onOpenChange={() => setViewReg(null)}>
+      < Dialog.Root open={!!viewReg
+      } onOpenChange={() => setViewReg(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[600px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
+          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[90vh] w-[95vw] max-w-[800px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
             {viewReg && (
               <>
-                <Dialog.Title className="text-xl font-bold text-slate-900 mb-4 font-heading">
-                  Registration Details
+                <Dialog.Title className="text-xl font-bold text-slate-900 mb-4 font-heading flex justify-between items-center">
+                  <span>Registration Details</span>
+                  <span className={`text-xs px-2 py-1 rounded-full ${viewReg.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {viewReg.paymentStatus}
+                  </span>
                 </Dialog.Title>
 
                 <div className="space-y-6">
-                  <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-green-600 flex items-center justify-center text-white font-bold text-xl">
-                        {viewReg.studentName.charAt(0)}
+                  {/* Student Information Section */}
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Student Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Student Name</p>
+                        <p className="text-sm font-medium text-slate-900">{viewReg.studentName}</p>
                       </div>
                       <div>
-                        <h3 className="text-lg font-bold text-slate-900 font-heading">{viewReg.studentName}</h3>
-                        <code className="text-xs bg-white px-2 py-1 rounded font-mono text-slate-700">
-                          {viewReg.registrationNo}
-                        </code>
+                        <p className="text-xs text-slate-500">Registration No</p>
+                        <p className="text-sm font-mono text-slate-700">{viewReg.registrationNo}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Mobile</p>
+                        <p className="text-sm text-slate-700">{viewReg.mobile}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Email</p>
+                        <p className="text-sm text-slate-700">{viewReg.email}</p>
+                      </div>
+                      {viewReg.dateOfBirth && (
+                        <div>
+                          <p className="text-xs text-slate-500">Date of Birth</p>
+                          <p className="text-sm text-slate-700">{format(new Date(viewReg.dateOfBirth), 'dd MMM yyyy')}</p>
+                        </div>
+                      )}
+                      <div>
+                        <p className="text-xs text-slate-500">Registration Date</p>
+                        <p className="text-sm text-slate-700">{format(new Date(viewReg.registrationDate), 'dd MMM yyyy')}</p>
                       </div>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500 font-medium">Mobile</p>
-                      <p className="text-sm text-slate-900 font-medium">{viewReg.mobile}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500 font-medium">Email</p>
-                      <p className="text-sm text-slate-900 font-medium">{viewReg.email}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500 font-medium">Fee</p>
-                      <p className="text-sm text-slate-900 font-bold">₹{viewReg.registrationFee}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <p className="text-xs text-slate-500 font-medium">Payment</p>
-                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${viewReg.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                        }`}>
-                        {viewReg.paymentStatus}
-                      </span>
+                  {/* Parent Information Section */}
+                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Parent Information</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <p className="text-xs text-slate-500">Father's Name</p>
+                        <p className="text-sm text-slate-700">{viewReg.fatherName || '-'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-slate-500">Mother's Name</p>
+                        <p className="text-sm text-slate-700">{viewReg.motherName || '-'}</p>
+                      </div>
                     </div>
                   </div>
+
+                  {/* Address Section */}
+                  {viewReg.permanentAddress && (
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Address</h3>
+                      <p className="text-sm text-slate-700">{viewReg.permanentAddress}</p>
+                    </div>
+                  )}
+
+                  {/* Payment Information Section */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Payment Details</h4>
+                      <div className="bg-white border border-slate-200 p-3 rounded space-y-2">
+                        <div className="flex justify-between border-b border-slate-100 pb-2">
+                          <span className="text-xs text-slate-500">Registration Fee</span>
+                          <span className="text-sm font-bold text-blue-600">₹{viewReg.registrationFee.toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Payment Method</p>
+                          <p className="text-sm font-medium">{viewReg.paymentMethod}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500">Payment Status</p>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${viewReg.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                            {viewReg.paymentStatus}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Other Information</h4>
+                      <div className="bg-white border border-slate-200 p-3 rounded space-y-2">
+                        <div>
+                          <p className="text-xs text-slate-500">Needs Loan</p>
+                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${viewReg.needsLoan ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>
+                            {viewReg.needsLoan ? 'Yes' : 'No'}
+                          </span>
+                        </div>
+                        {viewReg.created_by_name && (
+                          <div>
+                            <p className="text-xs text-slate-500">Added By</p>
+                            <p className="text-sm text-slate-700">{viewReg.created_by_name}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Preferences Section */}
+                  {viewReg.preferences && viewReg.preferences.length > 0 && (
+                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Preferences</h3>
+                      <div className="flex flex-wrap gap-2">
+                        {viewReg.preferences.map((pref, idx) => (
+                          <span key={idx} className="inline-flex px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium">
+                            {typeof pref === 'string' ? pref : pref.courseName}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Documents Section */}
+                  {viewReg.documents && viewReg.documents.length > 0 && (
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Documents</h4>
+                      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                        <div className="divide-y divide-slate-100">
+                          {viewReg.documents.map((doc: any) => (
+                            <div key={doc.id} className="p-3 hover:bg-slate-50 flex items-center justify-between">
+                              <div className="flex items-center gap-3">
+                                <FileText size={16} className="text-slate-400" />
+                                <div>
+                                  <p className="text-sm font-medium text-slate-900">{doc.file_name || doc.fileName}</p>
+                                  {doc.description && (
+                                    <p className="text-xs text-slate-500">{doc.description}</p>
+                                  )}
+                                </div>
+                              </div>
+                              {doc.file && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => window.open(doc.file, '_blank')}
+                                  className="text-blue-600 hover:text-blue-700 text-xs"
+                                >
+                                  View
+                                </Button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
-                <div className="flex gap-3 mt-6 pt-6 border-t border-slate-200">
+                <div className="flex gap-3 mt-6 pt-6 border-t">
                   <Button variant="outline" className="flex-1 h-11" onClick={() => setViewReg(null)}>
                     Close
+                  </Button>
+                  <Button
+                    className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                    onClick={() => router.push(`/app/student-profile/registration/${viewReg.id}`)}
+                  >
+                    <UserCircle size={16} className="mr-2" /> View Full Profile
                   </Button>
                   <Button className="flex-1 h-11 bg-teal-600 hover:bg-teal-700">
                     <FileText size={16} className="mr-2" /> Print Receipt
@@ -378,10 +489,10 @@ export function RegistrationList() {
             )}
           </Dialog.Content>
         </Dialog.Portal>
-      </Dialog.Root>
+      </Dialog.Root >
 
       {/* Confirmation Dialog for Admins */}
-      <ConfirmDialog
+      < ConfirmDialog
         open={showConfirm}
         onClose={() => {
           setShowConfirm(false);
@@ -400,7 +511,7 @@ export function RegistrationList() {
       />
 
       {/* Request Modal for Employees - Delete */}
-      <RequestActionModal
+      < RequestActionModal
         open={showRequest}
         onClose={() => {
           setShowRequest(false);
@@ -414,7 +525,7 @@ export function RegistrationList() {
       />
 
       {/* Edit Registration Modal */}
-      <Dialog.Root open={!!editReg} onOpenChange={() => setEditReg(null)}>
+      < Dialog.Root open={!!editReg} onOpenChange={() => setEditReg(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
           <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[90vh] w-[90vw] max-w-[900px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
@@ -440,7 +551,7 @@ export function RegistrationList() {
             )}
           </Dialog.Content>
         </Dialog.Portal>
-      </Dialog.Root>
-    </div>
+      </Dialog.Root >
+    </div >
   );
 }

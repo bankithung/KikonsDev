@@ -8,7 +8,8 @@ from .views import (
     CommissionViewSet, RefundViewSet, LeadSourceViewSet,
     VisaTrackingViewSet, FollowUpViewSet, InstallmentViewSet,
     AgentViewSet, ChatConversationViewSet, ChatMessageViewSet,
-    GroupChatViewSet, SignupRequestViewSet, ApprovalRequestViewSet
+    GroupChatViewSet, SignupRequestViewSet, ApprovalRequestViewSet,
+    CompanyViewSet
 )
 from .earnings_view import EarningsRevenueView
 
@@ -39,6 +40,7 @@ router.register(r'chat-messages', ChatMessageViewSet)
 router.register(r'group-chats', GroupChatViewSet)
 router.register(r'signup-requests', SignupRequestViewSet)
 router.register(r'approval-requests', ApprovalRequestViewSet)
+router.register(r'companies', CompanyViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),

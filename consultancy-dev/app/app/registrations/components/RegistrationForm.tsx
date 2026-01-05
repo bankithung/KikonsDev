@@ -12,6 +12,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Trash2, Plus } from 'lucide-react';
 import { useEffect } from 'react';
 import { apiClient } from '@/lib/apiClient';
+import { DocumentUpload } from '@/components/common/DocumentUpload';
 
 const registrationSchema = z.object({
   studentName: z.string().min(1, "Required"),
@@ -36,6 +37,7 @@ const registrationSchema = z.object({
     location: z.string().min(1, "Required"),
     priority: z.coerce.number().min(1),
   })).min(1, "At least one preference required"),
+  documents: z.array(z.any()).optional(),
 });
 
 type RegistrationFormValues = z.infer<typeof registrationSchema>;
@@ -250,6 +252,20 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
             />
             <Label htmlFor="needsLoan">Needs Loan</Label>
           </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Documents</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <DocumentUpload
+            registrationId={initialData?.id}
+            initialDocuments={initialData?.documents}
+            onDocumentsChange={(docs: any[]) => setValue('documents', docs)}
+            readOnly={false}
+          />
         </CardContent>
       </Card>
 
