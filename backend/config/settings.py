@@ -69,6 +69,10 @@ if DEBUG:
     CORS_ALLOW_ALL_ORIGINS = True
 else:
     CORS_ALLOWED_ORIGINS = os.getenv('CORS_ALLOWED_ORIGINS', '').split(',')
+    # Filter out empty strings and add localhost for local frontend dev
+    CORS_ALLOWED_ORIGINS = [origin for origin in CORS_ALLOWED_ORIGINS if origin]
+    if 'http://localhost:3000' not in CORS_ALLOWED_ORIGINS:
+        CORS_ALLOWED_ORIGINS.append('http://localhost:3000')
     CORS_ALLOW_CREDENTIALS = True
 
 # CSRF Trusted Origins (required for production)
