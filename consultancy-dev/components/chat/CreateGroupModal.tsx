@@ -49,7 +49,7 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
     }
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     if (groupName.trim() && selectedUsers.length >= 2) {
       const members = MOCK_USERS.filter(u => selectedUsers.includes(u.id)).map(u => ({
         id: u.id,
@@ -57,10 +57,10 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
         avatar: u.avatar,
         role: u.role,
       }));
-      
-      const groupId = createGroup(groupName, selectedUsers, members);
+
+      const groupId = await createGroup(groupName, selectedUsers, members);
       openChat(groupId);
-      
+
       // Reset and close
       setGroupName('');
       setSelectedUsers([]);
@@ -80,7 +80,7 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
         onClick={onClose}
         className="absolute inset-0 bg-black/50"
       />
-      
+
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -140,11 +140,10 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
               <div
                 key={user.id}
                 onClick={() => toggleUser(user.id)}
-                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${
-                  selectedUsers.includes(user.id)
+                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all ${selectedUsers.includes(user.id)
                     ? 'bg-teal-50 border-2 border-teal-500'
                     : 'bg-slate-50 border-2 border-transparent hover:border-slate-200'
-                }`}
+                  }`}
               >
                 <div className="relative shrink-0">
                   {user.avatar ? (
@@ -160,7 +159,7 @@ export function CreateGroupModal({ isOpen, onClose }: CreateGroupModalProps) {
                     </div>
                   )}
                 </div>
-                
+
                 <div className="flex-1 text-left min-w-0">
                   <p className="text-sm font-semibold text-slate-900 truncate">{user.name}</p>
                   <p className="text-xs text-slate-500">{user.role}</p>

@@ -39,7 +39,7 @@ export function useWebSocket(options: UseWebSocketOptions) {
 
     const wsRef = useRef<WebSocket | null>(null);
     const reconnectAttemptsRef = useRef(0);
-    const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
+    const reconnectTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
     const connect = useCallback(() => {
         // Get token from localStorage using correct key 'auth-token'

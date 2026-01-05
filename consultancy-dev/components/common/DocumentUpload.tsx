@@ -93,7 +93,14 @@ export function DocumentUpload({ registrationId, initialDocuments = [], onDocume
                 // Replace the temp doc with uploaded doc
                 const index = updatedDocuments.findIndex(d => d === doc);
                 if (index !== -1) {
-                    updatedDocuments[index] = uploadedDoc;
+                    updatedDocuments[index] = {
+                        id: uploadedDoc.id,
+                        file_name: uploadedDoc.fileName,
+                        description: doc.description,
+                        file: uploadedDoc.file,
+                        uploaded_at: uploadedDoc.uploadedAt,
+                        type: uploadedDoc.type
+                    };
                 }
             }
 

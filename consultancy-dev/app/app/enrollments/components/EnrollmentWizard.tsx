@@ -504,7 +504,7 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
           ) : (
             <Button
               type="button"
-              onClick={handleSubmit(onFormSubmit)}
+              onClick={handleSubmit((data) => onFormSubmit(data as unknown as EnrollmentFormValues))}
               disabled={isLoading || isUploading}
               className="bg-green-600 hover:bg-green-700 text-white"
             >
