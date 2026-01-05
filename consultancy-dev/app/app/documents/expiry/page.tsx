@@ -24,9 +24,9 @@ export default function DocumentExpiryPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
 
-  const { data: documents = [], isLoading } = useQuery({
+  const { data: documents = [], isLoading } = useQuery<DocumentWithExpiry[]>({
     queryKey: ['documents-expiring'],
-    queryFn: () => apiClient.documents.getExpiring(90), // Get documents expiring within 90 days
+    queryFn: () => apiClient.documents.getExpiringSoon(), // Get documents expiring soon
   });
 
   if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-pulse text-slate-500">Loading documents...</div></div>;
@@ -150,16 +150,16 @@ export default function DocumentExpiryPage() {
                   </td>
                   <td className="px-4 py-4 hidden lg:table-cell">
                     <span className={`text-sm font-semibold font-body ${doc.daysUntilExpiry < 0 ? 'text-red-600' :
-                        doc.daysUntilExpiry < 90 ? 'text-yellow-600' :
-                          'text-green-600'
+                      doc.daysUntilExpiry < 90 ? 'text-yellow-600' :
+                        'text-green-600'
                       }`}>
                       {doc.daysUntilExpiry < 0 ? `${Math.abs(doc.daysUntilExpiry)} days ago` : `${doc.daysUntilExpiry} days`}
                     </span>
                   </td>
                   <td className="px-4 py-4">
                     <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${doc.status === 'Expired' ? 'bg-red-100 text-red-700' :
-                        doc.status === 'Expiring Soon' ? 'bg-yellow-100 text-yellow-700' :
-                          'bg-green-100 text-green-700'
+                      doc.status === 'Expiring Soon' ? 'bg-yellow-100 text-yellow-700' :
+                        'bg-green-100 text-green-700'
                       }`}>
                       {doc.status}
                     </span>
