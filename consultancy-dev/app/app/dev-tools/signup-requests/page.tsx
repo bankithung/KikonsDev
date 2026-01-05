@@ -54,14 +54,14 @@ function SignupRequestsPageContent() {
       toast({
         title: "Request Approved",
         description: `Company admin account created successfully for ${data.username}`,
-        variant: "default",
+        type: "success",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Approval Failed",
         description: error.response?.data?.error || "Failed to approve request",
-        variant: "destructive",
+        type: "error",
       });
     }
   });
@@ -77,14 +77,14 @@ function SignupRequestsPageContent() {
       toast({
         title: "Request Rejected",
         description: "Signup request has been rejected",
-        variant: "default",
+        type: "default",
       });
     },
     onError: (error: any) => {
       toast({
         title: "Rejection Failed",
         description: error.response?.data?.error || "Failed to reject request",
-        variant: "destructive",
+        type: "error",
       });
     }
   });
