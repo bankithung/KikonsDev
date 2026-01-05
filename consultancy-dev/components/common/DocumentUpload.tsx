@@ -131,7 +131,7 @@ export function DocumentUpload({ registrationId, initialDocuments = [], onDocume
                 <CardTitle className="text-lg">Documents</CardTitle>
                 {!readOnly && (
                     <div className="flex gap-2">
-                        {hasPendingUploads && (
+                        {hasPendingUploads && registrationId && (
                             <Button
                                 type="button"
                                 size="sm"

@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Role } from '@/lib/types';
-import { AlertCircle, BarChart3 } from 'lucide-react';
+import { AlertCircle, BarChart3, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 import { LandingHeader } from '@/components/layout/LandingHeader';
 import { LandingFooter } from '@/components/layout/LandingFooter';
@@ -28,6 +28,7 @@ export default function LoginPage() {
     const router = useRouter();
     const { login, isLoading, error: authError, clearError } = useAuthStore();
     const [localError, setLocalError] = useState<string | null>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     const {
         register,
@@ -119,13 +120,22 @@ export default function LoginPage() {
                                             Forgot password?
                                         </Link>
                                     </div>
-                                    <Input
-                                        id="password"
-                                        type="password"
-                                        {...register('password')}
-                                        disabled={isLoading}
-                                        className="h-11 border-slate-300 focus:border-teal-500 focus:ring-teal-500"
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            type={showPassword ? 'text' : 'password'}
+                                            {...register('password')}
+                                            disabled={isLoading}
+                                            className="h-11 border-slate-300 focus:border-teal-500 focus:ring-teal-500 pr-10"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
+                                    </div>
                                     {errors.password && (
                                         <p className="text-sm text-red-600 font-body">{errors.password.message}</p>
                                     )}

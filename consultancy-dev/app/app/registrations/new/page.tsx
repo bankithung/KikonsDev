@@ -21,7 +21,34 @@ export default function NewRegistrationPage() {
   const [registrationData, setRegistrationData] = useState<any>(null);
 
   const mutation = useMutation({
-    mutationFn: apiClient.registrations.create,
+    mutationFn: async (data: any) => {
+      // 1. Separate documents from registration data
+      const { documents, ...registrationDetails } = data;
+
+      // 2. Create the registration
+      const newReg = await apiClient.registrations.create(registrationDetails);
+
+      // 3. Upload documents if any exist and have files
+      if (documents && documents.length > 0) {
+        const uploadPromises = documents.map((doc: any) => {
+          if (doc.file instanceof File) {
+            const formData = new FormData();
+            formData.append('file', doc.file);
+            formData.append('file_name', doc.file_name || doc.file.name);
+            formData.append('description', doc.description || '');
+            formData.append('registration', newReg.id); // Associate with new registration
+            formData.append('type', doc.type || 'General');
+
+            return apiClient.documents.create(formData);
+          }
+          return Promise.resolve();
+        });
+
+        await Promise.all(uploadPromises);
+      }
+
+      return newReg;
+    },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['registrations'] });
       setRegistrationData(data);
