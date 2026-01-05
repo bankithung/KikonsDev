@@ -187,23 +187,36 @@ const SidebarContent = ({
 
       {/* Footer */}
       <div className="p-4 border-t border-border">
-        <div className={cn("flex items-center", isCollapsed && !isMobile ? "justify-center" : "space-x-3")}>
-          {user?.avatar ? (
-            <img src={user.avatar} alt={displayName} className="w-8 h-8 rounded-full" />
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600">
-              <span className="text-xs font-bold">{displayName.charAt(0).toUpperCase()}</span>
-            </div>
-          )}
+        <div className={cn("flex items-center justify-between", isCollapsed && !isMobile ? "justify-center" : "gap-2")}>
+          <Link
+            href="/app/profile"
+            className={cn(
+              "flex items-center gap-3 flex-1 min-w-0 hover:bg-slate-100 rounded-md p-1 transition-colors",
+              isCollapsed && !isMobile && "justify-center p-0 hover:bg-transparent"
+            )}
+          >
+            {user?.avatar ? (
+              <img src={user.avatar} alt={displayName} className="w-8 h-8 rounded-full flex-shrink-0" />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 flex-shrink-0">
+                <span className="text-xs font-bold">{displayName.charAt(0).toUpperCase()}</span>
+              </div>
+            )}
+
+            {(!isCollapsed || isMobile) && (
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+            )}
+          </Link>
 
           {(!isCollapsed || isMobile) && (
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{displayName}</p>
-              <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
-            </div>
-          )}
-          {(!isCollapsed || isMobile) && (
-            <button onClick={() => logout()} className="text-muted-foreground hover:text-destructive transition-colors">
+            <button
+              onClick={() => logout()}
+              className="p-2 text-slate-400 hover:text-red-600 hover:bg-slate-100 rounded-md transition-colors"
+              title="Logout"
+            >
               <LogOut size={18} />
             </button>
           )}
