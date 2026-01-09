@@ -47,8 +47,8 @@ interface SidebarProps {
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard, roles: ['ALL'] },
   { label: 'Students', href: '/app/students', icon: Users, roles: ['ALL'] },
-  { label: 'Enquiries', href: '/app/enquiries', icon: MessageSquare, roles: ['ALL'] },
   { label: 'Follow-ups', href: '/app/follow-ups', icon: Bell, roles: ['ALL'] },
+  { label: 'Enquiries', href: '/app/enquiries', icon: MessageSquare, roles: ['ALL'] },
   { label: 'Registrations', href: '/app/registrations', icon: UserPlus, roles: ['ALL'] },
   { label: 'Enrollments', href: '/app/enrollments', icon: GraduationCap, roles: ['ALL'] },
   { label: 'Documents', href: '/app/documents', icon: FileText, roles: ['ALL'] },

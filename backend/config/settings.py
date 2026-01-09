@@ -75,6 +75,11 @@ else:
         CORS_ALLOWED_ORIGINS.append('http://localhost:3000')
     CORS_ALLOW_CREDENTIALS = True
 
+from corsheaders.defaults import default_headers
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'ngrok-skip-browser-warning',
+]
+
 # CSRF Trusted Origins (required for production)
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost:3000').split(',')
 

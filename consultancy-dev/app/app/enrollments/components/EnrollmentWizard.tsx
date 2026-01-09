@@ -12,9 +12,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
-import { ChevronRight, ChevronLeft, Check } from 'lucide-react';
-import { DocumentUpload } from '@/components/common/DocumentUpload';
 import { useToast } from '@/hooks/use-toast';
+import { Check, ChevronsUpDown, CalendarIcon, Loader2, ChevronRight, ChevronLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { DocumentTakeover } from '@/components/common/DocumentTakeover';
+import { DocumentUpload } from '@/components/common/DocumentUpload';
+import { useToast as useToastOriginal } from '@/hooks/use-toast'; // Renamed to avoid conflict if useToast is also imported from another path
 import * as Dialog from '@radix-ui/react-dialog';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Plus, X } from 'lucide-react';
@@ -36,6 +39,14 @@ const enrollmentSchema = z.object({
   paymentType: z.enum(['Full', 'Installment']),
   installmentsCount: z.coerce.number().optional(),
   installmentAmount: z.coerce.number().optional(),
+
+  // Document Takeover
+  student_documents: z.array(z.object({
+    name: z.string(),
+    document_number: z.string().optional(),
+    remarks: z.string().optional()
+  })).optional(),
+  documentTakeoverEnabled: z.boolean().default(false),
 
   loanRequired: z.boolean().default(false),
   loanAmount: z.coerce.number().optional(),
@@ -91,6 +102,8 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
       loanAmount: 0,
       documents: [],
       university: '',
+      student_documents: [],
+      documentTakeoverEnabled: false,
     },
   });
 
@@ -176,6 +189,8 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
     }
   };
 
+  const { toast } = useToastOriginal(); // Use the renamed toast
+
   const handleNext = async () => {
     let fieldsToValidate: any[] = [];
     if (step === 0) fieldsToValidate = ['studentId'];
@@ -196,8 +211,6 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
   const handleBack = () => {
     setStep((prev) => Math.max(prev - 1, 0));
   };
-
-  const { toast } = useToast();
 
   const onFormSubmit = async (data: EnrollmentFormValues) => {
     // Upload pending documents first
@@ -480,6 +493,15 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
                   initialDocuments={documents}
                   onDocumentsChange={(docs: any[]) => setValue('documents', docs)}
                 />
+
+                <div className="mt-8 pt-6 border-t border-dashed">
+                  <DocumentTakeover
+                    control={control}
+                    register={register}
+                    setValue={setValue}
+                  />
+                </div>
+
                 {/* Existing Documents List */}
                 {studentId && (
                   <div className="mt-6">
@@ -492,7 +514,8 @@ export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps)
           </CardContent>
         </Card>
 
-        <div className="mt-6 flex justify-between">
+
+        <div className="flex justify-between pt-6">
           <Button type="button" variant="outline" onClick={handleBack} disabled={step === 0}>
             <ChevronLeft className="mr-2 h-4 w-4" /> Back
           </Button>

@@ -47,6 +47,19 @@ class Enquiry(models.Model):
     other_location = models.CharField(max_length=255, blank=True, default='')
     payment_amount = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
+    # New Fields
+    class_10_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    class_12_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    school_board = models.CharField(max_length=100, blank=True, default='')
+    school_place = models.CharField(max_length=100, blank=True, default='')
+    school_state = models.CharField(max_length=100, blank=True, default='')
+    family_place = models.CharField(max_length=100, blank=True, default='')
+    family_state = models.CharField(max_length=100, blank=True, default='')
+    gender = models.CharField(max_length=20, choices=(('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')), blank=True, default='')
+    dob = models.DateField(null=True, blank=True)
+    gap_year_from = models.IntegerField(null=True, blank=True)
+    gap_year_to = models.IntegerField(null=True, blank=True)
+    
     preferred_locations = models.JSONField(default=list)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='New')
     company_id = models.CharField(max_length=100, default='')
@@ -57,12 +70,46 @@ class Registration(models.Model):
     student_name = models.CharField(max_length=255)
     mobile = models.CharField(max_length=20)
     email = models.EmailField()
+    gender = models.CharField(max_length=20, choices=(('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')), blank=True, default='')
     date_of_birth = models.DateField(null=True, blank=True)
     father_name = models.CharField(max_length=255, blank=True, default='')
     mother_name = models.CharField(max_length=255, blank=True, default='')
     permanent_address = models.TextField(blank=True, default='')
     registration_date = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    
+    # Parent additional details
+    father_occupation = models.CharField(max_length=255, blank=True, default='')
+    mother_occupation = models.CharField(max_length=255, blank=True, default='')
+    father_mobile = models.CharField(max_length=20, blank=True, default='')
+    mother_mobile = models.CharField(max_length=20, blank=True, default='')
+    family_place = models.CharField(max_length=100, blank=True, default='')
+    family_state = models.CharField(max_length=100, blank=True, default='')
+
+    # Academic Fields
+    class10_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    class12_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    school_board = models.CharField(max_length=100, blank=True, default='')
+    school_place = models.CharField(max_length=100, blank=True, default='')
+    school_state = models.CharField(max_length=100, blank=True, default='')
+    class12_passing_year = models.CharField(max_length=10, blank=True, default='')
+    school_name = models.CharField(max_length=255, blank=True, default='')
+    
+    # Marks
+    pcb_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    pcm_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    physics_marks = models.IntegerField(null=True, blank=True)
+    maths_marks = models.IntegerField(null=True, blank=True)
+    chemistry_marks = models.IntegerField(null=True, blank=True)
+    biology_marks = models.IntegerField(null=True, blank=True)
+    previous_neet_marks = models.IntegerField(null=True, blank=True)
+    present_neet_marks = models.IntegerField(null=True, blank=True)
+
+    # Gap Year
+    gap_year = models.BooleanField(default=False)
+    gap_year_from = models.IntegerField(null=True, blank=True)
+    gap_year_to = models.IntegerField(null=True, blank=True)
+    college_dropout = models.BooleanField(default=False)
     needs_loan = models.BooleanField(default=False)
     payment_status = models.CharField(max_length=20, default='Pending')
     payment_method = models.CharField(max_length=50, default='Cash')
@@ -102,6 +149,27 @@ class Payment(models.Model):
     method = models.CharField(max_length=50)
     company_id = models.CharField(max_length=100, default='')
 
+class Refund(models.Model):
+    payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='refunds')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    refund_date = models.DateTimeField(auto_now_add=True)
+    refund_method = models.CharField(max_length=50, default='')
+    reason = models.TextField()
+    status = models.CharField(max_length=20, default='Pending', choices=(
+        ('Pending', 'Pending'),
+        ('Approved', 'Approved'),
+        ('Completed', 'Completed'),
+        ('Rejected', 'Rejected')
+    ))
+    approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='approved_refunds')
+    processed_at = models.DateTimeField(null=True, blank=True)
+    rejection_reason = models.TextField(blank=True, default='')
+    student_name = models.CharField(max_length=255, default='')
+    company_id = models.CharField(max_length=100, default='')
+    
+    def __str__(self):
+        return f"Refund ₹{self.amount} for {self.student_name} - {self.status}"
+
 class Document(models.Model):
     file_name = models.CharField(max_length=255)
     file = models.FileField(upload_to='documents/', null=True, blank=True)
@@ -115,6 +183,17 @@ class Document(models.Model):
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='documents', null=True, blank=True)
     expiry_date = models.DateField(blank=True, null=True)
     company_id = models.CharField(max_length=100, default='')
+
+class StudentDocument(models.Model):
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='student_documents')
+    name = models.CharField(max_length=255) # PAN, Aadhaar, etc.
+    document_number = models.CharField(max_length=255, blank=True, default='')
+    status = models.CharField(max_length=20, default='Held', choices=(('Held', 'Held'), ('Returned', 'Returned')))
+    received_at = models.DateTimeField(auto_now_add=True)
+    returned_at = models.DateTimeField(null=True, blank=True)
+    remarks = models.TextField(blank=True, default='')
+    company_id = models.CharField(max_length=100, default='')
+    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_documents')
 
 class DocumentTransfer(models.Model):
     sender = models.ForeignKey(User, related_name='sent_transfers', on_delete=models.CASCADE)

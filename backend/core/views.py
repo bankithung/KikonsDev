@@ -1,7 +1,7 @@
 from rest_framework import viewsets
 from .models import (
     User, Enquiry, Registration, Enrollment, Payment, Document,
-    DocumentTransfer, Task, Appointment, University, Template,
+    StudentDocument, DocumentTransfer, Task, Appointment, University, Template,
     Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp,
     Installment, Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest,
     ApprovalRequest, Company
@@ -9,7 +9,7 @@ from .models import (
 from .serializers import (
     UserSerializer, EnquirySerializer, RegistrationSerializer, 
     EnrollmentSerializer, PaymentSerializer, DocumentSerializer,
-    DocumentTransferSerializer, TaskSerializer, AppointmentSerializer,
+    StudentDocumentSerializer, DocumentTransferSerializer, TaskSerializer, AppointmentSerializer,
     UniversitySerializer, TemplateSerializer, NotificationSerializer,
     CommissionSerializer, RefundSerializer, LeadSourceSerializer,
     VisaTrackingSerializer, FollowUpSerializer, InstallmentSerializer,
@@ -25,6 +25,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Count, Sum, Avg, Q
 from datetime import datetime, timedelta
 from django.utils import timezone
+from django.db.models.functions import Concat
+from django.db.models import Count, Sum, Avg, Q, F, Value
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
@@ -126,7 +128,7 @@ class EnquiryViewSet(viewsets.ModelViewSet):
         return super().update(request, *args, **kwargs)
 
 class RegistrationViewSet(viewsets.ModelViewSet):
-    queryset = Registration.objects.all()
+    queryset = Registration.objects.all().order_by('-created_at')
     serializer_class = RegistrationSerializer
     
     def perform_create(self, serializer):
@@ -143,6 +145,20 @@ class RegistrationViewSet(viewsets.ModelViewSet):
                 method='Cash', # Default
                 company_id=instance.company_id
             )
+        
+        # Handle Student Documents
+        student_documents = self.request.data.get('student_documents', [])
+        if student_documents:
+            for doc in student_documents:
+                StudentDocument.objects.create(
+                    registration=instance,
+                    name=doc.get('name'),
+                    document_number=doc.get('document_number', ''),
+                    status='Held',
+                    remarks=doc.get('remarks', ''),
+                    company_id=instance.company_id,
+                    created_by=self.request.user
+                )
     
     def update(self, request, *args, **kwargs):
         # Check if user is an employee
@@ -161,6 +177,23 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         # Save enrollment with company_id and created_by
         instance = serializer.save(company_id=self.request.user.company_id, created_by=self.request.user)
+        
+        # Handle Student Documents (taken during enrollment)
+        student_documents = self.request.data.get('student_documents', [])
+        if student_documents:
+            from .models import StudentDocument
+            for doc in student_documents:
+                StudentDocument.objects.create(
+                    registration=instance.student, # Link to the student registration
+                    name=doc.get('name'),
+                    document_number=doc.get('document_number', ''),
+                    status='Held',
+                    remarks=doc.get('remarks', ''),
+                    company_id=instance.company_id,
+                    created_by=self.request.user
+                )
+
+    def update(self, request, *args, **kwargs):
         
         # Auto-create payment
         if instance.total_fees > 0:
@@ -219,6 +252,43 @@ class PaymentViewSet(viewsets.ModelViewSet):
             'pendingAmount': pending,
             'transactionCount': transaction_count
         })
+
+class RefundViewSet(viewsets.ModelViewSet):
+    queryset = Refund.objects.all()
+    serializer_class = RefundSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        status_filter = self.request.query_params.get('status')
+        if status_filter:
+            queryset = queryset.filter(status=status_filter)
+        student_name = self.request.query_params.get('student_name')
+        if student_name:
+            queryset = queryset.filter(student_name__icontains=student_name)
+        return queryset.order_by('-refund_date')
+    
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        refund = self.get_object()
+        if refund.status != 'Pending':
+            return Response({'error': 'Only pending refunds can be approved'}, status=400)
+        refund.status = 'Approved'
+        refund.approved_by = request.user
+        refund.processed_at = timezone.now()
+        refund.save()
+        return Response(RefundSerializer(refund).data)
+    
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        refund = self.get_object()
+        if refund.status != 'Pending':
+            return Response({'error': 'Only pending refunds can be rejected'}, status=400)
+        refund.status = 'Rejected'
+        refund.approved_by = request.user
+        refund.processed_at = timezone.now()
+        refund.rejection_reason = request.data.get('reason', '')
+        refund.save()
+        return Response(RefundSerializer(refund).data)
 
 class DocumentViewSet(viewsets.ModelViewSet):
     queryset = Document.objects.all()
@@ -369,6 +439,32 @@ class AppointmentViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(appointments, many=True)
         return Response(serializer.data)
 
+
+class StudentDocumentViewSet(viewsets.ModelViewSet):
+    queryset = StudentDocument.objects.all()
+    serializer_class = StudentDocumentSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        registration_id = self.request.query_params.get('registration_id')
+        if registration_id:
+            queryset = queryset.filter(registration_id=registration_id)
+        return queryset
+
+    @action(detail=False, methods=['post'])
+    def return_docs(self, request):
+        doc_ids = request.data.get('doc_ids', [])
+        if not doc_ids:
+            return Response({'error': 'No document IDs provided'}, status=400)
+        
+        docs = StudentDocument.objects.filter(id__in=doc_ids)
+        updated_count = docs.update(
+            status='Returned',
+            returned_at=timezone.now(),
+            remarks=Conact(F('remarks'), Value(f'\nReturned on {timezone.now().date()}'))
+        )
+        return Response({'message': f'{updated_count} documents returned successfully'})
 
 class UniversityViewSet(viewsets.ModelViewSet):
     queryset = University.objects.all()
@@ -663,3 +759,57 @@ class ApprovalRequestViewSet(viewsets.ModelViewSet):
         
         return Response({'status': 'rejected'})
 
+class StudentDocumentViewSet(viewsets.ModelViewSet):
+    """
+    ViewSet for managing physical documents taken from students
+    """
+    queryset = StudentDocument.objects.all()
+    serializer_class = StudentDocumentSerializer
+    permission_classes = [IsAuthenticated]
+    
+    def get_queryset(self):
+        user = self.request.user
+        queryset = StudentDocument.objects.all()
+        
+        # Filter by company
+        if user.role != 'DEV_ADMIN':
+            queryset = queryset.filter(company_id=user.company_id)
+        
+        # Filter by registration if provided
+        registration_id = self.request.query_params.get('registration', None)
+        if registration_id:
+            queryset = queryset.filter(registration_id=registration_id)
+        
+        # Filter by status
+        status = self.request.query_params.get('status', None)
+        if status:
+            queryset = queryset.filter(status=status)
+        
+        return queryset.order_by('-received_at')
+    
+    @action(detail=False, methods=['post'])
+    def return_docs(self, request):
+        """
+        Mark multiple documents as returned
+        Expects: { "document_ids": [1, 2, 3] }
+        """
+        document_ids = request.data.get('document_ids', [])
+        
+        if not document_ids:
+            return Response({'error': 'No documents specified'}, status=400)
+        
+        # Update documents
+        docs = StudentDocument.objects.filter(
+            id__in=document_ids,
+            company_id=request.user.company_id,
+            status='Held'
+        )
+        
+        count = docs.count()
+        docs.update(status='Returned', returned_at=timezone.now())
+        
+        return Response({
+            'status': 'success',
+            'returned_count': count,
+            'message': f'{count} document(s) marked as returned'
+        })

@@ -1,7 +1,7 @@
 from rest_framework import serializers
 from .models import (
-    User, Enquiry, Registration, Enrollment, Payment, Document,
-    DocumentTransfer, Task, Appointment, University, Template,
+    User, Enquiry, Registration, Enrollment, Payment, Document, 
+    StudentDocument, DocumentTransfer, Task, Appointment, University, Template,
     Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp,
     Installment, Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest,
     ApprovalRequest, Company
@@ -65,6 +65,17 @@ class DocumentSerializer(serializers.ModelSerializer):
             ret['student_name'] = instance.registration.student_name
         return ret
 
+class StudentDocumentSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = StudentDocument
+        fields = '__all__'
+
+    def get_created_by_name(self, obj):
+        return obj.created_by.username if obj.created_by else ''
+
+
 class RegistrationSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
 
@@ -72,6 +83,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
         return obj.created_by.username if obj.created_by else '-'
 
     documents = DocumentSerializer(many=True, read_only=True)
+    student_documents = StudentDocumentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Registration
@@ -171,9 +183,32 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         return enrollment
 
 class PaymentSerializer(serializers.ModelSerializer):
+    # TODO: Re-enable after Refund migration is applied
+    # refunds = serializers.SerializerMethodField()
+    
     class Meta:
         model = Payment
         fields = '__all__'
+    
+    # def get_refunds(self, obj):
+    #     refunds = obj.refunds.all()
+    #     return RefundSerializer(refunds, many=True).data if refunds.exists() else []
+
+class RefundSerializer(serializers.ModelSerializer):
+    payment_details = serializers.SerializerMethodField()
+    approved_by_name = serializers.CharField(source='approved_by.username', read_only=True)
+    
+    class Meta:
+        model = Refund
+        fields = '__all__'
+    
+    def get_payment_details(self, obj):
+        return {
+            'amount': obj.payment.amount,
+            'date': obj.payment.date,
+            'method': obj.payment.method,
+            'student_name': obj.payment.student_name
+        }
 
 class DocumentTransferSerializer(serializers.ModelSerializer):
     sender = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -277,6 +312,8 @@ class GroupChatSerializer(serializers.ModelSerializer):
         model = GroupChat
         fields = '__all__'
 
+
+
 # Agent & SignupRequest Serializers
 class AgentSerializer(serializers.ModelSerializer):
     class Meta:
@@ -324,4 +361,5 @@ class ApprovalRequestSerializer(serializers.ModelSerializer):
         validated_data['requested_by'] = user
         validated_data['company_id'] = user.company_id
         return super().create(validated_data)
+
 

@@ -28,6 +28,17 @@ export interface Enquiry {
   motherMobile?: string;
   permanentAddress: string;
   class12PassingYear?: string;
+  class10Percentage?: number;
+  class12Percentage?: number;
+  schoolBoard?: string;
+  schoolPlace?: string;
+  schoolState?: string;
+  familyPlace?: string;
+  familyState?: string;
+  gender?: string;
+  dob?: string;
+  gapYearFrom?: number;
+  gapYearTo?: number;
   pcbPercentage?: number;
   pcmPercentage?: number;
   physicsMarks?: number;
@@ -51,6 +62,7 @@ export interface Registration {
   studentName: string;
   mobile: string;
   email: string;
+  gender?: 'Male' | 'Female' | 'Other';
   dateOfBirth?: string;
   registrationDate: string;
   needsLoan: boolean;
@@ -60,8 +72,43 @@ export interface Registration {
   fatherName: string;
   motherName: string;
   permanentAddress: string;
+
+  // Parent Info
+  fatherOccupation?: string;
+  motherOccupation?: string;
+  fatherMobile?: string;
+  motherMobile?: string;
+  familyPlace?: string;
+  familyState?: string;
+
+  // Academic Info
+  schoolName?: string;
+  schoolBoard?: string;
+  schoolPlace?: string;
+  schoolState?: string;
+  class10Percentage?: number;
+  class12Percentage?: number;
+  class12PassingYear?: string;
+
+  // Gap Year
+  gapYear?: boolean;
+  gapYearFrom?: number;
+  gapYearTo?: number;
+  collegeDropout?: boolean;
+
+  // Marks
+  pcbPercentage?: number;
+  pcmPercentage?: number;
+  physicsMarks?: number;
+  chemistryMarks?: number;
+  biologyMarks?: number;
+  mathsMarks?: number;
+  previousNeetMarks?: number;
+  presentNeetMarks?: number;
+
   preferences: StudyPreference[];
   documents?: any[]; // Backend returns snake_case document objects
+  student_documents?: StudentDocument[];
   created_by_name?: string;
   enquiry?: number; // ID of linked enquiry
 }
@@ -98,6 +145,18 @@ export interface Installment {
   dueDate: string;
   amount: number;
   status: 'Paid' | 'Pending' | 'Overdue';
+}
+
+export interface StudentDocument {
+  id: string;
+  registration: number;
+  name: string;
+  documentNumber: string;
+  status: 'Held' | 'Returned';
+  receivedAt: string;
+  returnedAt?: string;
+  remarks?: string;
+  createdBy?: string;
 }
 
 export interface Document {
@@ -139,14 +198,6 @@ export interface Payment {
   method: 'Cash' | 'Card' | 'UPI' | 'Other';
 }
 
-export interface Task {
-  id: string;
-  title: string;
-  assignedTo: string; // User ID
-  assigned_to_name?: string; // User Name
-  dueDate: string;
-  status: 'Todo' | 'In Progress' | 'Done';
-}
 
 export interface ReportMetrics {
   enquiriesCount: number;
@@ -170,4 +221,38 @@ export interface ApprovalRequest {
   reviewed_at?: string;
   reviewed_by?: number;
   pending_changes?: any;
+}
+export interface DashboardAnalytics {
+  activeEnquiries: number;
+  thisMonthConversions: number;
+  conversionRate: number;
+  avgResponseTime: string;
+  status: string;
+}
+
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string;
+  assigned_to?: number;
+  assigned_to_name?: string;
+  due_date?: string;
+  status: 'Pending' | 'In Progress' | 'Completed';
+  priority: 'Low' | 'Medium' | 'High';
+  registration?: number;
+  created_at: string;
+}
+
+export interface DocumentTransfer {
+  id: string;
+  sender: number;
+  receiver: number;
+  sender_name: string;
+  receiver_name: string;
+  documents: number[];
+  documents_details?: Document[];
+  transferred_at: string;
+  status: 'Pending' | 'Accepted' | 'Rejected';
+  notes?: string;
 }

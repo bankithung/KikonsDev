@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { INDIAN_STATES } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Enquiry } from '@/lib/types';
@@ -28,6 +29,18 @@ const enquirySchema = z.object({
   motherMobile: z.string().optional(),
   permanentAddress: z.string().min(1, "Address is required"),
   class12PassingYear: z.string().optional(),
+  class10Percentage: z.coerce.number().optional(),
+  class12Percentage: z.coerce.number().optional(),
+  schoolBoard: z.string().optional(),
+  schoolPlace: z.string().optional(),
+  schoolState: z.string().optional(),
+  familyPlace: z.string().optional(),
+  familyState: z.string().optional(),
+  gender: z.string().optional(),
+  dob: z.string().optional(),
+  gapYearFrom: z.coerce.number().optional(),
+  gapYearTo: z.coerce.number().optional(),
+
   pcbPercentage: z.coerce.number().optional(),
   pcmPercentage: z.coerce.number().optional(),
   physicsMarks: z.coerce.number().optional(),
@@ -51,12 +64,17 @@ interface EnquiryFormProps {
   isLoading: boolean;
 }
 
+import { useEffect } from 'react';
+
+// ... (existing imports)
+
 export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormProps) {
   const {
     register,
     control,
     handleSubmit,
     watch,
+    setValue,
     formState: { errors },
   } = useForm<EnquiryFormValues>({
     // @ts-ignore - zod resolver type mismatch with coerce.number()
@@ -73,6 +91,29 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
   });
 
   const selectedStream = watch('stream');
+  const physicsMarks = watch('physicsMarks');
+  const chemistryMarks = watch('chemistryMarks');
+  const biologyMarks = watch('biologyMarks');
+  const mathsMarks = watch('mathsMarks');
+
+  // Auto-calculate percentages
+  useEffect(() => {
+    if (physicsMarks && chemistryMarks && biologyMarks) {
+      const pcb = (Number(physicsMarks) + Number(chemistryMarks) + Number(biologyMarks)) / 3;
+      setValue('pcbPercentage', parseFloat(pcb.toFixed(2)));
+    } else {
+      setValue('pcbPercentage', undefined);
+    }
+  }, [physicsMarks, chemistryMarks, biologyMarks, setValue]);
+
+  useEffect(() => {
+    if (physicsMarks && chemistryMarks && mathsMarks) {
+      const pcm = (Number(physicsMarks) + Number(chemistryMarks) + Number(mathsMarks)) / 3;
+      setValue('pcmPercentage', parseFloat(pcm.toFixed(2)));
+    } else {
+      setValue('pcmPercentage', undefined);
+    }
+  }, [physicsMarks, chemistryMarks, mathsMarks, setValue]);
 
   return (
     // @ts-ignore
@@ -107,6 +148,31 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
               </Label>
               <Input {...register('candidateName')} placeholder="Full Name" className="h-11 border-slate-300" />
               {errors.candidateName && <p className="text-xs text-red-600">{errors.candidateName.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="gender" className="text-slate-700 font-medium">Gender</Label>
+              <Controller
+                name="gender"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger className="h-11 border-slate-300">
+                      <SelectValue placeholder="Select Gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Male">Male</SelectItem>
+                      <SelectItem value="Female">Female</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="dob" className="text-slate-700 font-medium">Date of Birth</Label>
+              <Input type="date" {...register('dob')} className="h-11 border-slate-300" />
             </div>
 
             <div className="space-y-2">
@@ -151,6 +217,62 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
               </Label>
               <Input {...register('schoolName')} placeholder="Current school" className="h-11 border-slate-300" />
               {errors.schoolName && <p className="text-xs text-red-600">{errors.schoolName.message}</p>}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="schoolBoard" className="text-slate-700 font-medium">School Board</Label>
+              <Controller
+                name="schoolBoard"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger className="h-11 border-slate-300">
+                      <SelectValue placeholder="Select Board" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="CBSE">CBSE (Central Board)</SelectItem>
+                      <SelectItem value="ICSE">ICSE (CISCE)</SelectItem>
+                      <SelectItem value="NBSE">NBSE (Nagaland)</SelectItem>
+                      <SelectItem value="SEBA">SEBA (Assam - High School)</SelectItem>
+                      <SelectItem value="AHSEC">AHSEC (Assam - Higher Secondary)</SelectItem>
+                      <SelectItem value="MBOSE">MBOSE (Meghalaya)</SelectItem>
+                      <SelectItem value="MBSE">MBSE (Mizoram)</SelectItem>
+                      <SelectItem value="TBSE">TBSE (Tripura)</SelectItem>
+                      <SelectItem value="BoSEM">BoSEM (Manipur - High School)</SelectItem>
+                      <SelectItem value="COHSEM">COHSEM (Manipur - Higher Secondary)</SelectItem>
+                      <SelectItem value="State Board">Other State Board</SelectItem>
+                      <SelectItem value="IB">IB</SelectItem>
+                      <SelectItem value="IGCSE">IGCSE</SelectItem>
+                      <SelectItem value="Other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                )}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="schoolPlace" className="text-slate-700 font-medium">School Place</Label>
+              <Input {...register('schoolPlace')} placeholder="City/Town" className="h-11 border-slate-300" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="schoolState" className="text-slate-700 font-medium">School State</Label>
+              <Controller
+                name="schoolState"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger className="h-11 border-slate-300">
+                      <SelectValue placeholder="Select State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_STATES.map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div className="space-y-2">
@@ -209,6 +331,16 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
               <Input {...register('class12PassingYear')} placeholder="2023" className="h-11 border-slate-300" />
             </div>
 
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-medium">Class 10 Percentage</Label>
+              <Input type="number" step="0.01" {...register('class10Percentage')} placeholder="85.5" className="h-11 border-slate-300" />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-slate-700 font-medium">Class 12 Percentage</Label>
+              <Input type="number" step="0.01" {...register('class12Percentage')} placeholder="88.2" className="h-11 border-slate-300" />
+            </div>
+
             {/* Academic Marks - Only show for Science */}
             {selectedStream === 'Science' && (
               <>
@@ -220,12 +352,12 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-slate-700 font-medium">PCB Percentage</Label>
-                  <Input type="number" {...register('pcbPercentage')} placeholder="85" className="h-11 border-slate-300" />
+                  <Label className="text-slate-700 font-medium">PCB Percentage (Auto)</Label>
+                  <Input type="number" step="0.01" {...register('pcbPercentage')} readOnly className="h-11 border-slate-300 bg-slate-50" />
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-slate-700 font-medium">PCM Percentage</Label>
-                  <Input type="number" {...register('pcmPercentage')} placeholder="82" className="h-11 border-slate-300" />
+                  <Label className="text-slate-700 font-medium">PCM Percentage (Auto)</Label>
+                  <Input type="number" step="0.01" {...register('pcmPercentage')} readOnly className="h-11 border-slate-300 bg-slate-50" />
                 </div>
                 <div className="space-y-2">
                   <Label className="text-slate-700 font-medium">Physics Marks</Label>
@@ -265,6 +397,19 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
                 />
                 <Label htmlFor="gapYear" className="text-slate-700 font-medium cursor-pointer">Gap Year</Label>
               </div>
+
+              {watch('gapYear') && (
+                <div className="flex gap-4 items-center w-full mt-2 pl-8">
+                  <div className="flex-1">
+                    <Label className="text-xs">From Year</Label>
+                    <Input type="number" {...register('gapYearFrom')} placeholder="YYYY" className="h-9" />
+                  </div>
+                  <div className="flex-1">
+                    <Label className="text-xs">To Year</Label>
+                    <Input type="number" {...register('gapYearTo')} placeholder="YYYY" className="h-9" />
+                  </div>
+                </div>
+              )}
 
               <div className="flex items-center space-x-2">
                 <Controller
@@ -326,6 +471,31 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
             <div className="space-y-2">
               <Label htmlFor="motherMobile" className="text-slate-700 font-medium">Mother's Mobile</Label>
               <Input {...register('motherMobile')} placeholder="Optional" className="h-11 border-slate-300" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="familyPlace" className="text-slate-700 font-medium">Family City/Place</Label>
+              <Input {...register('familyPlace')} placeholder="City" className="h-11 border-slate-300" />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="familyState" className="text-slate-700 font-medium">Family State</Label>
+              <Controller
+                name="familyState"
+                control={control}
+                render={({ field }) => (
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <SelectTrigger className="h-11 border-slate-300">
+                      <SelectValue placeholder="Select State" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {INDIAN_STATES.map(state => (
+                        <SelectItem key={state} value={state}>{state}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+              />
             </div>
 
             <div className="col-span-full space-y-2">

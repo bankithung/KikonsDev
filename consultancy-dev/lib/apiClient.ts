@@ -1,5 +1,9 @@
 import { api } from './api';
-import { User, Role, Enquiry, Registration, Enrollment, Document, Payment, Task, ReportMetrics, DocumentTransfer } from './types';
+import {
+  User, Role, Enquiry, Registration, Enrollment,
+  Installment, DashboardAnalytics, Document, StudentDocument,
+  Payment, Task, ReportMetrics, DocumentTransfer
+} from './types';
 
 // Helper to map snake_case to camelCase (simple version)
 const mapEnquiry = (data: any): Enquiry => ({
@@ -27,6 +31,20 @@ const mapEnquiry = (data: any): Enquiry => ({
   collegeDropout: data.college_dropout !== undefined ? data.college_dropout : (data.collegeDropout || false),
   paymentAmount: data.payment_amount || data.paymentAmount,
   otherLocation: data.other_location || data.otherLocation,
+
+  // Map New Fields
+  class10Percentage: data.class_10_percentage || data.class10Percentage,
+  class12Percentage: data.class_12_percentage || data.class12Percentage,
+  schoolBoard: data.school_board || data.schoolBoard,
+  schoolPlace: data.school_place || data.schoolPlace,
+  schoolState: data.school_state || data.schoolState,
+  familyPlace: data.family_place || data.familyPlace,
+  familyState: data.family_state || data.familyState,
+  gender: data.gender,
+  dob: data.dob,
+  gapYearFrom: data.gap_year_from || data.gapYearFrom,
+  gapYearTo: data.gap_year_to || data.gapYearTo,
+
   preferredLocations: typeof data.preferred_locations === 'string' ? JSON.parse(data.preferred_locations) : (data.preferred_locations || []),
 });
 
@@ -42,6 +60,40 @@ const mapRegistration = (data: any): Registration => ({
   fatherName: data.father_name || data.fatherName,
   motherName: data.mother_name || data.motherName,
   permanentAddress: data.permanent_address || data.permanentAddress,
+
+  // New Fields Mapping
+  fatherOccupation: data.father_occupation || data.fatherOccupation,
+  motherOccupation: data.mother_occupation || data.motherOccupation,
+  fatherMobile: data.father_mobile || data.fatherMobile,
+  motherMobile: data.mother_mobile || data.motherMobile,
+  gender: data.gender,
+  dateOfBirth: data.date_of_birth ? data.date_of_birth.split('T')[0] : data.dateOfBirth,
+
+
+  familyPlace: data.family_place || data.familyPlace,
+  familyState: data.family_state || data.familyState,
+
+  schoolName: data.school_name || data.schoolName,
+  schoolBoard: data.school_board || data.schoolBoard,
+  schoolPlace: data.school_place || data.schoolPlace,
+  schoolState: data.school_state || data.schoolState,
+  class10Percentage: data.class10_percentage || data.class10Percentage,
+  class12Percentage: data.class12_percentage || data.class12Percentage,
+  class12PassingYear: data.class12_passing_year || data.class12PassingYear,
+
+  gapYear: data.gap_year || data.gapYear,
+  gapYearFrom: data.gap_year_from || data.gapYearFrom,
+  gapYearTo: data.gap_year_to || data.gapYearTo,
+  collegeDropout: data.college_dropout || data.collegeDropout,
+
+  pcbPercentage: data.pcb_percentage || data.pcbPercentage,
+  pcmPercentage: data.pcm_percentage || data.pcmPercentage,
+  physicsMarks: data.physics_marks || data.physicsMarks,
+  chemistryMarks: data.chemistry_marks || data.chemistryMarks,
+  biologyMarks: data.biology_marks || data.biologyMarks,
+  mathsMarks: data.maths_marks || data.mathsMarks,
+  previousNeetMarks: data.previous_neet_marks || data.previousNeetMarks,
+  presentNeetMarks: data.present_neet_marks || data.presentNeetMarks,
 });
 
 const mapEnrollment = (data: any): Enrollment => ({
@@ -114,8 +166,6 @@ export const apiClient = {
             name: days[date.getDay()],
             enquiries: enq.data.filter((i: any) => i.date?.startsWith(dateStr)).length,
             registrations: reg.data.filter((i: any) => i.registration_date?.startsWith(dateStr)).length,
-            // Enrollments don't have created_at, only start_date (future date)
-            // Show all enrollments on today's bar as a workaround
             enrollments: isToday ? enr.data.length : 0,
           };
         });
@@ -127,13 +177,8 @@ export const apiClient = {
 
     getRevenueData: async () => {
       try {
-        // Use the dedicated earnings endpoint which properly aggregates revenue data
         const res = await api.get('earnings/revenue/');
-
-        // Backend returns: { currentMonth: {...}, monthlyEarnings: [{month, revenue, profit}], revenueBySource: [...] }
         const monthlyEarnings = res.data.monthlyEarnings || [];
-
-        // Transform to chart format (keep only month and revenue)
         return monthlyEarnings.map((item: any) => ({
           month: item.month,
           revenue: item.revenue
@@ -146,7 +191,6 @@ export const apiClient = {
 
     getActivity: async () => {
       try {
-        // Fetch latest items from different modules to construct activity feed
         const [enq, reg, pay] = await Promise.all([
           api.get('enquiries/?limit=5'),
           api.get('registrations/?limit=5'),
@@ -173,8 +217,6 @@ export const apiClient = {
             timestamp: new Date(i.payment_date).getTime()
           }))
         ];
-
-        // Sort by newest first and take top 5
         return activities.sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
       } catch (e) {
         console.error("Failed to fetch activity", e);
@@ -185,7 +227,6 @@ export const apiClient = {
     getRecentEnquiries: async () => {
       try {
         const res = await api.get('enquiries/');
-        // Return top 5 most recent
         return res.data
           .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 5)
@@ -216,7 +257,6 @@ export const apiClient = {
       return res.data.map(mapEnquiry);
     },
     create: async (data: any): Promise<Enquiry> => {
-      // Map camelCase to snake_case for backend
       const payload = {
         ...data,
         candidate_name: data.candidateName,
@@ -242,6 +282,20 @@ export const apiClient = {
         college_dropout: data.collegeDropout,
         payment_amount: data.paymentAmount,
         other_location: data.otherLocation,
+
+        // Payload for New Fields
+        class_10_percentage: data.class10Percentage,
+        class_12_percentage: data.class12Percentage,
+        school_board: data.schoolBoard,
+        school_place: data.schoolPlace,
+        school_state: data.schoolState,
+        family_place: data.familyPlace,
+        family_state: data.familyState,
+        gender: data.gender,
+        dob: data.dob,
+        gap_year_from: data.gapYearFrom,
+        gap_year_to: data.gapYearTo,
+
         preferred_locations: JSON.stringify(data.preferredLocations),
       };
       const res = await api.post('enquiries/', payload);
@@ -277,6 +331,20 @@ export const apiClient = {
         college_dropout: data.collegeDropout,
         payment_amount: data.paymentAmount,
         other_location: data.otherLocation,
+
+        // Payload for New Fields (Update)
+        class_10_percentage: data.class10Percentage,
+        class_12_percentage: data.class12Percentage,
+        school_board: data.schoolBoard,
+        school_place: data.schoolPlace,
+        school_state: data.schoolState,
+        family_place: data.familyPlace,
+        family_state: data.familyState,
+        gender: data.gender,
+        dob: data.dob,
+        gap_year_from: data.gapYearFrom,
+        gap_year_to: data.gapYearTo,
+
         preferred_locations: JSON.stringify(data.preferredLocations),
       };
       const res = await api.put(`enquiries/${id}/`, payload);
@@ -295,7 +363,7 @@ export const apiClient = {
     create: async (data: any): Promise<Registration> => {
       const payload = {
         ...data,
-        registration_no: `REG-${Date.now()}`, // Backend should handle this ideally
+        registration_no: `REG-${Date.now()}`,
         student_name: data.studentName,
         registration_date: new Date().toISOString(),
         needs_loan: data.needsLoan,
@@ -305,14 +373,49 @@ export const apiClient = {
         father_name: data.fatherName,
         mother_name: data.motherName,
         permanent_address: data.permanentAddress,
+
+        // New Fields Payload
+        father_occupation: data.fatherOccupation,
+        mother_occupation: data.motherOccupation,
+        father_mobile: data.fatherMobile,
+        mother_mobile: data.motherMobile,
+        family_place: data.familyPlace,
+        family_state: data.familyState,
+
+        school_name: data.schoolName,
+        school_board: data.schoolBoard,
+        school_place: data.schoolPlace,
+        school_state: data.schoolState,
+        class10_percentage: data.class10Percentage,
+        class12_percentage: data.class12Percentage,
+        class12_passing_year: data.class12PassingYear,
+
+        gap_year: data.gapYear,
+        gap_year_from: data.gapYearFrom,
+        gap_year_to: data.gapYearTo,
+        college_dropout: data.collegeDropout,
+
+        pcb_percentage: data.pcbPercentage,
+        pcm_percentage: data.pcmPercentage,
+        physics_marks: data.physicsMarks,
+        chemistry_marks: data.chemistryMarks,
+        biology_marks: data.biologyMarks,
+        maths_marks: data.mathsMarks,
+        previous_neet_marks: data.previousNeetMarks,
+        present_neet_marks: data.presentNeetMarks,
+
+        // Link to enquiry if converting from enquiry
+        enquiry: data.enquiryId || data.enquiry || null,
       };
       const res = await api.post('registrations/', payload);
       return mapRegistration(res.data);
     },
-    get: async (id: string | number): Promise<Registration> => {
+
+    get: async (id: string): Promise<Registration | undefined> => {
       const res = await api.get(`registrations/${id}/`);
       return mapRegistration(res.data);
     },
+
     update: async (id: string, data: any): Promise<Registration> => {
       const payload = {
         student_name: data.studentName,
@@ -327,6 +430,34 @@ export const apiClient = {
         payment_status: data.paymentStatus,
         needs_loan: data.needsLoan,
         preferences: data.preferences,
+
+        // New Fields Update
+        father_occupation: data.fatherOccupation,
+        mother_occupation: data.motherOccupation,
+        father_mobile: data.fatherMobile,
+        mother_mobile: data.motherMobile,
+        family_place: data.familyPlace,
+        family_state: data.familyState,
+
+        school_name: data.schoolName,
+        school_board: data.schoolBoard,
+        school_place: data.schoolPlace,
+        school_state: data.schoolState,
+        class10_percentage: data.class10Percentage,
+        class12_percentage: data.class12Percentage,
+        class12_passing_year: data.class12PassingYear,
+
+        gap_year: data.gapYear,
+        gap_year_from: data.gapYearFrom,
+        gap_year_to: data.gapYearTo,
+        college_dropout: data.collegeDropout,
+
+        pcb_percentage: data.pcbPercentage,
+        pcm_percentage: data.pcmPercentage,
+        physics_marks: data.physicsMarks,
+        chemistry_marks: data.chemistryMarks,
+        biology_marks: data.biologyMarks,
+        maths_marks: data.mathsMarks,
       };
       const res = await api.patch(`registrations/${id}/`, payload);
       return mapRegistration(res.data);
@@ -352,6 +483,10 @@ export const apiClient = {
         total_fees: data.totalFees,
       };
       const res = await api.post('enrollments/', payload);
+      return mapEnrollment(res.data);
+    },
+    get: async (id: string): Promise<Enrollment | undefined> => {
+      const res = await api.get(`enrollments/${id}/`);
       return mapEnrollment(res.data);
     },
     update: async (id: string, data: any): Promise<Enrollment> => {
@@ -431,6 +566,20 @@ export const apiClient = {
     },
     delete: async (id: string): Promise<void> => {
       await api.delete(`documents/${id}/`);
+    },
+    update: async (id: string, data: any): Promise<Document> => {
+      const res = await api.patch(`documents/${id}/`, data);
+      return {
+        ...res.data,
+        fileName: res.data.file_name,
+        uploadedBy: res.data.uploaded_by,
+        uploadedByName: res.data.uploaded_by_name,
+        currentHolder: res.data.current_holder,
+        currentHolderName: res.data.current_holder_name,
+        uploadedAt: res.data.uploaded_at,
+        studentName: res.data.student_name,
+        expiryDate: res.data.expiry_date
+      };
     }
   },
 
@@ -880,6 +1029,49 @@ export const apiClient = {
     }
   },
 
+
+  studentDocuments: {
+    list: async (registrationId?: string): Promise<StudentDocument[]> => {
+      const params = registrationId ? { registration: registrationId } : {};
+      const res = await api.get('student-documents/', { params });
+      return res.data.map((d: any) => ({
+        id: d.id,
+        registration: d.registration,
+        name: d.name,
+        documentNumber: d.document_number,
+        status: d.status,
+        receivedAt: d.received_at,
+        returnedAt: d.returned_at,
+        remarks: d.remarks,
+        createdBy: d.created_by
+      }));
+    },
+    create: async (data: any): Promise<StudentDocument> => {
+      const res = await api.post('student-documents/', {
+        registration: data.registration,
+        name: data.name,
+        document_number: data.documentNumber || data.document_number,
+        remarks: data.remarks,
+        status: data.status
+      });
+      return {
+        id: res.data.id,
+        registration: res.data.registration,
+        name: res.data.name,
+        documentNumber: res.data.document_number,
+        status: res.data.status,
+        receivedAt: res.data.received_at,
+        returnedAt: res.data.returned_at,
+        remarks: res.data.remarks,
+        createdBy: res.data.created_by
+      };
+    },
+    returnDocs: async (docIds: string[]): Promise<any> => {
+      const res = await api.post('student-documents/return_docs/', { doc_ids: docIds });
+      return res.data;
+    }
+  },
+
   // Users Management
   users: {
     list: async () => {
@@ -977,6 +1169,8 @@ export const apiClient = {
     }
   },
 
+
+
   documentTransfers: {
     list: async () => {
       const res = await api.get('document-transfers/');
@@ -998,7 +1192,36 @@ export const apiClient = {
       const res = await api.post(`document-transfers/${id}/reject/`);
       return res.data;
     }
+  },
+
+  refunds: {
+    create: async (data: any) => {
+      const payload = {
+        payment: data.paymentId,
+        amount: data.amount,
+        refund_method: data.refundMethod,
+        reason: data.reason,
+        student_name: data.studentName,
+        status: 'Pending',
+        company_id: ''
+      };
+      const res = await api.post('refunds/', payload);
+      return res.data;
+    },
+    list: async (filters?: { status?: string; student_name?: string }) => {
+      const params = new URLSearchParams();
+      if (filters?.status) params.append('status', filters.status);
+      if (filters?.student_name) params.append('student_name', filters.student_name);
+      const res = await api.get(`refunds/?${params.toString()}`);
+      return res.data;
+    },
+    approve: async (id: number) => {
+      const res = await api.post(`refunds/${id}/approve/`);
+      return res.data;
+    },
+    reject: async (id: number, reason: string) => {
+      const res = await api.post(`refunds/${id}/reject/`, { reason });
+      return res.data;
+    }
   }
 };
-
-

@@ -203,31 +203,75 @@ export function RegistrationReceipt({ data, onClose }: RegistrationReceiptProps)
                     @media print {
                         @page {
                             size: A4;
-                            margin: 10mm;
+                            margin: 0;
                         }
                         
-                        * {
-                            -webkit-print-color-adjust: exact;
-                            print-color-adjust: exact;
+                        body, html {
+                            height: initial !important;
+                            overflow: initial !important;
+                            background: white !important;
                         }
-                        
-                        body {
-                            margin: 0 !important;
+
+                        body * {
+                            visibility: hidden;
+                        }
+
+                        /* Target the specific receipt content and make it visible */
+                        .receipt-container, .receipt-container * {
+                            visibility: visible;
+                        }
+
+                        /* Reset the outer modal wrapper to specific static layout */
+                        div[class*="fixed"][class*="z-50"] {
+                            position: static !important;
+                            display: block !important;
+                            height: auto !important;
+                            width: 100% !important;
+                            overflow: visible !important;
+                            background: none !important;
                             padding: 0 !important;
+                            inset: auto !important;
                         }
-                        
+
+                        /* Reset the inner content wrapper (the card) */
+                        div[class*="max-h-[90vh]"] {
+                            max-height: none !important;
+                            overflow: visible !important;
+                            box-shadow: none !important;
+                            border-radius: 0 !important;
+                            width: 100% !important;
+                            max-width: none !important;
+                            display: block !important;
+                            position: static !important;
+                            margin: 0 !important;
+                        }
+
+                        /* Position the receipt container */
+                        .receipt-container {
+                            position: absolute;
+                            left: 0;
+                            top: 0;
+                            width: 100%;
+                            min-height: 100%;
+                            margin: 0 !important;
+                            padding: 15mm !important;
+                            box-shadow: none !important;
+                            border: none !important;
+                            background: white !important;
+                        }
+
                         .no-print {
                             display: none !important;
                         }
                         
-                        .receipt-container {
-                            box-shadow: none !important;
-                            border-radius: 0 !important;
-                            max-width: 100% !important;
-                        }
-                        
                         h3 {
                             page-break-after: avoid;
+                        }
+                        
+                        /* Ensure text colors print correctly */
+                        * {
+                            -webkit-print-color-adjust: exact !important;
+                            print-color-adjust: exact !important;
                         }
                     }
                 `

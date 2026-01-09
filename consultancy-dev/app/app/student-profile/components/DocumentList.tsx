@@ -1,17 +1,22 @@
-'use client';
-
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { format } from 'date-fns';
-import { FileText, Download } from 'lucide-react';
+import { FileText, Download, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { DocumentUpload } from '@/components/common/DocumentUpload';
 
 interface DocumentListProps {
     studentName: string;
+    registrationId?: string;
 }
 
-export function DocumentList({ studentName }: DocumentListProps) {
+export function DocumentList({ studentName, registrationId }: DocumentListProps) {
+    const [isUploadOpen, setIsUploadOpen] = useState(false);
+    const queryClient = useQueryClient();
+
     const { data: documents, isLoading } = useQuery({
         queryKey: ['documents'],
         queryFn: apiClient.documents.list,
@@ -21,13 +26,35 @@ export function DocumentList({ studentName }: DocumentListProps) {
         d.studentName?.toLowerCase() === studentName.toLowerCase()
     ) || [];
 
+    const handleUploadSuccess = () => {
+        queryClient.invalidateQueries({ queryKey: ['documents'] });
+        setIsUploadOpen(false);
+    };
+
     if (isLoading) return <div className="text-sm text-slate-500">Loading documents...</div>;
 
     return (
         <Card>
             <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle>Documents</CardTitle>
-                <Button size="sm">Upload Document</Button>
+                <Dialog open={isUploadOpen} onOpenChange={setIsUploadOpen}>
+                    <DialogTrigger asChild>
+                        <Button size="sm" className="bg-teal-600 hover:bg-teal-700">
+                            <Upload className="mr-2 h-4 w-4" /> Upload Document
+                        </Button>
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-md">
+                        <DialogHeader>
+                            <DialogTitle>Upload Documents</DialogTitle>
+                        </DialogHeader>
+                        <DocumentUpload
+                            studentName={studentName}
+                            registrationId={registrationId}
+                            onUploadSuccess={handleUploadSuccess}
+                            variant="minimal"
+                        />
+                    </DialogContent>
+                </Dialog>
             </CardHeader>
             <CardContent>
                 {studentDocs.length > 0 ? (
@@ -41,6 +68,7 @@ export function DocumentList({ studentName }: DocumentListProps) {
                                     <div>
                                         <p className="font-medium text-slate-900">{doc.fileName}</p>
                                         <p className="text-xs text-slate-500">Uploaded {format(new Date(doc.uploadedAt), 'dd MMM yyyy')}</p>
+                                        {doc.description && <p className="text-xs text-slate-400">{doc.description}</p>}
                                     </div>
                                 </div>
                                 {doc.file && (

@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Filter, Search, Eye, Edit, Trash2, X, Phone, Mail, GraduationCap } from 'lucide-react';
+import { Plus, Filter, Search, Eye, Edit, Trash2, X, Phone, Mail, GraduationCap, Users } from 'lucide-react';
 import { Enquiry } from '@/lib/types';
 import { format } from 'date-fns';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -320,7 +320,7 @@ export default function EnquiriesPage() {
       <Dialog.Root open={!!viewEnquiry} onOpenChange={() => setViewEnquiry(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[600px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
+          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[1000px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
             {viewEnquiry && (
               <>
                 <Dialog.Title className="text-xl font-bold text-slate-900 mb-4 font-heading">
@@ -337,65 +337,62 @@ export default function EnquiriesPage() {
                       <div>
                         <h3 className="text-lg font-bold text-slate-900 font-heading">{viewEnquiry.candidateName}</h3>
                         <p className="text-sm text-slate-600">ID: {viewEnquiry.id}</p>
+                        <div className="flex gap-4 mt-1">
+                          <div className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded border border-teal-100">{viewEnquiry.gender || 'Gender: N/A'}</div>
+                          <div className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded border border-teal-100">DOB: {viewEnquiry.dob ? format(new Date(viewEnquiry.dob), 'dd MMM yyyy') : 'N/A'}</div>
+                        </div>
                       </div>
                     </div>
                   </div>
 
-                  {/* Contact & Basic Details */}
-                  <div className="grid grid-cols-2 gap-4">
+                  {/* Contact & Course */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <InfoItem label="Mobile" value={viewEnquiry.mobile} icon={Phone} />
                     <InfoItem label="Email" value={viewEnquiry.email} icon={Mail} />
-                    <InfoItem label="Course" value={viewEnquiry.courseInterested} icon={GraduationCap} />
-                    <InfoItem label="Stream" value={viewEnquiry.stream} />
-                    <InfoItem label="School" value={viewEnquiry.schoolName} />
                     <InfoItem label="Date" value={format(new Date(viewEnquiry.date), 'dd MMM yyyy')} />
-                    {viewEnquiry.class12PassingYear && (
-                      <InfoItem label="Class 12 Year" value={viewEnquiry.class12PassingYear} />
-                    )}
-                    {viewEnquiry.paymentAmount && (
-                      <InfoItem label="Payment Amount" value={`₹${viewEnquiry.paymentAmount}`} />
-                    )}
+                    <InfoItem label="Course" value={viewEnquiry.courseInterested} icon={GraduationCap} />
                   </div>
 
-                  {/* Academic Performance - Only show if any data exists */}
+                  {/* Academic Details */}
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Academic Details</h4>
+                    <div className="bg-slate-50 border border-slate-100 rounded-lg p-4">
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <InfoItem label="Stream" value={viewEnquiry.stream} />
+                        <InfoItem label="School" value={viewEnquiry.schoolName} />
+                        <InfoItem label="Board" value={viewEnquiry.schoolBoard || '-'} />
+                        <InfoItem label="Location" value={[viewEnquiry.schoolPlace, viewEnquiry.schoolState].filter(Boolean).join(', ') || '-'} />
+
+                        <InfoItem label="12th Year" value={viewEnquiry.class12PassingYear || '-'} />
+                        <InfoItem label="12th %" value={viewEnquiry.class12Percentage ? `${viewEnquiry.class12Percentage}%` : '-'} />
+                        <InfoItem label="10th %" value={viewEnquiry.class10Percentage ? `${viewEnquiry.class10Percentage}%` : '-'} />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Marks (Science) */}
                   {(viewEnquiry.pcbPercentage || viewEnquiry.pcmPercentage || viewEnquiry.physicsMarks ||
-                    viewEnquiry.chemistryMarks || viewEnquiry.biologyMarks || viewEnquiry.mathsMarks ||
-                    viewEnquiry.previousNeetMarks || viewEnquiry.presentNeetMarks) && (
+                    viewEnquiry.chemistryMarks || viewEnquiry.biologyMarks || viewEnquiry.mathsMarks) && (
                       <div>
-                        <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Academic Performance</h4>
+                        <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Science Scores</h4>
                         <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="grid grid-cols-2 gap-4">
-                            {viewEnquiry.pcbPercentage && (
-                              <InfoItem label="PCB Percentage" value={`${viewEnquiry.pcbPercentage}%`} />
-                            )}
-                            {viewEnquiry.pcmPercentage && (
-                              <InfoItem label="PCM Percentage" value={`${viewEnquiry.pcmPercentage}%`} />
-                            )}
-                            {viewEnquiry.physicsMarks && (
-                              <InfoItem label="Physics Marks" value={viewEnquiry.physicsMarks} />
-                            )}
-                            {viewEnquiry.chemistryMarks && (
-                              <InfoItem label="Chemistry Marks" value={viewEnquiry.chemistryMarks} />
-                            )}
-                            {viewEnquiry.biologyMarks && (
-                              <InfoItem label="Biology Marks" value={viewEnquiry.biologyMarks} />
-                            )}
-                            {viewEnquiry.mathsMarks && (
-                              <InfoItem label="Maths Marks" value={viewEnquiry.mathsMarks} />
-                            )}
-                            {viewEnquiry.previousNeetMarks && (
-                              <InfoItem label="Previous NEET Marks" value={viewEnquiry.previousNeetMarks} />
-                            )}
-                            {viewEnquiry.presentNeetMarks && (
-                              <InfoItem label="Present NEET Marks" value={viewEnquiry.presentNeetMarks} />
-                            )}
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {viewEnquiry.pcbPercentage && <InfoItem label="PCB %" value={`${viewEnquiry.pcbPercentage}%`} />}
+                            {viewEnquiry.pcmPercentage && <InfoItem label="PCM %" value={`${viewEnquiry.pcmPercentage}%`} />}
+                            {viewEnquiry.physicsMarks && <InfoItem label="Physics" value={viewEnquiry.physicsMarks} />}
+                            {viewEnquiry.chemistryMarks && <InfoItem label="Chemistry" value={viewEnquiry.chemistryMarks} />}
+                            {viewEnquiry.biologyMarks && <InfoItem label="Biology" value={viewEnquiry.biologyMarks} />}
+                            {viewEnquiry.mathsMarks && <InfoItem label="Maths" value={viewEnquiry.mathsMarks} />}
+                            {viewEnquiry.previousNeetMarks && <InfoItem label="Prev. NEET" value={viewEnquiry.previousNeetMarks} />}
+                            {viewEnquiry.presentNeetMarks && <InfoItem label="Cur. NEET" value={viewEnquiry.presentNeetMarks} />}
                           </div>
                           {(viewEnquiry.gapYear || viewEnquiry.collegeDropout) && (
                             <div className="flex gap-3 mt-4 pt-4 border-t border-blue-300">
                               {viewEnquiry.gapYear && (
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">
-                                  Gap Year
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">Gap Year</span>
+                                  {viewEnquiry.gapYearFrom && viewEnquiry.gapYearTo && <span className="text-xs text-blue-800">({viewEnquiry.gapYearFrom} - {viewEnquiry.gapYearTo})</span>}
+                                </div>
                               )}
                               {viewEnquiry.collegeDropout && (
                                 <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
@@ -412,35 +409,33 @@ export default function EnquiriesPage() {
                   <div>
                     <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Family Details</h4>
                     <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                           <p className="text-xs text-slate-500 font-medium mb-1">Father's Name</p>
                           <p className="text-sm text-slate-900 font-semibold">{viewEnquiry.fatherName}</p>
-                          {viewEnquiry.fatherOccupation && (
-                            <p className="text-xs text-slate-600 mt-1">{viewEnquiry.fatherOccupation}</p>
-                          )}
-                          {viewEnquiry.fatherMobile && (
-                            <p className="text-xs text-slate-600 flex items-center gap-1 mt-1">
-                              <Phone size={10} className="text-slate-400" /> {viewEnquiry.fatherMobile}
-                            </p>
-                          )}
+                          <div className="flex gap-2 text-xs text-slate-600 mt-1">
+                            {viewEnquiry.fatherOccupation && <span>{viewEnquiry.fatherOccupation}</span>}
+                            {viewEnquiry.fatherMobile && <span className="flex items-center gap-1"><Phone size={10} /> {viewEnquiry.fatherMobile}</span>}
+                          </div>
                         </div>
                         <div>
                           <p className="text-xs text-slate-500 font-medium mb-1">Mother's Name</p>
                           <p className="text-sm text-slate-900 font-semibold">{viewEnquiry.motherName}</p>
-                          {viewEnquiry.motherOccupation && (
-                            <p className="text-xs text-slate-600 mt-1">{viewEnquiry.motherOccupation}</p>
-                          )}
-                          {viewEnquiry.motherMobile && (
-                            <p className="text-xs text-slate-600 flex items-center gap-1 mt-1">
-                              <Phone size={10} className="text-slate-400" /> {viewEnquiry.motherMobile}
-                            </p>
-                          )}
+                          <div className="flex gap-2 text-xs text-slate-600 mt-1">
+                            {viewEnquiry.motherOccupation && <span>{viewEnquiry.motherOccupation}</span>}
+                            {viewEnquiry.motherMobile && <span className="flex items-center gap-1"><Phone size={10} /> {viewEnquiry.motherMobile}</span>}
+                          </div>
                         </div>
                       </div>
-                      <div className="pt-3 border-t border-slate-200">
-                        <p className="text-xs text-slate-500 font-medium mb-1">Permanent Address</p>
-                        <p className="text-sm text-slate-700">{viewEnquiry.permanentAddress}</p>
+                      <div className="pt-3 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Family Location</p>
+                          <p className="text-sm text-slate-700">{[viewEnquiry.familyPlace, viewEnquiry.familyState].filter(Boolean).join(', ') || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Permanent Address</p>
+                          <p className="text-sm text-slate-700">{viewEnquiry.permanentAddress}</p>
+                        </div>
                       </div>
                     </div>
                   </div>

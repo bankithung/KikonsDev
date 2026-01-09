@@ -26,12 +26,17 @@ export default function NewRegistrationPage() {
       const { documents, ...registrationDetails } = data;
 
       // 2. Create the registration
-      const newReg = await apiClient.registrations.create(registrationDetails);
+      const payload = { ...registrationDetails };
+      if (enquiryId) {
+        payload.enquiry = enquiryId;
+      }
+      const newReg = await apiClient.registrations.create(payload);
 
       // 3. Upload documents if any exist and have files
       if (documents && documents.length > 0) {
         const uploadPromises = documents.map((doc: any) => {
           if (doc.file instanceof File) {
+            // New file upload
             const formData = new FormData();
             formData.append('file', doc.file);
             formData.append('file_name', doc.file_name || doc.file.name);
@@ -40,6 +45,9 @@ export default function NewRegistrationPage() {
             formData.append('type', doc.type || 'General');
 
             return apiClient.documents.create(formData);
+          } else if (doc.id) {
+            // Existing document - Link to this registration
+            return apiClient.documents.update(doc.id, { registration: newReg.id });
           }
           return Promise.resolve();
         });

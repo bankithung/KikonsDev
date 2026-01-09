@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     UserViewSet, EnquiryViewSet, RegistrationViewSet, 
     EnrollmentViewSet, PaymentViewSet, DocumentViewSet,
-    DocumentTransferViewSet, TaskViewSet, AppointmentViewSet,
+    StudentDocumentViewSet, DocumentTransferViewSet, TaskViewSet, AppointmentViewSet,
     UniversityViewSet, TemplateViewSet, NotificationViewSet,
     CommissionViewSet, RefundViewSet, LeadSourceViewSet,
     VisaTrackingViewSet, FollowUpViewSet, InstallmentViewSet,
@@ -21,6 +21,7 @@ router.register(r'enrollments', EnrollmentViewSet)
 router.register(r'installments', InstallmentViewSet)
 router.register(r'payments', PaymentViewSet)
 router.register(r'documents', DocumentViewSet)
+router.register(r'student-documents', StudentDocumentViewSet)
 router.register(r'document-transfers', DocumentTransferViewSet)
 router.register(r'tasks', TaskViewSet)
 router.register(r'appointments', AppointmentViewSet)

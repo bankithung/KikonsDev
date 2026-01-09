@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/authStore';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RequestActionModal } from '@/components/ui/RequestActionModal';
 import { RegistrationForm } from './RegistrationForm';
+import { RegistrationReceipt } from '@/components/receipts/RegistrationReceipt';
 import toast from 'react-hot-toast';
 
 export function RegistrationList() {
@@ -27,9 +28,13 @@ export function RegistrationList() {
   const [filterPaymentStatus, setFilterPaymentStatus] = useState<string>('all');
   const [viewReg, setViewReg] = useState<Registration | null>(null);
   const [editReg, setEditReg] = useState<Registration | null>(null);
-  const [actionReg, setActionReg] = useState<Registration | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [showRequest, setShowRequest] = useState(false);
+  const [deleteReg, setDeleteReg] = useState<Registration | null>(null);
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [actionType, setActionType] = useState<'edit' | 'delete'>('delete');
+  const [showReceipt, setShowReceipt] = useState(false);
+  const [receiptData, setReceiptData] = useState<Registration | null>(null);
+  const [documentTab, setDocumentTab] = useState<'digital' | 'physical'>('digital');
 
   // No longer needed as we use the form for edits now
   // const [showEditRequest, setShowEditRequest] = useState(false);
@@ -308,7 +313,7 @@ export function RegistrationList() {
       } onOpenChange={() => setViewReg(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[90vh] w-[95vw] max-w-[800px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
+          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[90vh] w-[95vw] max-w-[1000px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
             {viewReg && (
               <>
                 <Dialog.Title className="text-xl font-bold text-slate-900 mb-4 font-heading flex justify-between items-center">
@@ -319,165 +324,287 @@ export function RegistrationList() {
                 </Dialog.Title>
 
                 <div className="space-y-6">
-                  {/* Student Information Section */}
-                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Student Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-slate-500">Student Name</p>
-                        <p className="text-sm font-medium text-slate-900">{viewReg.studentName}</p>
+                  {/* Student Info Header */}
+                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-full bg-teal-600 flex items-center justify-center text-white font-bold text-xl">
+                        {viewReg.studentName.charAt(0)}
                       </div>
                       <div>
-                        <p className="text-xs text-slate-500">Registration No</p>
-                        <p className="text-sm font-mono text-slate-700">{viewReg.registrationNo}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Mobile</p>
-                        <p className="text-sm text-slate-700">{viewReg.mobile}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Email</p>
-                        <p className="text-sm text-slate-700">{viewReg.email}</p>
-                      </div>
-                      {viewReg.dateOfBirth && (
-                        <div>
-                          <p className="text-xs text-slate-500">Date of Birth</p>
-                          <p className="text-sm text-slate-700">{format(new Date(viewReg.dateOfBirth), 'dd MMM yyyy')}</p>
+                        <h3 className="text-lg font-bold text-slate-900 font-heading">{viewReg.studentName}</h3>
+                        <p className="text-sm text-slate-600">Reg No: {viewReg.registrationNo}</p>
+                        <div className="flex gap-4 mt-1">
+                          <div className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded border border-teal-100">{viewReg.gender || 'Gender: N/A'}</div>
+                          <div className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded border border-teal-100">DOB: {viewReg.dateOfBirth ? format(new Date(viewReg.dateOfBirth), 'dd MMM yyyy') : 'N/A'}</div>
                         </div>
-                      )}
-                      <div>
-                        <p className="text-xs text-slate-500">Registration Date</p>
-                        <p className="text-sm text-slate-700">{format(new Date(viewReg.registrationDate), 'dd MMM yyyy')}</p>
                       </div>
                     </div>
                   </div>
 
-                  {/* Parent Information Section */}
-                  <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Parent Information</h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div>
-                        <p className="text-xs text-slate-500">Father's Name</p>
-                        <p className="text-sm text-slate-700">{viewReg.fatherName || '-'}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-slate-500">Mother's Name</p>
-                        <p className="text-sm text-slate-700">{viewReg.motherName || '-'}</p>
-                      </div>
-                    </div>
+                  {/* Contact Info Grid */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <InfoItem label="Mobile" value={viewReg.mobile} icon={Phone} />
+                    <InfoItem label="Email" value={viewReg.email} icon={Mail} />
+                    <InfoItem label="Reg Date" value={format(new Date(viewReg.registrationDate), 'dd MMM yyyy')} />
+                    <InfoItem label="Added By" value={viewReg.created_by_name || '-'} icon={UserCircle} />
                   </div>
 
-                  {/* Address Section */}
-                  {viewReg.permanentAddress && (
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Address</h3>
-                      <p className="text-sm text-slate-700">{viewReg.permanentAddress}</p>
+                  {/* Academic Details - New Section */}
+                  {(viewReg.schoolName || viewReg.schoolBoard || viewReg.schoolPlace || viewReg.schoolState || viewReg.class12Percentage || viewReg.class10Percentage) && (
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Academic Details</h4>
+                      <div className="bg-slate-50 border border-slate-100 rounded-lg p-4">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                          <InfoItem label="School Name" value={viewReg.schoolName || '-'} />
+                          <InfoItem label="Board" value={viewReg.schoolBoard || '-'} />
+                          <InfoItem label="School Location" value={[viewReg.schoolPlace, viewReg.schoolState].filter(Boolean).join(', ') || '-'} />
+                          <InfoItem label="12th Passing Year" value={viewReg.class12PassingYear || '-'} />
+                          <InfoItem label="12th %" value={viewReg.class12Percentage ? `${viewReg.class12Percentage}%` : '-'} />
+                          <InfoItem label="10th %" value={viewReg.class10Percentage ? `${viewReg.class10Percentage}%` : '-'} />
+                        </div>
+                      </div>
                     </div>
                   )}
 
-                  {/* Payment Information Section */}
+                  {/* Marks (Science) - New Section */}
+                  {(viewReg.pcbPercentage || viewReg.pcmPercentage || viewReg.physicsMarks ||
+                    viewReg.chemistryMarks || viewReg.biologyMarks || viewReg.mathsMarks) && (
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Science Scores</h4>
+                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {viewReg.pcbPercentage && <InfoItem label="PCB %" value={`${viewReg.pcbPercentage}%`} />}
+                            {viewReg.pcmPercentage && <InfoItem label="PCM %" value={`${viewReg.pcmPercentage}%`} />}
+                            {viewReg.physicsMarks && <InfoItem label="Physics" value={viewReg.physicsMarks} />}
+                            {viewReg.chemistryMarks && <InfoItem label="Chemistry" value={viewReg.chemistryMarks} />}
+                            {viewReg.biologyMarks && <InfoItem label="Biology" value={viewReg.biologyMarks} />}
+                            {viewReg.mathsMarks && <InfoItem label="Maths" value={viewReg.mathsMarks} />}
+                          </div>
+                          {(viewReg.gapYear) && (
+                            <div className="flex gap-3 mt-4 pt-4 border-t border-blue-300">
+                              <div className="flex items-center gap-2">
+                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">Gap Year</span>
+                                {viewReg.gapYearFrom && viewReg.gapYearTo && <span className="text-xs text-blue-800">({viewReg.gapYearFrom} - {viewReg.gapYearTo})</span>}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                  {/* Family & Address Details */}
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Family & Address</h4>
+                    <div className="bg-slate-50 border border-slate-100 rounded-lg p-4 space-y-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Father's Name</p>
+                          <p className="text-sm text-slate-900 font-semibold">{viewReg.fatherName || '-'}</p>
+                          <div className="flex gap-2 text-xs text-slate-600 mt-1">
+                            {viewReg.fatherOccupation && <span>{viewReg.fatherOccupation}</span>}
+                            {viewReg.fatherMobile && <span className="flex items-center gap-1"><Phone size={10} /> {viewReg.fatherMobile}</span>}
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Mother's Name</p>
+                          <p className="text-sm text-slate-900 font-semibold">{viewReg.motherName || '-'}</p>
+                          <div className="flex gap-2 text-xs text-slate-600 mt-1">
+                            {viewReg.motherOccupation && <span>{viewReg.motherOccupation}</span>}
+                            {viewReg.motherMobile && <span className="flex items-center gap-1"><Phone size={10} /> {viewReg.motherMobile}</span>}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="pt-3 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Family Location</p>
+                          <p className="text-sm text-slate-700">{[viewReg.familyPlace, viewReg.familyState].filter(Boolean).join(', ') || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-slate-500 font-medium mb-1">Permanent Address</p>
+                          <p className="text-sm text-slate-700">{viewReg.permanentAddress}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Payment Information */}
                     <div>
                       <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Payment Details</h4>
-                      <div className="bg-white border border-slate-200 p-3 rounded space-y-2">
+                      <div className="bg-white border border-slate-200 p-4 rounded-lg space-y-2">
                         <div className="flex justify-between border-b border-slate-100 pb-2">
                           <span className="text-xs text-slate-500">Registration Fee</span>
                           <span className="text-sm font-bold text-blue-600">₹{viewReg.registrationFee.toLocaleString()}</span>
                         </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Payment Method</p>
-                          <p className="text-sm font-medium">{viewReg.paymentMethod}</p>
+                        <div className="flex justify-between items-center">
+                          <div>
+                            <p className="text-xs text-slate-500">Payment Method</p>
+                            <p className="text-sm font-medium">{viewReg.paymentMethod}</p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-slate-500 text-right">Status</p>
+                            <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${viewReg.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                              {viewReg.paymentStatus}
+                            </span>
+                          </div>
                         </div>
-                        <div>
-                          <p className="text-xs text-slate-500">Payment Status</p>
-                          <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${viewReg.paymentStatus === 'Paid' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
-                            {viewReg.paymentStatus}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Other Information</h4>
-                      <div className="bg-white border border-slate-200 p-3 rounded space-y-2">
                         <div>
                           <p className="text-xs text-slate-500">Needs Loan</p>
                           <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-semibold ${viewReg.needsLoan ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'}`}>
                             {viewReg.needsLoan ? 'Yes' : 'No'}
                           </span>
                         </div>
-                        {viewReg.created_by_name && (
-                          <div>
-                            <p className="text-xs text-slate-500">Added By</p>
-                            <p className="text-sm text-slate-700">{viewReg.created_by_name}</p>
-                          </div>
-                        )}
                       </div>
+                    </div>
+
+                    {/* Documents Section with Tabs */}
+                    <div>
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-sm font-bold text-slate-900 uppercase tracking-wide">Documents</h4>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setDocumentTab('digital')}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${documentTab === 'digital'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                          >
+                            Digital Docs
+                          </button>
+                          <button
+                            onClick={() => setDocumentTab('physical')}
+                            className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-colors ${documentTab === 'physical'
+                              ? 'bg-yellow-100 text-yellow-700'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                              }`}
+                          >
+                            Physical Docs
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Digital Documents Tab */}
+                      {documentTab === 'digital' && (
+                        viewReg.documents && viewReg.documents.length > 0 ? (
+                          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="divide-y divide-slate-100 max-h-[160px] overflow-y-auto">
+                              {viewReg.documents.map((doc: any) => (
+                                <div key={doc.id} className="p-3 hover:bg-slate-50 flex items-center justify-between">
+                                  <div className="flex items-center gap-3">
+                                    <FileText size={16} className="text-slate-400" />
+                                    <div>
+                                      <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{doc.file_name || doc.fileName}</p>
+                                      {doc.description && <p className="text-xs text-slate-400">{doc.description}</p>}
+                                    </div>
+                                  </div>
+                                  {doc.file && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => window.open(doc.file, '_blank')}
+                                      className="text-blue-600 hover:text-blue-700 text-xs h-7 px-2"
+                                    >
+                                      View
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-slate-500 italic p-3 border border-slate-200 rounded bg-slate-50">No digital documents uploaded</div>
+                        )
+                      )}
+
+                      {/* Physical Documents Tab */}
+                      {documentTab === 'physical' && (
+                        viewReg.student_documents && viewReg.student_documents.length > 0 ? (
+                          <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+                            <div className="divide-y divide-slate-100 max-h-[160px] overflow-y-auto">
+                              {viewReg.student_documents.map((doc: any) => (
+                                <div key={doc.id} className="p-3 hover:bg-slate-50 flex items-center justify-between">
+                                  <div className="flex items-center gap-3 flex-1">
+                                    <FileText size={16} className="text-amber-500" />
+                                    <div className="flex-1 min-w-0">
+                                      <p className="text-sm font-medium text-slate-900">{doc.name}</p>
+                                      <div className="flex gap-2 mt-0.5">
+                                        {doc.document_number && (
+                                          <span className="text-xs text-slate-500">#{doc.document_number}</span>
+                                        )}
+                                        {doc.remarks && (
+                                          <span className="text-xs text-slate-400 italic">{doc.remarks}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <span className={`text-xs px-2 py-0.5 rounded-full ${doc.status === 'Held' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                                    }`}>
+                                    {doc.status}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-sm text-slate-500 italic p-3 border border-slate-200 rounded bg-slate-50">No physical documents on record</div>
+                        )
+                      )}
                     </div>
                   </div>
 
                   {/* Preferences Section */}
                   {viewReg.preferences && viewReg.preferences.length > 0 && (
-                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
-                      <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wide mb-3">Preferences</h3>
-                      <div className="flex flex-wrap gap-2">
-                        {viewReg.preferences.map((pref, idx) => (
-                          <span key={idx} className="inline-flex px-2 py-1 rounded bg-blue-100 text-blue-700 text-xs font-medium">
-                            {typeof pref === 'string' ? pref : pref.courseName}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Documents Section */}
-                  {viewReg.documents && viewReg.documents.length > 0 && (
                     <div>
-                      <h4 className="text-sm font-bold text-slate-900 mb-2 uppercase tracking-wide">Documents</h4>
-                      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
-                        <div className="divide-y divide-slate-100">
-                          {viewReg.documents.map((doc: any) => (
-                            <div key={doc.id} className="p-3 hover:bg-slate-50 flex items-center justify-between">
-                              <div className="flex items-center gap-3">
-                                <FileText size={16} className="text-slate-400" />
-                                <div>
-                                  <p className="text-sm font-medium text-slate-900">{doc.file_name || doc.fileName}</p>
-                                  {doc.description && (
-                                    <p className="text-xs text-slate-500">{doc.description}</p>
-                                  )}
-                                </div>
+                      <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Study Preferences</h4>
+                      <div className="bg-slate-50 p-4 rounded-lg border border-slate-100">
+                        <div className="flex flex-wrap gap-2">
+                          {viewReg.preferences.map((pref, idx) => (
+                            <div key={idx} className="flex items-center gap-2 bg-white px-3 py-2 rounded border border-slate-200 shadow-sm">
+                              <span className="w-5 h-5 rounded-full bg-teal-100 text-teal-700 flex items-center justify-center text-xs font-bold">{typeof pref === 'object' && 'priority' in pref ? pref.priority : idx + 1}</span>
+                              <div className="text-xs">
+                                <span className="font-semibold block text-slate-800">{typeof pref === 'string' ? pref : pref.courseName}</span>
+                                {typeof pref === 'object' && 'location' in pref && <span className="text-slate-500">{pref.location}</span>}
                               </div>
-                              {doc.file && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => window.open(doc.file, '_blank')}
-                                  className="text-blue-600 hover:text-blue-700 text-xs"
-                                >
-                                  View
-                                </Button>
-                              )}
                             </div>
                           ))}
                         </div>
                       </div>
                     </div>
                   )}
-                </div>
 
-                <div className="flex gap-3 mt-6 pt-6 border-t">
-                  <Button variant="outline" className="flex-1 h-11" onClick={() => setViewReg(null)}>
-                    Close
-                  </Button>
-                  <Button
-                    className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white"
-                    onClick={() => router.push(`/app/student-profile/registration/${viewReg.id}`)}
-                  >
-                    <UserCircle size={16} className="mr-2" /> View Full Profile
-                  </Button>
-                  <Button className="flex-1 h-11 bg-teal-600 hover:bg-teal-700">
-                    <FileText size={16} className="mr-2" /> Print Receipt
-                  </Button>
+                  {/* Action Buttons - Reorganized */}
+                  <div className="mt-6 pt-6 border-t border-slate-200">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                      {/* Primary Actions */}
+                      <div className="flex gap-3 flex-1">
+                        <Button
+                          variant="outline"
+                          className="flex-1 h-11"
+                          onClick={() => setViewReg(null)}
+                        >
+                          Close
+                        </Button>
+                        <Button
+                          className="flex-1 h-11 bg-blue-600 hover:bg-blue-700 text-white"
+                          onClick={() => router.push(`/app/student-profile/registration/${viewReg.id}`)}
+                        >
+                          <UserCircle size={16} className="mr-2" /> Full Profile
+                        </Button>
+                      </div>
+
+                      {/* Secondary Action */}
+                      <Button
+                        className="sm:w-auto w-full h-11 bg-teal-600 hover:bg-teal-700"
+                        onClick={() => {
+                          setReceiptData(viewReg);
+                          setShowReceipt(true);
+                          setViewReg(null);
+                        }}
+                      >
+                        <FileText size={16} className="mr-2" /> Print Receipt
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 <Dialog.Close asChild>
@@ -496,13 +623,13 @@ export function RegistrationList() {
         open={showConfirm}
         onClose={() => {
           setShowConfirm(false);
-          setActionReg(null);
+          setDeleteReg(null);
         }}
         onConfirm={handleDirectDelete}
         title="Delete Registration"
         description={
-          actionReg
-            ? `Are you sure you want to delete the registration for ${actionReg.studentName}? This action cannot be undone.`
+          deleteReg
+            ? `Are you sure you want to delete the registration for ${deleteReg.studentName}? This action cannot be undone.`
             : 'Are you sure you want to delete this registration?'
         }
         confirmText="Delete"
@@ -512,15 +639,15 @@ export function RegistrationList() {
 
       {/* Request Modal for Employees - Delete */}
       < RequestActionModal
-        open={showRequest}
+        open={showRequestModal}
         onClose={() => {
-          setShowRequest(false);
-          setActionReg(null);
+          setShowRequestModal(false);
+          setDeleteReg(null);
         }}
         onSubmit={handleSubmitDeleteRequest}
         action="DELETE"
         entityType="Registration"
-        entityName={actionReg?.studentName || ''}
+        entityName={deleteReg?.studentName || ''}
         isLoading={requestDeleteMutation.isPending}
       />
 
@@ -552,6 +679,26 @@ export function RegistrationList() {
           </Dialog.Content>
         </Dialog.Portal>
       </Dialog.Root >
+
+      {/* Receipt Modal */}
+      {showReceipt && receiptData && (
+        <RegistrationReceipt
+          data={receiptData}
+          onClose={() => setShowReceipt(false)}
+        />
+      )}
     </div >
+  );
+}
+
+function InfoItem({ label, value, icon: Icon }: any) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+        {Icon && <Icon size={12} className="text-slate-400" />}
+        {label}
+      </p>
+      <p className="text-sm text-slate-900 font-medium">{value}</p>
+    </div>
   );
 }

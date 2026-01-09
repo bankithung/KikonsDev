@@ -7,7 +7,7 @@ import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { ArrowLeft, ArrowRight, Wallet, FileText, UserCircle, GraduationCap, Phone, Mail, MapPin, Calendar, Clock, CheckCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, Wallet, FileText, UserCircle, GraduationCap, Phone, Mail, MapPin, Calendar, Clock, CheckCircle, Plus } from 'lucide-react';
 import { BackButton } from '@/components/ui/back-button';
 import { EnquiryForm } from '@/app/app/enquiries/components/EnquiryForm';
 import { RegistrationForm } from '@/app/app/registrations/components/RegistrationForm';
@@ -15,8 +15,11 @@ import { toast } from 'react-hot-toast';
 import { useAuthStore } from '@/store/authStore';
 import { PaymentHistory } from './PaymentHistory';
 import { DocumentList } from './DocumentList';
-import { Enquiry, Registration, Enrollment } from '@/lib/types';
+import { Enquiry, Registration, Enrollment, StudentDocument } from '@/lib/types';
 import { format } from 'date-fns';
+import { useState as useReactState } from 'react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { PhysicalDocumentModal } from '@/components/common/PhysicalDocumentModal';
 
 interface StudentProfileViewProps {
     type: string;
@@ -28,6 +31,10 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState('overview');
+    const [selectedDocs, setSelectedDocs] = useReactState<number[]>([]);
+    const [documentView, setDocumentView] = useState<'digital' | 'physical'>('digital');
+    const [journeyView, setJourneyView] = useState<'enquiry' | 'registration' | 'enrollment'>('enquiry');
+    const [showPhysicalDocModal, setShowPhysicalDocModal] = useState(false);
 
     // 1. Fetch the Primary Record based on URL
     const { data: primaryRecord, isLoading: isLoadingPrimary } = useQuery({
@@ -68,6 +75,10 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
     // 4. Derive Enquiry ID
     const enquiryId = isEnquiry(primaryRecord) ? primaryRecord.id : registrationData?.enquiry;
 
+    // Debug: Log enquiry ID
+    console.log('Debug - Registration Data:', registrationData);
+    console.log('Debug - Enquiry ID:', enquiryId);
+
     // 5. Fetch Related Enquiry
     const { data: relatedEnquiry } = useQuery({
         queryKey: ['enquiry', enquiryId],
@@ -77,6 +88,8 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
 
     // Consolidate Enquiry Data
     const enquiryData = isEnquiry(primaryRecord) ? primaryRecord : relatedEnquiry;
+
+    console.log('Debug - Enquiry Data:', enquiryData);
 
 
     // Consolidate logic for "Master Student Name"
@@ -104,6 +117,46 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
         },
         onError: () => toast.error('Failed to update')
     });
+
+    // Fetch physical documents held by office (fallback/verification, though we prefer using registrationData.student_documents)
+    const { data: fetchedPhysicalDocs } = useQuery({
+        queryKey: ['student-documents', registrationData?.id],
+        queryFn: () => apiClient.studentDocuments.list(registrationData!.id),
+        enabled: !!registrationData?.id
+    });
+
+    const physicalDocs = registrationData?.student_documents || fetchedPhysicalDocs;
+
+    // Return documents mutation
+    const returnDocsMutation = useMutation({
+        mutationFn: (docIds: number[]) => apiClient.studentDocuments.returnDocs(docIds.map(String)),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['student-documents'] });
+            queryClient.invalidateQueries({ queryKey: ['registration'] });
+            queryClient.invalidateQueries({ queryKey: ['registrations'] });
+            setSelectedDocs([]);
+            toast.success('Documents marked as returned');
+        },
+        onError: () => toast.error('Failed to return documents')
+    });
+
+    // ... (lines omitted)
+
+    {/* Render Modal */ }
+    {
+        registrationData && (
+            <PhysicalDocumentModal
+                open={showPhysicalDocModal}
+                onClose={() => setShowPhysicalDocModal(false)}
+                registrationId={Number(registrationData.id)}
+                onSuccess={() => {
+                    queryClient.invalidateQueries({ queryKey: ['student-documents'] });
+                    queryClient.invalidateQueries({ queryKey: ['registration'] });
+                    queryClient.invalidateQueries({ queryKey: ['registrations'] });
+                }}
+            />
+        )
+    }
 
     if (isLoadingPrimary) return <div className="flex items-center justify-center min-h-screen"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-teal-600"></div></div>;
     if (!primaryRecord) return <div className="p-8 text-center text-slate-500">Record not found</div>;
@@ -179,12 +232,12 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
 
             {/* 3. Main Tabs */}
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-5">
+                <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
                     <TabsTrigger value="overview">Overview</TabsTrigger>
-                    {/* Conditionally render tabs based on available data */}
-                    {enquiryData && <TabsTrigger value="enquiry">Enquiry Data</TabsTrigger>}
-                    {registrationData && <TabsTrigger value="registration">Registration Data</TabsTrigger>}
-                    {isEnrollment(primaryRecord) && <TabsTrigger value="enrollment">Enrollment Data</TabsTrigger>}
+                    {/* Show Journey tab if ANY journey data exists */}
+                    {(enquiryData || registrationData || isEnrollment(primaryRecord)) && (
+                        <TabsTrigger value="journey">Student Journey</TabsTrigger>
+                    )}
                     <TabsTrigger value="documents">Documents</TabsTrigger>
                     <TabsTrigger value="payments">Payments</TabsTrigger>
                 </TabsList>
@@ -194,104 +247,378 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                         <Card>
-                            <CardHeader><CardTitle className="text-sm uppercase text-slate-500">Academic Interest</CardTitle></CardHeader>
-                            <CardContent>
-                                <p className="font-medium text-slate-900">{enquiryData?.courseInterested || registrationData?.preferences?.[0]?.courseName || 'N/A'}</p>
-                                <p className="text-sm text-slate-500">{enquiryData?.schoolName}</p>
+                            <CardHeader><CardTitle className="text-sm uppercase text-slate-500">Academic Details</CardTitle></CardHeader>
+                            <CardContent className="space-y-3">
+                                <div>
+                                    <p className="font-medium text-slate-900">
+                                        {registrationData?.preferences?.[0]?.courseName || enquiryData?.courseInterested || 'N/A'}
+                                    </p>
+                                    <p className="text-xs text-slate-500">Course Interested</p>
+                                </div>
+                                <div className="border-t border-slate-100 pt-2">
+                                    <p className="font-medium text-slate-900">{registrationData?.schoolName || enquiryData?.schoolName || 'N/A'}</p>
+                                    <p className="text-xs text-slate-500">
+                                        {(registrationData?.schoolBoard || enquiryData?.schoolBoard) ? `${registrationData?.schoolBoard || enquiryData?.schoolBoard} Board` : 'School'}
+                                    </p>
+                                </div>
+                                <div className="border-t border-slate-100 pt-2 grid grid-cols-2 gap-2">
+                                    <div>
+                                        <p className="font-medium text-slate-900">{registrationData?.class12PassingYear || enquiryData?.class12PassingYear || '-'}</p>
+                                        <p className="text-xs text-slate-500">12th Year</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-slate-900">
+                                            {[registrationData?.schoolPlace || enquiryData?.schoolPlace, registrationData?.schoolState || enquiryData?.schoolState].filter(Boolean).join(', ') || '-'}
+                                        </p>
+                                        <p className="text-xs text-slate-500">School Loc</p>
+                                    </div>
+                                </div>
+                                {(registrationData?.class12Percentage || enquiryData?.class12Percentage || registrationData?.class10Percentage || enquiryData?.class10Percentage) && (
+                                    <div className="grid grid-cols-2 gap-2 border-t border-slate-100 pt-2">
+                                        <div>
+                                            <p className="font-medium text-slate-900">{registrationData?.class12Percentage || enquiryData?.class12Percentage || '-'}%</p>
+                                            <p className="text-xs text-slate-500">12th %</p>
+                                        </div>
+                                        <div>
+                                            <p className="font-medium text-slate-900">{registrationData?.class10Percentage || enquiryData?.class10Percentage || '-'}%</p>
+                                            <p className="text-xs text-slate-500">10th %</p>
+                                        </div>
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
+
                         <Card>
-                            <CardHeader><CardTitle className="text-sm uppercase text-slate-500">Family Info</CardTitle></CardHeader>
-                            <CardContent>
-                                <p className="text-sm"><span className="text-slate-500">Father:</span> {registrationData?.fatherName || enquiryData?.fatherName || 'N/A'}</p>
-                                <p className="text-sm"><span className="text-slate-500">Mother:</span> {registrationData?.motherName || enquiryData?.motherName || 'N/A'}</p>
+                            <CardHeader><CardTitle className="text-sm uppercase text-slate-500">Science & Competitive</CardTitle></CardHeader>
+                            <CardContent className="space-y-3">
+                                <div className="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <p className="font-medium text-slate-900">{registrationData?.pcbPercentage || enquiryData?.pcbPercentage || '-'}%</p>
+                                        <p className="text-xs text-slate-500">PCB %</p>
+                                    </div>
+                                    <div>
+                                        <p className="font-medium text-slate-900">{registrationData?.pcmPercentage || enquiryData?.pcmPercentage || '-'}%</p>
+                                        <p className="text-xs text-slate-500">PCM %</p>
+                                    </div>
+                                </div>
+                                <div className="border-t border-slate-100 pt-2 grid grid-cols-3 gap-2">
+                                    <div><p className="text-sm font-medium">{registrationData?.physicsMarks || enquiryData?.physicsMarks || '-'}</p><p className="text-[10px] text-slate-500">Phy</p></div>
+                                    <div><p className="text-sm font-medium">{registrationData?.chemistryMarks || enquiryData?.chemistryMarks || '-'}</p><p className="text-[10px] text-slate-500">Chem</p></div>
+                                    <div><p className="text-sm font-medium">{registrationData?.biologyMarks || enquiryData?.biologyMarks || '-'}</p><p className="text-[10px] text-slate-500">Bio</p></div>
+                                    <div><p className="text-sm font-medium">{registrationData?.mathsMarks || enquiryData?.mathsMarks || '-'}</p><p className="text-[10px] text-slate-500">Math</p></div>
+                                </div>
+                                <div className="border-t border-slate-100 pt-2 space-y-2">
+                                    <div className="flex justify-between">
+                                        <span className="text-xs text-slate-500">Prev. NEET</span>
+                                        <span className="text-sm font-medium">{registrationData?.previousNeetMarks || enquiryData?.previousNeetMarks || '-'}</span>
+                                    </div>
+                                    <div className="flex justify-between">
+                                        <span className="text-xs text-slate-500">Cur. NEET</span>
+                                        <span className="text-sm font-medium">{registrationData?.presentNeetMarks || enquiryData?.presentNeetMarks || '-'}</span>
+                                    </div>
+                                </div>
                             </CardContent>
                         </Card>
+
                         <Card>
-                            <CardHeader><CardTitle className="text-sm uppercase text-slate-500">Lead Info</CardTitle></CardHeader>
-                            <CardContent>
-                                <p className="text-sm"><span className="text-slate-500">Source:</span> Direct</p>
-                                <p className="text-sm"><span className="text-slate-500">Date:</span> {enquiryData?.date ? format(new Date(enquiryData.date), 'dd MMM yyyy') : 'N/A'}</p>
+                            <CardHeader><CardTitle className="text-sm uppercase text-slate-500">Family & Personal</CardTitle></CardHeader>
+                            <CardContent className="space-y-2">
+                                <div>
+                                    <p className="text-sm"><span className="text-slate-500">Father:</span> {registrationData?.fatherName || enquiryData?.fatherName || 'N/A'}</p>
+                                    <p className="text-sm"><span className="text-slate-500">Mother:</span> {registrationData?.motherName || enquiryData?.motherName || 'N/A'}</p>
+                                </div>
+                                {(registrationData?.permanentAddress || enquiryData?.familyPlace || enquiryData?.familyState) && (
+                                    <div className="border-t border-slate-100 pt-2">
+                                        <p className="text-sm text-slate-900">{registrationData?.permanentAddress || [enquiryData?.familyPlace, enquiryData?.familyState].filter(Boolean).join(', ')}</p>
+                                        <p className="text-xs text-slate-500">Address / Location</p>
+                                    </div>
+                                )}
+                                {(registrationData?.dateOfBirth || enquiryData?.dob || registrationData?.gender || enquiryData?.gender) && (
+                                    <div className="border-t border-slate-100 pt-2 flex gap-4">
+                                        {(registrationData?.gender || enquiryData?.gender) && (
+                                            <div>
+                                                <p className="text-sm text-slate-900">{registrationData?.gender || enquiryData?.gender}</p>
+                                                <p className="text-xs text-slate-500">Gender</p>
+                                            </div>
+                                        )}
+                                        {(registrationData?.dateOfBirth || enquiryData?.dob) && (
+                                            <div>
+                                                <p className="text-sm text-slate-900">{format(new Date(registrationData?.dateOfBirth || enquiryData?.dob || ''), 'dd MMM yyyy')}</p>
+                                                <p className="text-xs text-slate-500">DOB</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                                {(registrationData?.gapYear || enquiryData?.gapYear) && (
+                                    <div className="mt-2 pt-2 border-t border-slate-100">
+                                        <span className="px-2 py-0.5 rounded-full bg-orange-100 text-orange-700 text-xs font-medium">Gap Year</span>
+                                        {(registrationData?.gapYearFrom || enquiryData?.gapYearFrom) && (
+                                            <p className="text-xs text-slate-500 mt-1">{registrationData?.gapYearFrom || enquiryData?.gapYearFrom} - {registrationData?.gapYearTo || enquiryData?.gapYearTo}</p>
+                                        )}
+                                    </div>
+                                )}
                             </CardContent>
                         </Card>
                     </div>
                 </TabsContent>
 
-                {/* ENQUIRY TAB */}
-                {enquiryData && (
-                    <TabsContent value="enquiry" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Enquiry Details</CardTitle>
-                                <CardDescription>Details captured during initial enquiry</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <EnquiryForm
-                                    initialData={enquiryData}
-                                    onSubmit={(data) => updateEnquiryMutation.mutate(data)}
-                                    isLoading={updateEnquiryMutation.isPending}
-                                />
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                )}
+                {/* STUDENT JOURNEY TAB - Shows Enquiry/Registration/Enrollment based on toggle */}
+                {(enquiryData || registrationData || isEnrollment(primaryRecord)) && (
+                    <TabsContent value="journey" className="mt-6">
+                        {/* Toggle Buttons */}
+                        <div className="flex gap-2 mb-4">
+                            {enquiryData && (
+                                <button
+                                    onClick={() => setJourneyView('enquiry')}
+                                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${journeyView === 'enquiry'
+                                        ? 'bg-purple-600 text-white'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                >
+                                    Enquiry
+                                </button>
+                            )}
+                            {registrationData && (
+                                <button
+                                    onClick={() => setJourneyView('registration')}
+                                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${journeyView === 'registration'
+                                        ? 'bg-blue-600 text-white'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                >
+                                    Registration
+                                </button>
+                            )}
+                            {isEnrollment(primaryRecord) && (
+                                <button
+                                    onClick={() => setJourneyView('enrollment')}
+                                    className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${journeyView === 'enrollment'
+                                        ? 'bg-teal-600 text-white'
+                                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                        }`}
+                                >
+                                    Enrollment
+                                </button>
+                            )}
+                        </div>
 
-                {/* REGISTRATION TAB */}
-                {registrationData && (
-                    <TabsContent value="registration" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Registration Details</CardTitle>
-                                <CardDescription>Official registration information</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <RegistrationForm
-                                    initialData={registrationData}
-                                    onSubmit={(data) => updateRegistrationMutation.mutate(data)}
-                                    isLoading={updateRegistrationMutation.isPending}
-                                    isEdit={true}
-                                />
-                            </CardContent>
-                        </Card>
-                    </TabsContent>
-                )}
+                        {/* Enquiry View */}
+                        {journeyView === 'enquiry' && enquiryData && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Enquiry Details</CardTitle>
+                                    <CardDescription>Details captured during initial enquiry</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <EnquiryForm
+                                        initialData={enquiryData}
+                                        onSubmit={(data) => updateEnquiryMutation.mutate(data)}
+                                        isLoading={updateEnquiryMutation.isPending}
+                                    />
+                                </CardContent>
+                            </Card>
+                        )}
 
-                {/* ENROLLMENT TAB */}
-                {isEnrollment(primaryRecord) && (
-                    <TabsContent value="enrollment" className="mt-6">
-                        <Card>
-                            <CardHeader>
-                                <CardTitle>Enrollment Details</CardTitle>
-                                <CardDescription>Active program enrollment details</CardDescription>
-                            </CardHeader>
-                            <CardContent>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-lg">
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-500 uppercase mb-4">Program Info</h3>
-                                        <div className="space-y-3">
-                                            <div><span className="text-xs text-slate-400 block">Enrollment No</span> {primaryRecord.enrollmentNo}</div>
-                                            <div><span className="text-xs text-slate-400 block">University</span> {primaryRecord.university}</div>
-                                            <div><span className="text-xs text-slate-400 block">Program</span> {primaryRecord.programName}</div>
-                                            <div><span className="text-xs text-slate-400 block">Start Date</span> {format(new Date(primaryRecord.startDate), 'dd MMM yyyy')}</div>
-                                            <div><span className="text-xs text-slate-400 block">Duration</span> {primaryRecord.durationMonths} Months</div>
+                        {/* Registration View */}
+                        {journeyView === 'registration' && registrationData && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Registration Details</CardTitle>
+                                    <CardDescription>Official registration information</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <RegistrationForm
+                                        initialData={registrationData}
+                                        onSubmit={(data) => updateRegistrationMutation.mutate(data)}
+                                        isLoading={updateRegistrationMutation.isPending}
+                                        isEdit={true}
+                                    />
+                                </CardContent>
+                            </Card>
+                        )}
+
+                        {/* Enrollment View */}
+                        {journeyView === 'enrollment' && isEnrollment(primaryRecord) && (
+                            <Card>
+                                <CardHeader>
+                                    <CardTitle>Enrollment Details</CardTitle>
+                                    <CardDescription>Active program enrollment details</CardDescription>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-slate-50 p-6 rounded-lg">
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-slate-500 uppercase mb-4">Program Info</h3>
+                                            <div className="space-y-3">
+                                                <div><span className="text-xs text-slate-400 block">Enrollment No</span> {primaryRecord.enrollmentNo}</div>
+                                                <div><span className="text-xs text-slate-400 block">University</span> {primaryRecord.university}</div>
+                                                <div><span className="text-xs text-slate-400 block">Program</span> {primaryRecord.programName}</div>
+                                                <div><span className="text-xs text-slate-400 block">Start Date</span> {format(new Date(primaryRecord.startDate), 'dd MMM yyyy')}</div>
+                                                <div><span className="text-xs text-slate-400 block">Duration</span> {primaryRecord.durationMonths} Months</div>
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <h3 className="text-sm font-semibold text-slate-500 uppercase mb-4">Financials</h3>
+                                            <div className="space-y-3">
+                                                <div><span className="text-xs text-slate-400 block">Total Fees</span> <span className="text-lg font-bold text-slate-900">₹{primaryRecord.totalFees.toLocaleString()}</span></div>
+                                                <div><span className="text-xs text-slate-400 block">Payment Type</span> {primaryRecord.paymentType}</div>
+                                            </div>
                                         </div>
                                     </div>
-                                    <div>
-                                        <h3 className="text-sm font-semibold text-slate-500 uppercase mb-4">Financials</h3>
-                                        <div className="space-y-3">
-                                            <div><span className="text-xs text-slate-400 block">Total Fees</span> <span className="text-lg font-bold text-slate-900">₹{primaryRecord.totalFees.toLocaleString()}</span></div>
-                                            <div><span className="text-xs text-slate-400 block">Payment Type</span> {primaryRecord.paymentType}</div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                </CardContent>
+                            </Card>
+                        )}
                     </TabsContent>
                 )}
 
-                {/* DOCUMENTS TAB */}
+                {/* DOCUMENTS TAB - Combined Digital & Physical */}
                 <TabsContent value="documents" className="mt-6">
-                    <DocumentList studentName={studentName} />
+                    <Card>
+                        <CardHeader>
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <CardTitle>Documents</CardTitle>
+                                    <CardDescription>Digital uploads and physical documents held</CardDescription>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => setDocumentView('digital')}
+                                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${documentView === 'digital'
+                                            ? 'bg-blue-600 text-white'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            }`}
+                                    >
+                                        Digital Files
+                                    </button>
+                                    <button
+                                        onClick={() => setDocumentView('physical')}
+                                        className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${documentView === 'physical'
+                                            ? 'bg-yellow-600 text-white'
+                                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                                            }`}
+                                    >
+                                        Physical Docs
+                                    </button>
+                                </div>
+                            </div>
+                        </CardHeader>
+                        <CardContent>
+                            {/* Digital Documents View */}
+                            {documentView === 'digital' && (
+                                <DocumentList
+                                    studentName={studentName}
+                                    registrationId={registrationData?.id ? String(registrationData.id) : undefined}
+                                />
+                            )}
+
+                            {/* Physical Documents View */}
+                            {documentView === 'physical' && (
+                                registrationData ? (
+                                    <div className="space-y-4">
+                                        <div className="flex justify-between items-center mb-4">
+                                            <p className="text-sm text-slate-600">
+                                                {physicalDocs?.filter((d: any) => d.status === 'Held').length || 0} document(s) currently held
+                                            </p>
+                                            <div className="flex gap-2">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => setShowPhysicalDocModal(true)}
+                                                    className="text-teal-600 border-teal-200 hover:bg-teal-50"
+                                                >
+                                                    <Plus size={16} className="mr-2" /> Add Documents
+                                                </Button>
+
+                                                {selectedDocs.length > 0 && (
+                                                    <Button
+                                                        size="sm"
+                                                        onClick={() => returnDocsMutation.mutate(selectedDocs)}
+                                                        disabled={returnDocsMutation.isPending}
+                                                        className="bg-green-600 hover:bg-green-700"
+                                                    >
+                                                        {returnDocsMutation.isPending ? 'Processing...' : `Hand Over ${selectedDocs.length} Document(s)`}
+                                                    </Button>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {physicalDocs && physicalDocs.length > 0 ? (
+                                            <div className="border rounded-lg overflow-hidden">
+                                                {/* Table Content */}
+                                                <table className="w-full">
+                                                    <thead className="bg-slate-50 border-b">
+                                                        <tr>
+                                                            <th className="p-3 text-left text-xs font-semibold text-slate-600">Select</th>
+                                                            <th className="p-3 text-left text-xs font-semibold text-slate-600">Document Name</th>
+                                                            <th className="p-3 text-left text-xs font-semibold text-slate-600">Document Number</th>
+                                                            <th className="p-3 text-left text-xs font-semibold text-slate-600">Status</th>
+                                                            <th className="p-3 text-left text-xs font-semibold text-slate-600">Received Date</th>
+                                                            <th className="p-3 text-left text-xs font-semibold text-slate-600">Remarks</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {physicalDocs.map((doc: any) => (
+                                                            <tr key={doc.id} className="border-b hover:bg-slate-50">
+                                                                <td className="p-3">
+                                                                    {doc.status === 'Held' && (
+                                                                        <Checkbox
+                                                                            checked={selectedDocs.includes(doc.id)}
+                                                                            onCheckedChange={(checked) => {
+                                                                                if (checked) {
+                                                                                    setSelectedDocs([...selectedDocs, doc.id]);
+                                                                                } else {
+                                                                                    setSelectedDocs(selectedDocs.filter((id: number) => id !== doc.id));
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    )}
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <span className="text-sm font-medium text-slate-900">{doc.name}</span>
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <span className="text-sm text-slate-600">{doc.document_number || '-'}</span>
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <span className={`inline-flex px-2 py-1 rounded-full text-xs font-semibold ${doc.status === 'Held' ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'
+                                                                        }`}>
+                                                                        {doc.status}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <span className="text-sm text-slate-600">
+                                                                        {doc.received_at ? format(new Date(doc.received_at), 'dd MMM yyyy') : '-'}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="p-3">
+                                                                    <span className="text-sm text-slate-500">{doc.remarks || '-'}</span>
+                                                                </td>
+                                                            </tr>
+                                                        ))}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        ) : (
+                                            <div className="text-center py-12 border border-dashed rounded-lg">
+                                                <FileText className="mx-auto h-12 w-12 text-slate-300" />
+                                                <p className="mt-4 text-sm text-slate-500">No physical documents on record</p>
+                                                <Button
+                                                    variant="link"
+                                                    onClick={() => setShowPhysicalDocModal(true)}
+                                                    className="mt-2 text-teal-600"
+                                                >
+                                                    Add your first document
+                                                </Button>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="text-center py-12">
+                                        <p className="text-sm text-slate-500">Registration required to view physical documents</p>
+                                    </div>
+                                )
+                            )}
+                        </CardContent>
+                    </Card>
                 </TabsContent>
 
                 {/* PAYMENTS TAB */}
@@ -300,6 +627,20 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
                 </TabsContent>
 
             </Tabs>
+
+            {/* Render Modal */}
+            {registrationData && (
+                <PhysicalDocumentModal
+                    open={showPhysicalDocModal}
+                    onClose={() => setShowPhysicalDocModal(false)}
+                    registrationId={Number(registrationData.id)}
+                    onSuccess={() => {
+                        queryClient.invalidateQueries({ queryKey: ['student-documents'] });
+                        queryClient.invalidateQueries({ queryKey: ['registration'] });
+                        queryClient.invalidateQueries({ queryKey: ['registrations'] });
+                    }}
+                />
+            )}
         </div>
     );
 }
