@@ -22,9 +22,18 @@ export function DocumentList({ studentName, registrationId }: DocumentListProps)
         queryFn: apiClient.documents.list,
     });
 
-    const studentDocs = documents?.filter(d =>
-        d.studentName?.toLowerCase() === studentName.toLowerCase()
-    ) || [];
+    const studentDocs = documents?.filter(d => {
+        // 1. If we have registrationId, prioritize that match (strongest link)
+        if (registrationId && d.registration && String(d.registration) === String(registrationId)) {
+            return true;
+        }
+
+        // 2. Fallback to name match (weak link, but needed for non-registration docs or legacy)
+        const docName = d.studentName?.trim().toLowerCase() || '';
+        const targetName = studentName.trim().toLowerCase();
+
+        return docName === targetName;
+    }) || [];
 
     const handleUploadSuccess = () => {
         queryClient.invalidateQueries({ queryKey: ['documents'] });

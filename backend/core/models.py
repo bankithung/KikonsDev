@@ -284,12 +284,6 @@ class Commission(models.Model):
     enrollment_date = models.DateTimeField(auto_now_add=True)
     company_id = models.CharField(max_length=100, default='')
 
-class Refund(models.Model):
-    student = models.ForeignKey(Registration, on_delete=models.CASCADE)
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
-    reason = models.TextField()
-    status = models.CharField(max_length=20, default='Pending')
-    company_id = models.CharField(max_length=100, default='')
 
 class LeadSource(models.Model):
     name = models.CharField(max_length=100)
@@ -343,9 +337,31 @@ class FollowUp(models.Model):
         ('High', 'High'), ('Medium', 'Medium'), ('Low', 'Low')
     ))
     notes = models.TextField(blank=True)
-    assigned_to = models.CharField(max_length=255)
+    assigned_to = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='assigned_followups')
     company_id = models.CharField(max_length=100, default='')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_followups')
+    
+    @property
+    def student_name(self):
+        return self.enquiry.candidate_name if self.enquiry else '-'
+
+class FollowUpComment(models.Model):
+    followup = models.ForeignKey(FollowUp, on_delete=models.CASCADE, related_name='comments')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    comment = models.TextField()
+    is_completion_comment = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    company_id = models.CharField(max_length=100, default='')
+    parent_comment = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    
+    class Meta:
+        ordering = ['created_at']
+    
+    def __str__(self):
+        return f"Comment by {self.user.username if self.user else 'Unknown'} on {self.followup.id}"
 
 class ChatConversation(models.Model):
     participants = models.ManyToManyField(User, related_name='conversations')
@@ -461,3 +477,64 @@ class Company(models.Model):
 
     def __str__(self):
         return self.name
+
+class ActivityLog(models.Model):
+    ACTION_TYPES = (
+        ('login', 'Login'),
+        ('logout', 'Logout'),
+        ('create_enquiry', 'Create Enquiry'),
+        ('update_enquiry', 'Update Enquiry'),
+        ('create_registration', 'Create Registration'),
+        ('update_registration', 'Update Registration'),
+        ('create_follow_up', 'Create Follow-up'),
+        ('complete_follow_up', 'Complete Follow-up'),
+        ('create_task', 'Create Task'),
+        ('complete_task', 'Complete Task'),
+        ('add_payment', 'Add Payment'),
+        ('other', 'Other'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
+    action_type = models.CharField(max_length=50, choices=ACTION_TYPES)
+    description = models.TextField()
+    metadata = models.JSONField(default=dict, blank=True)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    company_id = models.CharField(max_length=100, default='')
+    
+    class Meta:
+        ordering = ['-timestamp']
+        indexes = [
+            models.Index(fields=['user', '-timestamp']),
+            models.Index(fields=['company_id', '-timestamp']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.action_type} at {self.timestamp}"
+
+class Earning(models.Model):
+    SOURCE_TYPES = (
+        ('registration', 'Registration'),
+        ('payment', 'Payment'),
+        ('referral', 'Referral'),
+        ('bonus', 'Bonus'),
+        ('other', 'Other'),
+    )
+    
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='earnings')
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    source_type = models.CharField(max_length=50, choices=SOURCE_TYPES)
+    source_id = models.CharField(max_length=100, blank=True)  # ID of the source record
+    description = models.TextField()
+    date = models.DateTimeField(auto_now_add=True)
+    company_id = models.CharField(max_length=100, default='')
+    
+    class Meta:
+        ordering = ['-date']
+        indexes = [
+            models.Index(fields=['user', '-date']),
+            models.Index(fields=['company_id', '-date']),
+        ]
+    
+    def __str__(self):
+        return f"{self.user.username} - {self.amount} from {self.source_type}"

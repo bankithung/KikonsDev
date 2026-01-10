@@ -162,6 +162,7 @@ export interface StudentDocument {
 export interface Document {
   id: string;
   fileName: string;
+  description?: string;
   type: string;
   status: 'IN' | 'OUT';
   uploadedBy: string;
@@ -170,6 +171,7 @@ export interface Document {
   currentHolderName?: string;
   uploadedAt: string; // ISO
   studentName?: string; // Associated student
+  registration?: number; // Registration ID
   registrationNo?: string;
   file?: string;
   expiryDate?: string;
@@ -196,6 +198,13 @@ export interface Payment {
   amount: number;
   status: 'Success' | 'Pending' | 'Failed';
   method: 'Cash' | 'Card' | 'UPI' | 'Other';
+  refunds?: {
+    id: number;
+    amount: number;
+    status: 'Pending' | 'Approved' | 'Rejected';
+    reason: string;
+    refund_method: string;
+  }[];
 }
 
 
@@ -237,11 +246,27 @@ export interface Task {
   description?: string;
   assigned_to?: number;
   assigned_to_name?: string;
+  assignedTo?: number; // Mapped for frontend
   due_date?: string;
-  status: 'Pending' | 'In Progress' | 'Completed';
+  dueDate?: string;     // Mapped for frontend
+  status: 'Todo' | 'In Progress' | 'Done' | 'Pending' | 'Completed';
   priority: 'Low' | 'Medium' | 'High';
   registration?: number;
   created_at: string;
+}
+
+export interface FollowUpComment {
+  id: string;
+  followup: string;
+  user: number;
+  user_name: string;
+  user_email: string;
+  comment: string;
+  is_completion_comment: boolean;
+  created_at: string;
+  updated_at: string;
+  company_id: string;
+  parent_comment: string | null;
 }
 
 export interface DocumentTransfer {
@@ -255,4 +280,19 @@ export interface DocumentTransfer {
   transferred_at: string;
   status: 'Pending' | 'Accepted' | 'Rejected';
   notes?: string;
+}
+
+export interface Appointment {
+  id: string;
+  studentName: string;
+  studentEmail: string;
+  counselor: number; // User ID
+  counselor_name?: string;
+  date: string; // ISO date or YYYY-MM-DD
+  time: string; // HH:MM
+  duration: number;
+  type: 'In-Person' | 'Video Call' | 'Phone Call';
+  status: 'Scheduled' | 'Completed' | 'Cancelled';
+  notes?: string;
+  company_id?: string;
 }

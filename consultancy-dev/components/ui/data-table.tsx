@@ -6,7 +6,7 @@ import { Input } from './input';
 import { Button } from './button';
 import { cn } from '@/lib/utils';
 
-interface Column<T> {
+export interface Column<T> {
   header: string;
   accessorKey?: keyof T;
   cell?: (item: T) => React.ReactNode;
@@ -22,10 +22,10 @@ interface DataTableProps<T> {
   action?: React.ReactNode;
 }
 
-export function DataTable<T extends { id: string | number }>({ 
-  data, 
-  columns, 
-  searchKey, 
+export function DataTable<T extends { id: string | number }>({
+  data,
+  columns,
+  searchKey,
   onRowClick,
   title,
   action
@@ -55,7 +55,7 @@ export function DataTable<T extends { id: string | number }>({
     <div className="space-y-4">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         {title && <h2 className="text-lg font-semibold text-foreground">{title}</h2>}
-        
+
         <div className="flex items-center gap-2 w-full sm:w-auto">
           {searchKey && (
             <div className="relative w-full sm:w-64">
@@ -87,8 +87,8 @@ export function DataTable<T extends { id: string | number }>({
             <tbody className="divide-y divide-border">
               {paginatedData.length > 0 ? (
                 paginatedData.map((item) => (
-                  <tr 
-                    key={item.id} 
+                  <tr
+                    key={item.id}
                     onClick={() => onRowClick?.(item)}
                     className={cn(
                       "hover:bg-muted/50 transition-colors",
@@ -115,7 +115,7 @@ export function DataTable<T extends { id: string | number }>({
       </div>
 
       {totalPages > 1 && (
-        <div className="flex items-center justify-end space-x-2">
+        <div className="flex items-center justify-center space-x-2">
           <Button
             variant="outline"
             size="sm"

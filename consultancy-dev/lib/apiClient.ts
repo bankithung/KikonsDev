@@ -611,8 +611,18 @@ export const apiClient = {
       return res.data.map((a: any) => ({
         ...a,
         studentName: a.student_name,
-        studentEmail: a.student_email
+        studentEmail: a.student_email,
+        counselorName: a.counselor_name
       }));
+    },
+    get: async (id: number) => {
+      const res = await api.get(`appointments/${id}/`);
+      return {
+        ...res.data,
+        studentName: res.data.student_name,
+        studentEmail: res.data.student_email,
+        counselorName: res.data.counselor_name
+      };
     },
     create: async (data: any) => {
       const payload = {
@@ -624,7 +634,8 @@ export const apiClient = {
       return {
         ...res.data,
         studentName: res.data.student_name,
-        studentEmail: res.data.student_email
+        studentEmail: res.data.student_email,
+        counselorName: res.data.counselor_name
       };
     },
     update: async (id: string, data: any) => {
@@ -637,7 +648,8 @@ export const apiClient = {
       return {
         ...res.data,
         studentName: res.data.student_name,
-        studentEmail: res.data.student_email
+        studentEmail: res.data.student_email,
+        counselorName: res.data.counselor_name
       };
     },
     delete: async (id: string) => {
@@ -651,7 +663,8 @@ export const apiClient = {
       return res.data.map((a: any) => ({
         ...a,
         studentName: a.student_name,
-        studentEmail: a.student_email
+        studentEmail: a.student_email,
+        counselorName: a.counselor_name
       }));
     }
   },
@@ -842,17 +855,6 @@ export const apiClient = {
     }
   },
 
-  // NEW: Refunds
-  refunds: {
-    list: async () => {
-      const res = await api.get('refunds/');
-      return res.data;
-    },
-    create: async (data: any) => {
-      const res = await api.post('refunds/', data);
-      return res.data;
-    }
-  },
 
   // NEW: Lead Sources
   leadSources: {
@@ -939,14 +941,28 @@ export const apiClient = {
         enquiryId: f.enquiry,
         scheduledFor: f.scheduled_for,
         assignedTo: f.assigned_to,
+        assignedToName: f.assigned_to_name,
+        assignedToEmail: f.assigned_to_email,
         studentName: f.student_name || ''
       }));
+    },
+    getDetails: async (id: string) => {
+      const res = await api.get(`follow-ups/${id}/`);
+      return {
+        ...res.data,
+        enquiryId: res.data.enquiry,
+        scheduledFor: res.data.scheduled_for,
+        assignedTo: res.data.assigned_to,
+        assignedToName: res.data.assigned_to_name,
+        studentName: res.data.student_name,
+        comments: res.data.comments || []
+      };
     },
     create: async (data: any) => {
       const payload = {
         ...data,
         scheduled_for: data.scheduledFor,
-        assigned_to: data.assignedTo,
+        assigned_to_id: data.assignedToId,
         student_name: data.studentName
       };
       const res = await api.post('follow-ups/', payload);
@@ -956,12 +972,42 @@ export const apiClient = {
       const payload = {
         ...data,
         scheduled_for: data.scheduledFor,
-        assigned_to: data.assignedTo,
+        assigned_to_id: data.assignedToId,
         student_name: data.studentName
       };
       const res = await api.patch(`follow-ups/${id}/`, payload);
       return res.data;
+    },
+    completeWithComment: async (id: string, comment: string) => {
+      const res = await api.post(`follow-ups/${id}/complete_with_comment/`, { comment });
+      return res.data;
+    },
+    addComment: async (followupId: string, comment: string, parentCommentId?: string) => {
+      const res = await api.post('followup-comments/', {
+        followup: followupId,
+        comment,
+        parent_comment: parentCommentId || null
+      });
+      return res.data;
+    },
+    updateComment: async (commentId: string, comment: string) => {
+      const res = await api.patch(`followup-comments/${commentId}/`, { comment });
+      return res.data;
+    },
+    deleteComment: async (commentId: string) => {
+      const res = await api.delete(`followup-comments/${commentId}/`);
+      return res.data;
+    },
+    getComments: async (followupId: string) => {
+      const res = await api.get(`followup-comments/?followup=${followupId}`);
+      return res.data;
     }
+  },
+
+  // Company Users
+  getCompanyUsers: async () => {
+    const res = await api.get('users/company-users/');
+    return res.data;
   },
 
   // NEW: Chat System

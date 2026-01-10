@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
 import { AppShell } from '@/components/layout/AppShell';
+import { useUpcomingReminders } from '@/hooks/useUpcomingReminders';
 
 export default function ProtectedLayout({
   children,
@@ -13,6 +14,9 @@ export default function ProtectedLayout({
   const { isAuthenticated, checkAuth } = useAuthStore();
   const router = useRouter();
   const [isChecking, setIsChecking] = useState(true);
+
+  // Enable upcoming reminders for logged-in users
+  useUpcomingReminders();
 
   useEffect(() => {
     const initAuth = async () => {

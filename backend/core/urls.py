@@ -9,7 +9,7 @@ from .views import (
     VisaTrackingViewSet, FollowUpViewSet, InstallmentViewSet,
     AgentViewSet, ChatConversationViewSet, ChatMessageViewSet,
     GroupChatViewSet, SignupRequestViewSet, ApprovalRequestViewSet,
-    CompanyViewSet
+    CompanyViewSet, FollowUpCommentViewSet
 )
 from .earnings_view import EarningsRevenueView
 
@@ -33,7 +33,9 @@ router.register(r'refunds', RefundViewSet)
 router.register(r'lead-sources', LeadSourceViewSet)
 router.register(r'visa-tracking', VisaTrackingViewSet)
 router.register(r'follow-ups', FollowUpViewSet)
+router.register(r'followup-comments', FollowUpCommentViewSet)
 
+# Chat
 # New endpoints
 router.register(r'agents', AgentViewSet)
 router.register(r'chat-conversations', ChatConversationViewSet)

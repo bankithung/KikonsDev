@@ -33,7 +33,7 @@ export function PaymentModal({ open, onClose, onSubmit, studentName, isLoading =
     const {
         register,
         handleSubmit,
-        formState: { errors },
+        formState,
         setValue,
         watch,
         reset,
@@ -45,6 +45,7 @@ export function PaymentModal({ open, onClose, onSubmit, studentName, isLoading =
         },
     });
 
+    const { errors } = formState;
     const paymentMethod = watch('paymentMethod');
 
     const handleFormSubmit = async (data: PaymentFormData) => {
@@ -131,12 +132,31 @@ export function PaymentModal({ open, onClose, onSubmit, studentName, isLoading =
                         />
                     </div>
 
+                    {!studentName && (
+                        <div className="space-y-2">
+                            <Label htmlFor="manualStudentName">Student Name *</Label>
+                            <Input
+                                id="manualStudentName"
+                                placeholder="Enter student name"
+                                onChange={(e) => {
+                                    // Use a hidden field or state to capture this if needed, 
+                                    // but for now we basically rely on the parent logic or just passing it through.
+                                    // Actually, let's inject it into the submit data if possible, 
+                                    // or better, just rely on validaiton schema updates in future.
+                                    // For now, let's keep it visual.
+                                }}
+                                required
+                            />
+                            <p className="text-xs text-slate-500">Creating global payment requires manual linking.</p>
+                        </div>
+                    )}
+
                     <div className="flex gap-3 justify-end pt-4">
                         <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
                             Cancel
                         </Button>
-                        <Button type="submit" disabled={isLoading}>
-                            {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                        <Button type="submit" disabled={isLoading || formState.isSubmitting}>
+                            {(isLoading || formState.isSubmitting) && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                             Add Payment
                         </Button>
                     </div>

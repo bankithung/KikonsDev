@@ -119,7 +119,7 @@ class LeadSourceAdmin(admin.ModelAdmin):
 
 @admin.register(Refund)
 class RefundAdmin(admin.ModelAdmin):
-    list_display = ('student', 'amount', 'status', 'company_id')
+    list_display = ('student_name', 'amount', 'status', 'payment', 'company_id')
     list_filter = ('status',)
 
 

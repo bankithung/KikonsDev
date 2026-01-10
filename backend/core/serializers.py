@@ -2,9 +2,9 @@ from rest_framework import serializers
 from .models import (
     User, Enquiry, Registration, Enrollment, Payment, Document, 
     StudentDocument, DocumentTransfer, Task, Appointment, University, Template,
-    Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp,
+    Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp, FollowUpComment,
     Installment, Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest,
-    ApprovalRequest, Company
+    ApprovalRequest, Company, ActivityLog, Earning
 )
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -17,7 +17,7 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_id', 'avatar', 'password']
+        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_id', 'avatar', 'password', 'is_active']
         extra_kwargs = {
             'password': {'write_only': True},
             'company_id': {'read_only': True}
@@ -183,16 +183,15 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         return enrollment
 
 class PaymentSerializer(serializers.ModelSerializer):
-    # TODO: Re-enable after Refund migration is applied
-    # refunds = serializers.SerializerMethodField()
+    refunds = serializers.SerializerMethodField()
     
     class Meta:
         model = Payment
         fields = '__all__'
     
-    # def get_refunds(self, obj):
-    #     refunds = obj.refunds.all()
-    #     return RefundSerializer(refunds, many=True).data if refunds.exists() else []
+    def get_refunds(self, obj):
+        refunds = obj.refunds.all()
+        return RefundSerializer(refunds, many=True).data if refunds.exists() else []
 
 class RefundSerializer(serializers.ModelSerializer):
     payment_details = serializers.SerializerMethodField()
@@ -201,6 +200,9 @@ class RefundSerializer(serializers.ModelSerializer):
     class Meta:
         model = Refund
         fields = '__all__'
+        extra_kwargs = {
+            'company_id': {'read_only': True}
+        }
     
     def get_payment_details(self, obj):
         return {
@@ -209,6 +211,12 @@ class RefundSerializer(serializers.ModelSerializer):
             'method': obj.payment.method,
             'student_name': obj.payment.student_name
         }
+
+    def validate(self, data):
+        payment = data.get('payment')
+        if payment and Refund.objects.filter(payment=payment).exclude(status='Rejected').exists():
+            raise serializers.ValidationError("A refund request already exists for this payment.")
+        return data
 
 class DocumentTransferSerializer(serializers.ModelSerializer):
     sender = serializers.PrimaryKeyRelatedField(read_only=True)
@@ -232,9 +240,32 @@ class TaskSerializer(serializers.ModelSerializer):
         }
 
 class AppointmentSerializer(serializers.ModelSerializer):
+    counselor_name = serializers.SerializerMethodField()
+
+    def get_counselor_name(self, obj):
+        return obj.counselor.username if obj.counselor else '-'
+
     class Meta:
         model = Appointment
         fields = '__all__'
+
+class ActivityLogSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = ActivityLog
+        fields = ['id', 'user', 'user_name', 'action_type', 'description', 'metadata', 
+                  'ip_address', 'timestamp', 'company_id']
+        read_only_fields = ('user', 'company_id', 'timestamp')
+
+class EarningSerializer(serializers.ModelSerializer):
+    user_name = serializers.CharField(source='user.username', read_only=True)
+    
+    class Meta:
+        model = Earning
+        fields = ['id', 'user', 'user_name', 'amount', 'source_type', 'source_id', 
+                  'description', 'date', 'company_id']
+        read_only_fields = ('user', 'company_id', 'date')
 
 class UniversitySerializer(serializers.ModelSerializer):
     class Meta:
@@ -253,23 +284,58 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class FollowUpSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
+    assigned_to_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    assigned_to_name = serializers.SerializerMethodField()
+    assigned_to_email = serializers.SerializerMethodField()
+    student_name = serializers.SerializerMethodField()
+    comments = serializers.SerializerMethodField()
 
     def get_created_by_name(self, obj):
         return obj.created_by.username if obj.created_by else '-'
+    
+    def get_assigned_to_name(self, obj):
+        return obj.assigned_to.username if obj.assigned_to else '-'
+    
+    def get_assigned_to_email(self, obj):
+        return obj.assigned_to.email if obj.assigned_to else '-'
+    
+    def get_student_name(self, obj):
+        return obj.enquiry.candidate_name if obj.enquiry else '-'
+    
+    def get_comments(self, obj):
+        # Only include comments in detail view
+        if self.context.get('include_comments', False):
+            from .models import FollowUpComment
+            comments = obj.comments.all()
+            return FollowUpCommentSerializer(comments, many=True).data
+        return []
 
     class Meta:
         model = FollowUp
         fields = '__all__'
+        read_only_fields = ('created_by',)
+
+class FollowUpCommentSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    user_email = serializers.SerializerMethodField()
+    
+    def get_user_name(self, obj):
+        return obj.user.username if obj.user else 'Unknown'
+    
+    def get_user_email(self, obj):
+        return obj.user.email if obj.user else ''
+    
+    class Meta:
+        model = FollowUpComment
+        fields = ['id', 'followup', 'user', 'user_name', 'user_email', 'comment', 
+                  'is_completion_comment', 'created_at', 'updated_at', 'company_id', 'parent_comment']
+        read_only_fields = ('user', 'company_id', 'is_completion_comment', 'user_name', 'user_email')
 
 class CommissionSerializer(serializers.ModelSerializer):
     class Meta:
         model = Commission
         fields = '__all__'
 
-class RefundSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Refund
-        fields = '__all__'
 
 class LeadSourceSerializer(serializers.ModelSerializer):
     class Meta:

@@ -9,7 +9,7 @@ from asgiref.sync import async_to_sync
 from .models import (
     Enquiry, Registration, Enrollment, Payment,
     Document, Task, Appointment, Notification,
-    FollowUp, User
+    FollowUp, User, ActivityLog, Earning
 )
 
 
@@ -74,6 +74,28 @@ def enquiry_deleted(sender, instance, **kwargs):
 def registration_saved(sender, instance, created, **kwargs):
     """Broadcast when registration is created or updated"""
     action = 'created' if created else 'updated'
+    # Create Activity Log and Earning
+    if created and instance.created_by:
+        ActivityLog.objects.create(
+            user=instance.created_by,
+            action_type="CREATE",
+            description=f"Created new registration for {instance.student_name}",
+            company_id=instance.created_by.company_id
+        )
+        # Add Commission Earning (Registration Fee)
+        # Check if registration_fee is valid
+        reg_fee = instance.registration_fee if instance.registration_fee else 0
+        if reg_fee > 0:
+            Earning.objects.create(
+                user=instance.created_by,
+                amount=reg_fee,
+                source_type="registration",
+                source_id=str(instance.id),
+                description=f"Registration Fee: {instance.student_name}",
+                date=instance.created_at.date() if hasattr(instance, 'created_at') else None,
+                company_id=instance.created_by.company_id
+            )
+
     broadcast_event('registration', action, instance, company_id=None)
 
 
@@ -88,6 +110,27 @@ def registration_deleted(sender, instance, **kwargs):
 def enrollment_saved(sender, instance, created, **kwargs):
     """Broadcast when enrollment is created or updated"""
     action = 'created' if created else 'updated'
+    # Create Activity Log and Earning
+    if created and instance.created_by:
+        ActivityLog.objects.create(
+            user=instance.created_by,
+            action_type="CREATE",
+            description=f"Enrolled student: {instance.student.student_name} in {instance.program_name}",
+            company_id=instance.created_by.company_id
+        )
+        # Add Commission Earning
+        comm_amt = instance.commission_amount if instance.commission_amount else 0
+        if comm_amt > 0:
+            Earning.objects.create(
+                user=instance.created_by,
+                amount=comm_amt,
+                source_type="enrollment",
+                source_id=str(instance.id),
+                description=f"Commission for enrollment: {instance.student.student_name}",
+                date=instance.start_date,
+                company_id=instance.created_by.company_id
+            )
+
     broadcast_event('enrollment', action, instance, company_id=None)
 
 
@@ -130,6 +173,22 @@ def document_deleted(sender, instance, **kwargs):
 def task_saved(sender, instance, created, **kwargs):
     """Broadcast when task is created or updated"""
     action = 'created' if created else 'updated'
+    # Create Activity Log
+    if created and instance.assigned_to:
+        ActivityLog.objects.create(
+            user=instance.assigned_to,
+            action_type="TASK_ASSIGNED",
+            description=f"New task assigned: {instance.title}",
+            company_id=instance.company_id
+        )
+    elif not created:
+         ActivityLog.objects.create(
+            user=instance.assigned_to,
+            action_type="TASK_UPDATE",
+            description=f"Task updated: {instance.title} (Status: {instance.status})",
+            company_id=instance.company_id
+        )
+
     broadcast_event('task', action, instance, company_id=None)
 
 

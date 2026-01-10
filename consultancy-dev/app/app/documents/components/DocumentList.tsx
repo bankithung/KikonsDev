@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
-import { Upload, FileText, Search, CheckCircle, ArrowRightLeft, Printer, Filter } from 'lucide-react';
+import { Upload, FileText, Search, CheckCircle, ArrowRightLeft, Printer, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Document } from '@/lib/types';
 import { format } from 'date-fns';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -18,6 +18,8 @@ export function DocumentList() {
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedRegistrationId, setSelectedRegistrationId] = useState<string>('');
     const [studentSearch, setStudentSearch] = useState('');
+    const [currentPage, setCurrentPage] = useState(0);
+    const PAGE_SIZE = 10;
 
     const { data: documents, isLoading } = useQuery({
         queryKey: ['documents'],
@@ -46,108 +48,137 @@ export function DocumentList() {
     const filteredDocs = documents?.filter(doc =>
         doc.fileName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         doc.studentName?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    ) || [];
+
+    const totalDocs = filteredDocs.length;
+    const paginatedDocs = filteredDocs.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+    const hasNext = (currentPage + 1) * PAGE_SIZE < totalDocs;
+    const hasPrev = currentPage > 0;
 
     return (
         <div className="space-y-6">
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h2 className="text-xl font-semibold text-slate-900">All Documents</h2>
-                    <p className="text-sm text-slate-600 mt-1">Upload and manage student documents</p>
-                </div>
-                <Button variant="outline" size="sm" className="h-9 hidden sm:inline-flex">
-                    <Filter className="mr-2 h-4 w-4" /> Filters
-                </Button>
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                {/* Left: Document List (Takes 2 cols on desktop) */}
-                <div className="lg:col-span-2 flex flex-col space-y-4">
-                    <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                        <Input
-                            placeholder="Search documents or students..."
-                            className="pl-10 h-11 border-slate-300"
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                        />
+            <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+                {/* Main Content: Document List (Takes 3 cols on desktop) */}
+                <div className="lg:col-span-3 space-y-4">
+                    <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-2 rounded-xl border border-slate-200 shadow-sm">
+                        <div className="relative flex-1 w-full">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                            <Input
+                                placeholder="Search documents or student names..."
+                                className="pl-10 h-10 border-none bg-transparent focus-visible:ring-0 shadow-none text-sm"
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2 pr-2">
+                            <span className="text-xs text-slate-400 font-medium mr-2 whitespace-nowrap">
+                                {totalDocs} total files
+                            </span>
+                            <div className="flex items-center gap-1 border-l border-slate-100 pl-4">
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-slate-100 rounded-lg"
+                                    disabled={!hasPrev}
+                                    onClick={() => setCurrentPage(p => p - 1)}
+                                >
+                                    <ChevronLeft size={16} className="text-slate-600" />
+                                </Button>
+                                <span className="text-[12px] font-bold text-slate-700 min-w-[16px] text-center">
+                                    {currentPage + 1}
+                                </span>
+                                <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-8 w-8 hover:bg-slate-100 rounded-lg"
+                                    disabled={!hasNext}
+                                    onClick={() => setCurrentPage(p => p + 1)}
+                                >
+                                    <ChevronRight size={16} className="text-slate-600" />
+                                </Button>
+                            </div>
+                        </div>
                     </div>
 
-                    <Card className="border-slate-200 flex-1">
-                        <CardHeader className="pb-3">
-                            <div className="flex items-center justify-between">
-                                <CardTitle className="text-lg font-semibold">All Documents</CardTitle>
-                                <span className="text-sm text-slate-500">{filteredDocs?.length || 0} files</span>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="p-0">
-                            {isLoading ? (
-                                <div className="p-8 text-center text-slate-500">Loading...</div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full text-sm text-left">
-                                        <thead className="bg-slate-50 text-slate-600 font-semibold text-xs uppercase tracking-wider">
-                                            <tr>
-                                                <th className="px-4 py-3">File</th>
-                                                <th className="px-4 py-3 hidden md:table-cell">Student</th>
-                                                <th className="px-4 py-3 hidden sm:table-cell">Type</th>
-                                                <th className="px-4 py-3">Status</th>
-                                                <th className="px-4 py-3 hidden lg:table-cell">Date</th>
-                                                <th className="px-4 py-3 hidden xl:table-cell">Uploaded By</th>
-                                                <th className="px-4 py-3 hidden xl:table-cell">Current Holder</th>
-                                                <th className="px-4 py-3">Action</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-slate-100">
-                                            {filteredDocs?.map((doc) => (
-                                                <tr key={doc.id} className="hover:bg-slate-50 transition-colors">
-                                                    <td className="px-4 py-3">
-                                                        <div className="flex items-center gap-2">
-                                                            <FileText size={16} className="text-teal-500 shrink-0" />
-                                                            <span className="font-medium text-slate-900 truncate">{doc.fileName}</span>
-                                                        </div>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-slate-600 hidden md:table-cell">{doc.studentName || '-'}</td>
-                                                    <td className="px-4 py-3 text-slate-600 hidden sm:table-cell">{doc.type}</td>
-                                                    <td className="px-4 py-3">
-                                                        <span className={`inline-flex px-2.5 py-1 rounded-full text-xs font-semibold ${doc.status === 'IN' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'
-                                                            }`}>
-                                                            {doc.status}
-                                                        </span>
-                                                    </td>
-                                                    <td className="px-4 py-3 text-slate-500 text-xs hidden lg:table-cell">
-                                                        {format(new Date(doc.uploadedAt), 'dd MMM')}
-                                                    </td>
-                                                    <td className="px-4 py-3 text-slate-600 hidden xl:table-cell">{doc.uploadedByName || '-'}</td>
-                                                    <td className="px-4 py-3 text-slate-600 hidden xl:table-cell">{doc.currentHolderName || '-'}</td>
-                                                    <td className="px-4 py-3">
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="sm"
-                                                            className="h-8 w-8 p-0"
-                                                            onClick={() => {
-                                                                const newStatus = doc.status === 'IN' ? 'OUT' : 'IN';
-                                                                toggleStatusMutation.mutate({ id: doc.id, status: newStatus });
-                                                            }}
-                                                            title="Toggle Status"
-                                                        >
-                                                            <ArrowRightLeft size={14} />
-                                                        </Button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                            {filteredDocs?.length === 0 && (
-                                                <tr>
-                                                    <td colSpan={6} className="p-8 text-center text-slate-500">No documents found.</td>
-                                                </tr>
-                                            )}
-                                        </tbody>
-                                    </table>
+                    <div className="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                        {isLoading ? (
+                            <div className="p-12 text-center">
+                                <div className="space-y-3">
+                                    <div className="h-6 w-32 bg-slate-100 animate-pulse mx-auto rounded"></div>
+                                    <div className="h-4 w-48 bg-slate-50 animate-pulse mx-auto rounded"></div>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            </div>
+                        ) : (
+                            <div className="overflow-x-auto">
+                                <table className="w-full text-sm text-left border-collapse">
+                                    <thead>
+                                        <tr className="border-b border-slate-100 bg-slate-50/50">
+                                            <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">File Name</th>
+                                            <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest hidden md:table-cell">Student</th>
+                                            <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
+                                            <th className="px-6 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest hidden lg:table-cell">Uploaded At</th>
+                                            <th className="px-4 py-4 text-[11px] font-bold text-slate-500 uppercase tracking-widest text-center">Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-50">
+                                        {paginatedDocs.map((doc) => (
+                                            <tr key={doc.id} className="hover:bg-slate-50/80 transition-all group">
+                                                <td className="px-6 py-4">
+                                                    <div className="flex items-center gap-3">
+                                                        <div className="h-9 w-9 bg-teal-50 text-teal-600 rounded-lg flex items-center justify-center shrink-0">
+                                                            <FileText size={18} />
+                                                        </div>
+                                                        <div className="flex flex-col min-w-0">
+                                                            <span className="font-semibold text-slate-900 truncate max-w-[200px]">{doc.fileName}</span>
+                                                            <span className="text-[11px] text-slate-400 capitalize md:hidden">{doc.studentName}</span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td className="px-6 py-4 hidden md:table-cell">
+                                                    <span className="text-slate-600 font-medium">{doc.studentName || '-'}</span>
+                                                </td>
+                                                <td className="px-6 py-4">
+                                                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ring-1 ring-inset ${doc.status === 'IN'
+                                                            ? 'bg-green-50 text-green-700 ring-green-600/20'
+                                                            : 'bg-amber-50 text-amber-700 ring-amber-600/20'
+                                                        }`}>
+                                                        <div className={`h-1.5 w-1.5 rounded-full ${doc.status === 'IN' ? 'bg-green-600' : 'bg-amber-600'}`} />
+                                                        {doc.status}
+                                                    </span>
+                                                </td>
+                                                <td className="px-6 py-4 hidden lg:table-cell">
+                                                    <span className="text-slate-500 text-[12px]">{format(new Date(doc.uploadedAt), 'MMM dd, yyyy')}</span>
+                                                </td>
+                                                <td className="px-4 py-4 text-center">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        className="h-8 w-8 p-0 hover:bg-teal-50 hover:text-teal-600 rounded-lg transition-colors"
+                                                        onClick={() => {
+                                                            const newStatus = doc.status === 'IN' ? 'OUT' : 'IN';
+                                                            toggleStatusMutation.mutate({ id: doc.id, status: newStatus });
+                                                        }}
+                                                    >
+                                                        <ArrowRightLeft size={16} />
+                                                    </Button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                        {paginatedDocs.length === 0 && (
+                                            <tr>
+                                                <td colSpan={5} className="p-16 text-center">
+                                                    <div className="flex flex-col items-center gap-2">
+                                                        <Search className="h-8 w-8 text-slate-200" />
+                                                        <p className="text-slate-400 font-medium">No documents found matching your search</p>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        )}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Right: Uploader (Sticky on desktop) */}

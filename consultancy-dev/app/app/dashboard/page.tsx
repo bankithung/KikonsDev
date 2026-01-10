@@ -20,7 +20,7 @@ import {
     AlertCircle
 } from 'lucide-react';
 import Link from 'next/link';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { cn } from '@/lib/utils';
 
 export default function DashboardPage() {
@@ -225,7 +225,13 @@ export default function DashboardPage() {
                         <CardContent>
                             <div className="h-[240px] sm:h-[280px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <LineChart data={revenueData}>
+                                    <AreaChart data={revenueData}>
+                                        <defs>
+                                            <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#0d9488" stopOpacity={0.2} />
+                                                <stop offset="95%" stopColor="#0d9488" stopOpacity={0} />
+                                            </linearGradient>
+                                        </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                         <XAxis
                                             dataKey="month"
@@ -239,7 +245,7 @@ export default function DashboardPage() {
                                             axisLine={false}
                                             fontSize={12}
                                             tick={{ fill: '#64748b' }}
-                                            tickFormatter={(value) => `$${value / 1000}k`}
+                                            tickFormatter={(value) => `₹${value / 1000}k`}
                                         />
                                         <Tooltip
                                             contentStyle={{
@@ -249,17 +255,18 @@ export default function DashboardPage() {
                                                 fontSize: '12px',
                                                 boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
                                             }}
-                                            formatter={(value: any) => [`$${value}`, 'Revenue']}
+                                            formatter={(value: any) => [`₹${value}`, 'Revenue']}
                                         />
-                                        <Line
+                                        <Area
                                             type="monotone"
                                             dataKey="revenue"
                                             stroke="#0d9488"
                                             strokeWidth={3}
-                                            dot={{ fill: '#0d9488', r: 4 }}
-                                            activeDot={{ r: 6 }}
+                                            fillOpacity={1}
+                                            fill="url(#colorRevenue)"
+                                            activeDot={{ r: 6, strokeWidth: 0 }}
                                         />
-                                    </LineChart>
+                                    </AreaChart>
                                 </ResponsiveContainer>
                             </div>
                         </CardContent>
@@ -345,35 +352,16 @@ export default function DashboardPage() {
                             </div>
                         </CardContent>
                     </Card>
-
-                    {/* Quick Stats Summary */}
-                    <Card className="border-slate-200 bg-gradient-to-br from-teal-50 to-teal-100/50">
-                        <CardContent className="p-6">
-                            <div className="flex items-center gap-3 mb-4">
-                                <div className="bg-teal-600 p-2 rounded-lg">
-                                    <TrendingUp size={20} className="text-white" />
-                                </div>
-                                <div>
-                                    <p className="text-sm font-medium text-slate-600">Conversion Rate</p>
-                                    <p className="text-2xl font-bold text-slate-900">{conversionRate}%</p>
-                                </div>
-                            </div>
-                            <p className="text-xs text-slate-600">Enquiries → Registrations</p>
-                            <div className="mt-3 h-2 bg-white/50 rounded-full overflow-hidden">
-                                <div className="h-full bg-teal-600 rounded-full" style={{ width: `${conversionRate}%` }}></div>
-                            </div>
-                        </CardContent>
-                    </Card>
                 </div>
             </div>
 
             {/* Bottom Section: Quick Links / Recent Items */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <Card className="border-slate-200">
-                    <CardHeader className="pb-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
+                <Card className="border-slate-200 flex flex-col h-full">
+                    <CardHeader className="pb-4 shrink-0">
                         <CardTitle className="text-lg font-semibold text-slate-900">Recent Enquiries</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 flex flex-col justify-between">
                         <div className="space-y-3">
                             {recentEnquiries.length === 0 ? (
                                 <p className="text-sm text-slate-500 text-center py-4">No recent enquiries</p>
@@ -396,17 +384,17 @@ export default function DashboardPage() {
                                 ))
                             )}
                         </div>
-                        <Button variant="ghost" className="w-full mt-4 text-teal-600 hover:text-teal-700 hover:bg-teal-50 font-medium" asChild>
+                        <Button variant="ghost" className="w-full mt-auto pt-4 text-teal-600 hover:text-teal-700 hover:bg-teal-50 font-medium" asChild>
                             <Link href="/app/enquiries">View All Enquiries</Link>
                         </Button>
                     </CardContent>
                 </Card>
 
-                <Card className="border-slate-200">
-                    <CardHeader className="pb-4">
+                <Card className="border-slate-200 flex flex-col h-full">
+                    <CardHeader className="pb-4 shrink-0">
                         <CardTitle className="text-lg font-semibold text-slate-900">Upcoming Tasks</CardTitle>
                     </CardHeader>
-                    <CardContent>
+                    <CardContent className="flex-1 flex flex-col justify-between">
                         <div className="space-y-3">
                             {upcomingTasks.length > 0 ? upcomingTasks.map((task: any, i: number) => (
                                 <div key={i} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200">
@@ -427,7 +415,7 @@ export default function DashboardPage() {
                                 <p className="text-sm text-slate-500 text-center py-4">No upcoming tasks</p>
                             )}
                         </div>
-                        <Button variant="ghost" className="w-full mt-4 text-teal-600 hover:text-teal-700 hover:bg-teal-50 font-medium" asChild>
+                        <Button variant="ghost" className="w-full mt-auto pt-4 text-teal-600 hover:text-teal-700 hover:bg-teal-50 font-medium" asChild>
                             <Link href="/app/tasks">View All Tasks</Link>
                         </Button>
                     </CardContent>

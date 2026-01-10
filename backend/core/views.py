@@ -1,21 +1,18 @@
 from rest_framework import viewsets
 from .models import (
-    User, Enquiry, Registration, Enrollment, Payment, Document,
-    StudentDocument, DocumentTransfer, Task, Appointment, University, Template,
-    Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp,
-    Installment, Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest,
-    ApprovalRequest, Company
+    User, Enquiry, Registration, Enrollment, Installment, Payment, Refund,
+    Document, StudentDocument, DocumentTransfer, Task, Appointment, University, Template,
+    Notification, Commission, LeadSource, VisaTracking, FollowUp, FollowUpComment,
+    Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest, ApprovalRequest, Company,
+    ActivityLog, Earning
 )
 from .serializers import (
-    UserSerializer, EnquirySerializer, RegistrationSerializer, 
-    EnrollmentSerializer, PaymentSerializer, DocumentSerializer,
-    StudentDocumentSerializer, DocumentTransferSerializer, TaskSerializer, AppointmentSerializer,
-    UniversitySerializer, TemplateSerializer, NotificationSerializer,
-    CommissionSerializer, RefundSerializer, LeadSourceSerializer,
-    VisaTrackingSerializer, FollowUpSerializer, InstallmentSerializer,
-    AgentSerializer, ChatConversationSerializer, ChatMessageSerializer,
-
-    GroupChatSerializer, SignupRequestSerializer, ApprovalRequestSerializer,
+    UserSerializer, CompanySerializer, EnquirySerializer, RegistrationSerializer, EnrollmentSerializer,
+    InstallmentSerializer, PaymentSerializer, RefundSerializer, DocumentSerializer, StudentDocumentSerializer,
+    DocumentTransferSerializer, TaskSerializer, AppointmentSerializer, UniversitySerializer,
+    TemplateSerializer, NotificationSerializer, CommissionSerializer, LeadSourceSerializer,
+    VisaTrackingSerializer, FollowUpSerializer, FollowUpCommentSerializer, AgentSerializer, ChatConversationSerializer,
+    ChatMessageSerializer, GroupChatSerializer, SignupRequestSerializer, ApprovalRequestSerializer,
     CompanySerializer
 )
 
@@ -27,6 +24,41 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db.models.functions import Concat
 from django.db.models import Count, Sum, Avg, Q, F, Value
+
+class CompanyIsolationMixin:
+    """
+    Mixin to filter querysets based on the user's company_id.
+    DEV_ADMIN gets full access.
+    """
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        user = self.request.user
+        
+        if not user or not user.is_authenticated:
+            return queryset.none()
+            
+        if getattr(user, 'role', None) == 'DEV_ADMIN':
+            return queryset
+            
+        user_company_id = getattr(user, 'company_id', None)
+        if not user_company_id:
+            return queryset.none()
+            
+        model = self.serializer_class.Meta.model
+        
+        # Direct relationship
+        # Check if the field exists on the model (using string check to avoid instance creation)
+        # We can inspect the model fields.
+        model_fields = [f.name for f in model._meta.get_fields()]
+        
+        if 'company_id' in model_fields:
+            return queryset.filter(company_id=user_company_id)
+            
+        # Indirect relationships
+        if model.__name__ == 'Installment':
+            return queryset.filter(enrollment__company_id=user_company_id)
+            
+        return queryset
 
 class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
@@ -74,28 +106,49 @@ class UserViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
     
+    @action(detail=False, methods=['get'], url_path='company-users', permission_classes=[IsAuthenticated])
+    def company_users(self, request):
+        """Get all users in the same company as the current user"""
+        company_id = request.user.company_id
+        users = User.objects.filter(company_id=company_id).values('id', 'username', 'email', 'role')
+        return Response(users)
+    
     @action(detail=False, methods=['get'])
     def counselors_analytics(self, request):
-        """Get performance analytics for all counselors"""
-        counselors = User.objects.filter(role='EMPLOYEE')
+        """Get performance analytics for all team members"""
+        # Get all users in the company
+        counselors = User.objects.filter(company_id=request.user.company_id)
         analytics = []
         
+        this_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0)
+        
         for counselor in counselors:
-            # Get active enquiries assigned to this counselor
-            active_enquiries = Enquiry.objects.filter(status='New').count()
+            # Stats for this specific counselor
+            active_enquiries = Enquiry.objects.filter(created_by=counselor, status='New').count()
             
-            # Get this month's conversions (enquiries converted to registrations)
-            this_month_start = timezone.now().replace(day=1, hour=0, minute=0, second=0)
             month_conversions = Enquiry.objects.filter(
+                created_by=counselor,
                 status='Converted',
                 date__gte=this_month_start
             ).count()
             
-            # Calculate conversion rate
-            total_enquiries = Enquiry.objects.count()
-            converted = Enquiry.objects.filter(status='Converted').count()
+            # Calculate per-counselor conversion rate
+            total_enquiries = Enquiry.objects.filter(created_by=counselor).count()
+            converted = Enquiry.objects.filter(created_by=counselor, status='Converted').count()
             conversion_rate = (converted / total_enquiries * 100) if total_enquiries > 0 else 0
             
+            # Calculate avg response time (time to first follow-up)
+            followups = FollowUp.objects.filter(created_by=counselor).select_related('enquiry')
+            avg_response_hours = 2.0
+            if followups.exists():
+                durations = []
+                for fu in followups:
+                    if fu.enquiry and fu.created_at > fu.enquiry.date:
+                        diff = (fu.created_at - fu.enquiry.date).total_seconds() / 3600
+                        durations.append(diff)
+                if durations:
+                    avg_response_hours = sum(durations) / len(durations)
+
             analytics.append({
                 'id': counselor.id,
                 'name': counselor.username,
@@ -104,13 +157,137 @@ class UserViewSet(viewsets.ModelViewSet):
                 'activeEnquiries': active_enquiries,
                 'thisMonthConversions': month_conversions,
                 'conversionRate': round(conversion_rate, 1),
-                'avgResponseTime': '2.5',  # Mock for now
-                'status': 'Available'  # Mock for now
+                'avgResponseTime': str(round(avg_response_hours, 1)),
+                'status': 'Available' if counselor.is_active else 'Offline'
             })
         
         return Response(analytics)
 
-class EnquiryViewSet(viewsets.ModelViewSet):
+    @action(detail=True, methods=['post'], url_path='toggle-status')
+    def toggle_status(self, request, pk=None):
+        """Toggle user active status (Suspend/Activate)"""
+        user_to_update = self.get_object()
+        user_acting = request.user
+        
+        # Security: Only COMPANY_ADMIN (or DEV_ADMIN) can update status
+        if user_acting.role not in ['COMPANY_ADMIN', 'DEV_ADMIN']:
+             return Response({'error': 'Permission denied'}, status=403)
+             
+        # Prevent suspending self
+        if user_to_update.id == user_acting.id:
+            return Response({'error': 'Cannot suspend yourself'}, status=400)
+
+        # Toggle is_active
+        user_to_update.is_active = not user_to_update.is_active
+        user_to_update.save()
+        
+        status_text = 'active' if user_to_update.is_active else 'suspended'
+        return Response({'status': status_text, 'is_active': user_to_update.is_active})
+    
+    @action(detail=True, methods=['get'], url_path='stats')
+    def employee_stats(self, request, pk=None):
+        """Get stats for a specific employee"""
+        employee = self.get_object()
+        
+        # Count enquiries created by this specific employee
+        total_enquiries = Enquiry.objects.filter(
+            created_by=employee,
+            company_id=employee.company_id
+        ).count()
+        
+        # Count registrations created by this specific employee
+        total_registrations = Registration.objects.filter(
+            created_by=employee,
+            company_id=employee.company_id
+        ).count()
+        
+        # Calculate total earnings for this specific employee
+        from django.db.models import Sum
+        total_earnings = Earning.objects.filter(
+            user=employee,
+            company_id=employee.company_id
+        ).aggregate(total=Sum('amount'))['total'] or 0
+        
+        # Count follow-ups assigned to this specific employee
+        active_followups = FollowUp.objects.filter(
+            assigned_to=employee,
+            status='Pending',
+            company_id=employee.company_id
+        ).count()
+        
+        completed_followups = FollowUp.objects.filter(
+            assigned_to=employee,
+            status='Completed',
+            company_id=employee.company_id
+        ).count()
+        
+        # Count tasks assigned to this specific employee
+        active_tasks = Task.objects.filter(
+            assigned_to=employee,
+            status__in=['Todo', 'In Progress'],
+            company_id=employee.company_id
+        ).count()
+        
+        completed_tasks = Task.objects.filter(
+            assigned_to=employee,
+            status='Done',
+            company_id=employee.company_id
+        ).count()
+        
+        return Response({
+            'totalEnquiries': total_enquiries,
+            'totalRegistrations': total_registrations,
+            'totalEarnings': float(total_earnings),
+            'activeFollowups': active_followups,
+            'completedFollowups': completed_followups,
+            'activeTasks': active_tasks,
+            'completedTasks': completed_tasks,
+        })
+    
+    @action(detail=True, methods=['get'], url_path='activity-logs')
+    def activity_logs(self, request, pk=None):
+        """Get activity logs for a specific employee"""
+        employee = self.get_object()
+        logs = ActivityLog.objects.filter(user=employee)
+        
+        # Pagination
+        from rest_framework.pagination import PageNumberPagination
+        paginator = PageNumberPagination()
+        paginator.page_size = 20
+        result_page = paginator.paginate_queryset(logs, request)
+        
+        from .serializers import ActivityLogSerializer
+        serializer = ActivityLogSerializer(result_page, many=True)
+        return paginator.get_paginated_response(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='earnings')
+    def employee_earnings(self, request, pk=None):
+        """Get earnings for a specific employee"""
+        employee = self.get_object()
+        earnings = Earning.objects.filter(user=employee)
+        
+        from .serializers import EarningSerializer
+        serializer = EarningSerializer(earnings, many=True)
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['get'], url_path='entries')
+    def employee_entries(self, request, pk=None):
+        """Get entries (enquiries + registrations) created by employee"""
+        employee = self.get_object()
+        
+        enquiries = Enquiry.objects.filter(created_by=employee).order_by('-date')[:50]
+        registrations = Registration.objects.filter(created_by=employee).order_by('-created_at')[:50]
+        
+        from .serializers import EnquirySerializer, RegistrationSerializer
+        enquiries_data = EnquirySerializer(enquiries, many=True).data
+        registrations_data = RegistrationSerializer(registrations, many=True).data
+        
+        return Response({
+            'enquiries': enquiries_data,
+            'registrations': registrations_data
+        })
+
+class EnquiryViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Enquiry.objects.all()
     serializer_class = EnquirySerializer
     
@@ -127,7 +304,7 @@ class EnquiryViewSet(viewsets.ModelViewSet):
         # Admins can edit directly
         return super().update(request, *args, **kwargs)
 
-class RegistrationViewSet(viewsets.ModelViewSet):
+class RegistrationViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Registration.objects.all().order_by('-created_at')
     serializer_class = RegistrationSerializer
     
@@ -170,7 +347,7 @@ class RegistrationViewSet(viewsets.ModelViewSet):
         # Admins can edit directly
         return super().update(request, *args, **kwargs)
 
-class EnrollmentViewSet(viewsets.ModelViewSet):
+class EnrollmentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()
     serializer_class = EnrollmentSerializer
     
@@ -216,13 +393,16 @@ class EnrollmentViewSet(viewsets.ModelViewSet):
         # Admins can edit directly
         return super().update(request, *args, **kwargs)
 
-class InstallmentViewSet(viewsets.ModelViewSet):
+class InstallmentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Installment.objects.all()
     serializer_class = InstallmentSerializer
 
-class PaymentViewSet(viewsets.ModelViewSet):
+class PaymentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Payment.objects.all()
     serializer_class = PaymentSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(company_id=self.request.user.company_id)
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
@@ -253,7 +433,7 @@ class PaymentViewSet(viewsets.ModelViewSet):
             'transactionCount': transaction_count
         })
 
-class RefundViewSet(viewsets.ModelViewSet):
+class RefundViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Refund.objects.all()
     serializer_class = RefundSerializer
     
@@ -266,6 +446,22 @@ class RefundViewSet(viewsets.ModelViewSet):
         if student_name:
             queryset = queryset.filter(student_name__icontains=student_name)
         return queryset.order_by('-refund_date')
+
+    def perform_create(self, serializer):
+        user = self.request.user
+        print(f"DEBUG: User Role: {user.role}, Company ID: {user.company_id}")
+        # Auto-approve for Admins
+        if user.role in ['DEV_ADMIN', 'COMPANY_ADMIN']:
+            print("DEBUG: Auto-approving refund")
+            serializer.save(
+                company_id=user.company_id,
+                status='Approved',
+                approved_by=user,
+                processed_at=timezone.now()
+            )
+        else:
+            print("DEBUG: Creating pending refund")
+            serializer.save(company_id=user.company_id)
     
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
@@ -290,12 +486,16 @@ class RefundViewSet(viewsets.ModelViewSet):
         refund.save()
         return Response(RefundSerializer(refund).data)
 
-class DocumentViewSet(viewsets.ModelViewSet):
+class DocumentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Document.objects.all()
     serializer_class = DocumentSerializer
 
     def perform_create(self, serializer):
-        serializer.save(uploaded_by=self.request.user, current_holder=self.request.user)
+        serializer.save(
+            uploaded_by=self.request.user, 
+            current_holder=self.request.user,
+            company_id=self.request.user.company_id
+        )
     
     @action(detail=False, methods=['get'])
     def expiring_soon(self, request):
@@ -404,7 +604,14 @@ class TaskViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.role == 'DEV_ADMIN':
             return Task.objects.all()
-        return Task.objects.filter(company_id=user.company_id)
+        
+        queryset = Task.objects.filter(company_id=user.company_id)
+        
+        # If the user is an EMPLOYEE, they should only see tasks assigned to them
+        if user.role == 'EMPLOYEE':
+            queryset = queryset.filter(assigned_to=user)
+            
+        return queryset.order_by('due_date')
 
     def perform_create(self, serializer):
         instance = serializer.save(company_id=self.request.user.company_id)
@@ -418,29 +625,50 @@ class TaskViewSet(viewsets.ModelViewSet):
             action_url='/app/tasks'
         )
 
-class AppointmentViewSet(viewsets.ModelViewSet):
+class AppointmentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
     serializer_class = AppointmentSerializer
-    
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        # Allow all company users to see all appointments for their company
+        return super().get_queryset()
+
+    def perform_create(self, serializer):
+        appointment = serializer.save(company_id=self.request.user.company_id)
+        
+        # Notify the counselor
+        if appointment.counselor != self.request.user:
+            try:
+                Notification.objects.create(
+                    user=appointment.counselor,
+                    title='New Appointment Scheduled',
+                    message=f'You have a new appointment with {appointment.student_name} on {appointment.date.date()}.',
+                    type='Info',
+                    action_url='/app/appointments'
+                )
+            except Exception as e:
+                print(f"Error creating notification: {e}")
+
     @action(detail=False, methods=['get'])
     def calendar_view(self, request):
         """Get appointments formatted for calendar view"""
         month = request.query_params.get('month')
         year = request.query_params.get('year')
         
+        queryset = self.get_queryset()
+        
         if month and year:
-            appointments = Appointment.objects.filter(
+            queryset = queryset.filter(
                 date__year=year,
                 date__month=month
             )
-        else:
-            appointments = Appointment.objects.all()
         
-        serializer = self.get_serializer(appointments, many=True)
+        serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
 
 
-class StudentDocumentViewSet(viewsets.ModelViewSet):
+class StudentDocumentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = StudentDocument.objects.all()
     serializer_class = StudentDocumentSerializer
     permission_classes = [IsAuthenticated]
@@ -466,11 +694,11 @@ class StudentDocumentViewSet(viewsets.ModelViewSet):
         )
         return Response({'message': f'{updated_count} documents returned successfully'})
 
-class UniversityViewSet(viewsets.ModelViewSet):
+class UniversityViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = University.objects.all()
     serializer_class = UniversitySerializer
 
-class TemplateViewSet(viewsets.ModelViewSet):
+class TemplateViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Template.objects.all()
     serializer_class = TemplateSerializer
 
@@ -481,31 +709,139 @@ class NotificationViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         return Notification.objects.filter(user=self.request.user).order_by('-created_at')
 
-class CommissionViewSet(viewsets.ModelViewSet):
+class CommissionViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Commission.objects.all()
     serializer_class = CommissionSerializer
 
-class RefundViewSet(viewsets.ModelViewSet):
-    queryset = Refund.objects.all()
-    serializer_class = RefundSerializer
 
-class LeadSourceViewSet(viewsets.ModelViewSet):
+class LeadSourceViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = LeadSource.objects.all()
     serializer_class = LeadSourceSerializer
 
-class VisaTrackingViewSet(viewsets.ModelViewSet):
+class VisaTrackingViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = VisaTracking.objects.all()
     serializer_class = VisaTrackingSerializer
 
-class FollowUpViewSet(viewsets.ModelViewSet):
+class FollowUpViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = FollowUp.objects.all()
     serializer_class = FollowUpSerializer
 
     def perform_create(self, serializer):
-        serializer.save(created_by=self.request.user, company_id=self.request.user.company_id)
+        # Get assigned_to_id from request data
+        assigned_to_id = self.request.data.get('assigned_to_id')
+        
+        # If no assigned_to_id provided, assign to current user
+        if not assigned_to_id:
+            assigned_to_id = self.request.user.id
+        
+        # Save with created_by, company_id, and assigned_to
+        follow_up = serializer.save(
+            created_by=self.request.user,
+            company_id=self.request.user.company_id,
+            assigned_to_id=assigned_to_id
+        )
+        
+        # Create notification if assigned to someone other than creator
+        if assigned_to_id != self.request.user.id:
+            try:
+                from .models import Notification
+                enquiry_name = follow_up.enquiry.candidateName if follow_up.enquiry else 'Unknown'
+                Notification.objects.create(
+                    user_id=assigned_to_id,
+                    title='New Follow-up Assigned',
+                    message=f'{self.request.user.username} assigned you a follow-up for {enquiry_name}',
+                    type='followup',
+                    company_id=self.request.user.company_id
+                )
+            except Exception as e:
+                print(f"Error creating notification: {e}")
+    
+    def retrieve(self, request, *args, **kwargs):
+        """Override retrieve to include comments in detail view"""
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, context={'include_comments': True})
+        return Response(serializer.data)
+    
+    @action(detail=True, methods=['post'])
+    def complete_with_comment(self, request, pk=None):
+        """Complete a follow-up with a required comment"""
+        followup = self.get_object()
+        user = request.user
+        
+        # Permission check: only assigned user or admin can complete
+        is_assigned = followup.assigned_to_id == user.id if followup.assigned_to else False
+        is_admin = user.role in ['DEV_ADMIN', 'COMPANY_ADMIN']
+        
+        if not (is_assigned or is_admin):
+            return Response({
+                'error': 'Only the assigned user or an admin can complete this follow-up'
+            }, status=403)
+        
+        comment_text = request.data.get('comment', '').strip()
+        if not comment_text:
+            return Response({'error': 'Comment is required to complete follow-up'}, status=400)
+        
+        # Create completion comment
+        from .models import FollowUpComment
+        FollowUpComment.objects.create(
+            followup=followup,
+            user=user,
+            comment=comment_text,
+            is_completion_comment=True,
+            company_id=user.company_id
+        )
+        
+        # Mark as completed
+        followup.status = 'Completed'
+        followup.save()
+        
+        # Create notification for creator if different from completer
+        if followup.created_by and followup.created_by.id != user.id:
+            try:
+                from .models import Notification
+                Notification.objects.create(
+                    user_id=followup.created_by.id,
+                    title='Follow-up Completed',
+                    message=f'{user.username} completed the follow-up for {followup.student_name}',
+                    type='followup',
+                    company_id=user.company_id
+                )
+            except Exception as e:
+                print(f"Error creating notification: {e}")
+        
+        return Response({'status': 'completed', 'message': 'Follow-up marked as complete'})
+
+class FollowUpCommentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
+    queryset = FollowUpComment.objects.all()
+    serializer_class = FollowUpCommentSerializer
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # Filter by followup if provided
+        followup_id = self.request.query_params.get('followup')
+        if followup_id:
+            queryset = queryset.filter(followup_id=followup_id)
+        return queryset
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user, company_id=self.request.user.company_id)
+    
+    def update(self, request, *args, **kwargs):
+        comment = self.get_object()
+        # Only the comment owner can edit
+        if comment.user != request.user:
+            return Response({'error': 'You can only edit your own comments'}, status=403)
+        return super().update(request, *args, **kwargs)
+    
+    def destroy(self, request, *args, **kwargs):
+        comment = self.get_object()
+        # Only the comment owner or admin can delete
+        if comment.user != request.user and request.user.role not in ['DEV_ADMIN', 'COMPANY_ADMIN']:
+            return Response({'error': 'You can only delete your own comments'}, status=403)
+        return super().destroy(request, *args, **kwargs)
 
 # New ViewSets
-class AgentViewSet(viewsets.ModelViewSet):
+class AgentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Agent.objects.all()
     serializer_class = AgentSerializer
 

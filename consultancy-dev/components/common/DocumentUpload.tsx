@@ -7,6 +7,7 @@ import { Upload, X, FileText, Download, Trash2, Plus } from 'lucide-react';
 import { apiClient } from '@/lib/apiClient';
 import { useToast } from '@/hooks/use-toast';
 import { compressFile, formatFileSize } from '@/lib/compression';
+import { format } from 'date-fns';
 
 interface Document {
     id?: string;
@@ -192,22 +193,7 @@ export function DocumentUpload({
     const hasPendingUploads = documents.some(doc => doc.file instanceof File);
 
     const Controls = () => (
-        <div className="flex gap-2">
-            {hasPendingUploads && (registrationId || studentName) && (
-                <Button
-                    type="button"
-                    size="sm"
-                    onClick={(e) => handleUpload(e)}
-                    disabled={isUploading}
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                    {isUploading ? (
-                        <>Uploading...</>
-                    ) : (
-                        <><Upload className="mr-2 h-4 w-4" /> Upload Pending</>
-                    )}
-                </Button>
-            )}
+        <div className="flex flex-col gap-3">
             <input
                 type="file"
                 multiple
@@ -217,75 +203,97 @@ export function DocumentUpload({
             />
             <Button
                 type="button"
-                variant={variant === 'minimal' ? "default" : "outline"}
-                size="sm"
+                variant="outline"
+                className="w-full border-teal-600/20 bg-teal-50/30 text-teal-700 hover:bg-teal-50 hover:text-teal-800 border-dashed border-2 py-6 h-auto flex-col gap-2 rounded-xl transition-all"
                 onClick={() => fileInputRef.current?.click()}
-                className={variant === 'minimal' ? "bg-teal-600 hover:bg-teal-700 text-white" : ""}
             >
-                <Plus className="mr-2 h-4 w-4" /> Add Documents
+                <div className="h-10 w-10 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center">
+                    <Plus size={20} />
+                </div>
+                <div className="flex flex-col items-center">
+                    <span className="font-bold text-sm">Add Documents</span>
+                    <span className="text-[11px] opacity-70">PNG, JPG, PDF up to 10MB</span>
+                </div>
             </Button>
+
+            {hasPendingUploads && (registrationId || studentName) && (
+                <Button
+                    type="button"
+                    onClick={(e) => handleUpload(e)}
+                    disabled={isUploading}
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white font-bold h-11 rounded-xl shadow-sm shadow-teal-200"
+                >
+                    {isUploading ? (
+                        <div className="flex items-center gap-2">
+                            <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                            <span>Uploading...</span>
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2">
+                            <Upload size={18} />
+                            <span>Confirm Upload ({documents.filter(d => !d.id).length})</span>
+                        </div>
+                    )}
+                </Button>
+            )}
         </div>
     );
 
     const DocsList = () => (
-        <div className="space-y-3">
+        <div className="space-y-2">
             {documents.length === 0 ? (
-                <div className="text-center py-8 text-slate-500 border-2 border-dashed rounded-lg">
-                    <FileText className="mx-auto h-8 w-8 mb-2 opacity-50" />
-                    <p>No documents added yet</p>
+                <div className="text-center py-10 px-4">
+                    <div className="h-12 w-12 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                        <FileText size={24} />
+                    </div>
+                    <p className="text-sm text-slate-400 font-medium">No documents attached</p>
                 </div>
             ) : (
                 documents.map((doc, index) => (
-                    <div key={index} className="flex items-start gap-3 p-3 bg-slate-50 rounded-md border border-slate-100">
-                        <div className="mt-1 bg-white p-2 rounded border border-slate-200">
-                            <FileText className="h-5 w-5 text-blue-600" />
+                    <div key={index} className="group relative flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:border-teal-100 hover:shadow-sm transition-all">
+                        <div className="h-10 w-10 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+                            <FileText size={20} />
                         </div>
 
-                        <div className="flex-1 space-y-2">
-                            <div className="flex justify-between">
-                                <span className="font-medium text-sm truncate max-w-[200px]" title={doc.file_name || (doc as any).fileName}>
+                        <div className="flex-1 min-w-0 space-y-1">
+                            <div className="flex justify-between items-start gap-2">
+                                <span className="font-bold text-slate-800 text-xs truncate capitalize" title={doc.file_name || (doc as any).fileName}>
                                     {doc.file_name || (doc as any).fileName}
                                 </span>
                                 {doc.uploaded_at && (
-                                    <span className="text-xs text-slate-500">
-                                        {new Date(doc.uploaded_at).toLocaleDateString()}
+                                    <span className="text-[10px] font-bold text-slate-400 whitespace-nowrap bg-slate-50 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                                        {format(new Date(doc.uploaded_at), 'dd MMM')}
                                     </span>
                                 )}
                             </div>
 
                             {!readOnly && !doc.id ? (
                                 <Input
-                                    placeholder="Document description (e.g. 10th Marksheet)"
+                                    placeholder="Add a label..."
                                     value={doc.description}
                                     onChange={(e) => handleDescriptionChange(index, e.target.value)}
-                                    // prevented Enter key
-                                    onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
-                                    className="h-8 text-sm"
+                                    className="h-7 text-[11px] bg-transparent border-slate-100 focus:border-teal-200 focus:ring-teal-100 px-2"
                                 />
                             ) : (
-                                <p className="text-sm text-slate-600">{doc.description || 'No description'}</p>
+                                <p className="text-[11px] text-slate-500 font-medium truncate">{doc.description || 'No label provided'}</p>
                             )}
                         </div>
 
-                        <div className="flex gap-1">
+                        <div className="flex flex-col gap-1">
                             {doc.file && typeof doc.file === 'string' && (
-                                <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-blue-600">
-                                    <a href={doc.file} target="_blank" rel="noopener noreferrer">
-                                        <Download size={16} />
-                                    </a>
-                                </Button>
+                                <a href={doc.file} target="_blank" rel="noopener noreferrer" className="h-7 w-7 flex items-center justify-center text-slate-400 hover:bg-teal-50 hover:text-teal-600 rounded-md transition-all">
+                                    <Download size={14} />
+                                </a>
                             )}
 
                             {!readOnly && (
-                                <Button
+                                <button
                                     type="button"
-                                    variant="ghost"
-                                    size="icon"
                                     onClick={() => handleRemove(index)}
-                                    className="h-8 w-8 text-slate-500 hover:text-red-600"
+                                    className="h-7 w-7 flex items-center justify-center text-slate-400 hover:bg-red-50 hover:text-red-600 rounded-md transition-all"
                                 >
-                                    <Trash2 size={16} />
-                                </Button>
+                                    <Trash2 size={14} />
+                                </button>
                             )}
                         </div>
                     </div>
@@ -297,22 +305,25 @@ export function DocumentUpload({
     if (variant === 'minimal') {
         return (
             <div className="space-y-4">
-                <div className="flex justify-end">
-                    {!readOnly && <Controls />}
+                {!readOnly && <Controls />}
+                <div className="pt-2">
+                    <DocsList />
                 </div>
-                <DocsList />
             </div>
         );
     }
 
     return (
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle className="text-lg">Documents</CardTitle>
-                {!readOnly && <Controls />}
+        <Card className="border-slate-200 shadow-sm overflow-hidden rounded-xl">
+            <CardHeader className="bg-slate-50/50 py-4 border-b border-slate-100">
+                <CardTitle className="text-sm font-bold text-slate-700 uppercase tracking-widest">Document Management</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-                <DocsList />
+            <CardContent className="p-4 space-y-6">
+                {!readOnly && <Controls />}
+                <div className="space-y-3">
+                    <h4 className="text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-1">Attached Files</h4>
+                    <DocsList />
+                </div>
             </CardContent>
         </Card>
     );

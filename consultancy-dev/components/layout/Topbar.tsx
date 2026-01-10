@@ -33,7 +33,7 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sticky top-0 z-20 shadow-sm">
+      <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sticky top-0 z-50 shadow-sm">
         <div className="flex items-center flex-1">
           <button onClick={onMenuClick} className="md:hidden p-2 rounded-md hover:bg-gray-100 mr-2 text-gray-600">
             <Menu size={20} />
@@ -57,18 +57,100 @@ export function Topbar({ onMenuClick }: TopbarProps) {
 
         <div className="flex items-center space-x-4">
           {/* Notifications */}
-          <button
-            onClick={() => router.push('/app/notifications')}
-            className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative group"
-            title="Notifications"
-          >
-            <Bell size={20} className="group-hover:text-teal-600 transition-colors" />
-            {notificationCount > 0 && (
-              <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
-                {notificationCount}
-              </span>
-            )}
-          </button>
+          <HeadlessMenu as="div" className="relative">
+            <HeadlessMenu.Button
+              className="p-2 rounded-full hover:bg-gray-100 text-gray-500 relative group focus:outline-none"
+              title="Notifications"
+            >
+              <Bell size={20} className="group-hover:text-teal-600 transition-colors" />
+              {notificationCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
+                  {notificationCount}
+                </span>
+              )}
+            </HeadlessMenu.Button>
+            <Transition
+              as={Fragment}
+              enter="transition ease-out duration-100"
+              enterFrom="transform opacity-0 scale-95"
+              enterTo="transform opacity-100 scale-100"
+              leave="transition ease-in duration-75"
+              leaveFrom="transform opacity-100 scale-100"
+              leaveTo="transform opacity-0 scale-95"
+            >
+              <HeadlessMenu.Items className="absolute right-0 z-20 mt-2 w-96 origin-top-right rounded-xl bg-white shadow-xl ring-1 ring-black ring-opacity-5 focus:outline-none border border-slate-100 overflow-hidden">
+                <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center bg-white">
+                  <h3 className="text-sm font-semibold text-slate-800">Notifications</h3>
+                  {notificationCount > 0 && (
+                    <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-full border border-emerald-100">
+                      {notificationCount} New
+                    </span>
+                  )}
+                </div>
+
+                <div className="max-h-[380px] overflow-y-auto custom-scrollbar">
+                  {notifications.length > 0 ? (
+                    <div className="divide-y divide-slate-50">
+                      {notifications.slice(0, 5).map((notification: any) => (
+                        <HeadlessMenu.Item key={notification.id}>
+                          {({ active }) => (
+                            <Link
+                              href={notification.actionUrl || '/app/notifications'}
+                              className={`block px-4 py-3.5 transition-all duration-200 relative ${active ? 'bg-slate-50' : 'bg-white'
+                                } ${!notification.read ? 'bg-slate-50/50' : ''}`}
+                            >
+                              {!notification.read && (
+                                <div className="absolute left-0 top-0 bottom-0 w-1 bg-emerald-500 rounded-r" />
+                              )}
+                              <div className="flex gap-3.5 pl-1">
+                                <div className={`mt-1 h-2 w-2 rounded-full shrink-0 ${!notification.read ? 'bg-emerald-500 ring-2 ring-emerald-100' : 'bg-slate-300'}`} />
+                                <div className="flex-1 min-w-0">
+                                  <p className={`text-sm leading-snug mb-1 ${!notification.read ? 'font-semibold text-slate-900' : 'font-medium text-slate-700'}`}>
+                                    {notification.title}
+                                  </p>
+                                  <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
+                                    {notification.message}
+                                  </p>
+                                  <p className="text-[10px] text-slate-400 mt-2 font-medium">
+                                    {new Date(notification.created_at).toLocaleDateString(undefined, {
+                                      month: 'short',
+                                      day: 'numeric',
+                                      hour: '2-digit',
+                                      minute: '2-digit'
+                                    })}
+                                  </p>
+                                </div>
+                              </div>
+                            </Link>
+                          )}
+                        </HeadlessMenu.Item>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                      <div className="bg-slate-50 p-3 rounded-full mb-3">
+                        <Bell size={24} className="text-slate-300" />
+                      </div>
+                      <p className="text-sm font-medium text-slate-500">No new notifications</p>
+                    </div>
+                  )}
+                </div>
+
+                <div className="bg-slate-50 border-t border-slate-100 p-2">
+                  <HeadlessMenu.Item>
+                    {({ active }) => (
+                      <Link
+                        href="/app/notifications"
+                        className={`block w-full text-center px-4 py-2 text-xs font-semibold text-slate-600 hover:text-emerald-600 hover:bg-white border border-transparent hover:border-slate-200 rounded-lg transition-all duration-200 ${active ? 'bg-white border-slate-200 text-emerald-600 shadow-sm' : ''}`}
+                      >
+                        View All Notifications
+                      </Link>
+                    )}
+                  </HeadlessMenu.Item>
+                </div>
+              </HeadlessMenu.Items>
+            </Transition>
+          </HeadlessMenu>
 
           {/* Chat Button */}
           <button

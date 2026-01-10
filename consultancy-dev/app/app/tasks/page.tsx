@@ -8,11 +8,16 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, MoreHorizontal, Clock, X } from 'lucide-react';
+import { Plus, MoreHorizontal, Clock, X, Bell, Phone, Mail, MessageSquare, Calendar, Eye, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Task } from '@/lib/types';
 import * as Dialog from '@radix-ui/react-dialog';
+import { useAuthStore } from '@/store/authStore';
+import { useRouter } from 'next/navigation';
+import { format } from 'date-fns';
 
 export default function TasksPage() {
+    const { user } = useAuthStore();
+    const router = useRouter();
     const [isCreateOpen, setIsCreateOpen] = useState(false);
     const [newTask, setNewTask] = useState({
         title: '',
@@ -20,6 +25,15 @@ export default function TasksPage() {
         dueDate: '',
         status: 'Todo'
     });
+
+    // Pagination state: { [columnName]: currentPageIndex }
+    const [columnPages, setColumnPages] = useState<Record<string, number>>({
+        'Todo': 0,
+        'In Progress': 0,
+        'Done': 0
+    });
+
+    const PAGE_SIZE = 5;
 
     const queryClient = useQueryClient();
 
@@ -33,6 +47,17 @@ export default function TasksPage() {
         queryKey: ['tasks'],
         queryFn: apiClient.tasks.list,
     });
+
+    // Fetch assigned follow-ups
+    const { data: allFollowUps = [] } = useQuery({
+        queryKey: ['followUps'],
+        queryFn: apiClient.followUps.list,
+    });
+
+    // Filter to show only assigned pending follow-ups
+    const myFollowUps = user ? allFollowUps.filter((f: any) =>
+        f.assignedTo === user.id && f.status === 'Pending'
+    ) : [];
 
     const createTaskMutation = useMutation({
         mutationFn: apiClient.tasks.create,
@@ -81,21 +106,123 @@ export default function TasksPage() {
                 </Button>
             </div>
 
+            {/* My Pending Follow-ups Section */}
+            {myFollowUps.length > 0 && (
+                <Card className="border-teal-200 bg-teal-50/30">
+                    <CardContent className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <Bell className="h-5 w-5 text-teal-600" />
+                                <h2 className="text-lg font-bold text-slate-900">My Pending Follow-ups</h2>
+                                <span className="bg-teal-100 text-teal-700 text-xs px-2 py-1 rounded-full font-semibold">
+                                    {myFollowUps.length}
+                                </span>
+                            </div>
+                            <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => router.push('/app/follow-ups')}
+                                className="text-teal-600 border-teal-300 hover:bg-teal-100"
+                            >
+                                View All
+                            </Button>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                            {myFollowUps.slice(0, 6).map((followUp: any) => (
+                                <Card key={followUp.id} className="border-slate-200 hover:shadow-md transition-shadow">
+                                    <CardContent className="p-4">
+                                        <div className="flex items-start gap-3 mb-3">
+                                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${followUp.type === 'Call' ? 'bg-blue-100 text-blue-600' :
+                                                followUp.type === 'Email' ? 'bg-purple-100 text-purple-600' :
+                                                    'bg-green-100 text-green-600'
+                                                }`}>
+                                                {followUp.type === 'Call' && <Phone size={18} />}
+                                                {followUp.type === 'Email' && <Mail size={18} />}
+                                                {(followUp.type === 'WhatsApp' || followUp.type === 'SMS') && <MessageSquare size={18} />}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <h4 className="font-semibold text-slate-900 text-sm truncate">{followUp.studentName}</h4>
+                                                <p className="text-xs text-slate-500">{followUp.type}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex items-center gap-2 text-xs text-slate-500 mb-3">
+                                            <Calendar size={12} />
+                                            <span>{format(new Date(followUp.scheduledFor), 'MMM dd, HH:mm')}</span>
+                                        </div>
+                                        <Button
+                                            size="sm"
+                                            variant="outline"
+                                            className="w-full"
+                                            onClick={() => router.push(`/app/follow-ups/${followUp.id}`)}
+                                        >
+                                            <Eye size={14} className="mr-2" />
+                                            View Details
+                                        </Button>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                        {myFollowUps.length > 6 && (
+                            <p className="text-center text-sm text-slate-500 mt-4">
+                                And {myFollowUps.length - 6} more pending follow-ups...
+                            </p>
+                        )}
+                    </CardContent>
+                </Card>
+            )}
+
             {/* Mobile: Stack view, Desktop: Kanban */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pb-4">
-                {columns.map((col) => (
-                    <div key={col} className="flex flex-col bg-slate-100 rounded-xl p-4 min-h-[300px]">
-                        <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
-                            <h3 className="font-semibold text-slate-900">{col}</h3>
-                            <span className="bg-slate-200 text-slate-600 text-xs px-2.5 py-1 rounded-full font-bold">
-                                {tasks.filter((t) => t.status === col).length}
-                            </span>
-                        </div>
+                {columns.map((col) => {
+                    const columnTasks = tasks.filter((t: any) => t.status === col);
+                    const totalCount = columnTasks.length;
+                    const currentPage = columnPages[col] || 0;
+                    const paginatedTasks = columnTasks.slice(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE);
+                    const hasNext = (currentPage + 1) * PAGE_SIZE < totalCount;
+                    const hasPrev = currentPage > 0;
 
-                        <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar">
-                            {tasks
-                                .filter((t) => t.status === col)
-                                .map((task: Task) => (
+                    // For "Done" column, also include completed follow-ups if on the first page
+                    const completedFollowUps = col === 'Done' && currentPage === 0
+                        ? allFollowUps.filter((f: any) => f.status === 'Completed' && user && f.assignedTo === user.id)
+                        : [];
+
+                    return (
+                        <div key={col} className="flex flex-col bg-slate-100 rounded-xl p-4 h-[650px]">
+                            <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-200">
+                                <div className="flex items-center gap-2">
+                                    <h3 className="font-semibold text-slate-900">{col}</h3>
+                                    <span className="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full font-bold">
+                                        {totalCount}
+                                    </span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        disabled={!hasPrev}
+                                        onClick={() => setColumnPages(prev => ({ ...prev, [col]: (prev[col] || 0) - 1 }))}
+                                    >
+                                        <ChevronLeft size={14} />
+                                    </Button>
+                                    <span className="text-[10px] text-slate-500 font-medium">
+                                        {currentPage + 1}
+                                    </span>
+                                    <Button
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-7 w-7"
+                                        disabled={!hasNext}
+                                        onClick={() => setColumnPages(prev => ({ ...prev, [col]: (prev[col] || 0) + 1 }))}
+                                    >
+                                        <ChevronRight size={14} />
+                                    </Button>
+                                </div>
+                            </div>
+
+                            <div className="flex-1 space-y-3 overflow-y-auto custom-scrollbar">
+                                {/* Render tasks */}
+                                {paginatedTasks.map((task: Task) => (
                                     <Card key={task.id} className="cursor-move hover:shadow-md transition-all border-slate-200 bg-white group relative">
                                         <CardContent className="p-4">
                                             <div className="flex justify-between items-start mb-3">
@@ -115,7 +242,7 @@ export default function TasksPage() {
                                             <div className="flex items-center justify-between text-xs text-slate-500">
                                                 <div className="flex items-center gap-1">
                                                     <Clock size={12} />
-                                                    <span>{task.dueDate}</span>
+                                                    <span>{task.due_date || task.dueDate}</span>
                                                 </div>
                                                 <div className="bg-teal-50 text-teal-700 px-2 py-1 rounded-md font-medium">
                                                     {task.assigned_to_name || task.assignedTo}
@@ -124,20 +251,58 @@ export default function TasksPage() {
                                         </CardContent>
                                     </Card>
                                 ))}
-                        </div>
 
-                        <Button
-                            variant="ghost"
-                            className="mt-3 text-slate-500 hover:text-slate-900 hover:bg-slate-200 w-full justify-start h-9 text-sm font-medium"
-                            onClick={() => {
-                                setNewTask({ ...newTask, status: col });
-                                setIsCreateOpen(true);
-                            }}
-                        >
-                            <Plus size={16} className="mr-2" /> Add Task
-                        </Button>
-                    </div>
-                ))}
+                                {/* Render completed follow-ups in Done column */}
+                                {col === 'Done' && completedFollowUps.map((followUp: any) => (
+                                    <Card
+                                        key={`followup-${followUp.id}`}
+                                        className="hover:shadow-md transition-all border-green-200 bg-green-50 cursor-pointer"
+                                        onClick={() => router.push(`/app/follow-ups/${followUp.id}`)}
+                                    >
+                                        <CardContent className="p-4">
+                                            <div className="flex items-start gap-3 mb-2">
+                                                <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${followUp.type === 'Call' ? 'bg-blue-100 text-blue-600' :
+                                                    followUp.type === 'Email' ? 'bg-purple-100 text-purple-600' :
+                                                        'bg-green-100 text-green-600'
+                                                    }`}>
+                                                    {followUp.type === 'Call' && <Phone size={14} />}
+                                                    {followUp.type === 'Email' && <Mail size={14} />}
+                                                    {(followUp.type === 'WhatsApp' || followUp.type === 'SMS') && <MessageSquare size={14} />}
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="font-medium text-sm text-slate-900 leading-snug truncate">{followUp.studentName}</p>
+                                                    <div className="flex items-center gap-2 mt-1">
+                                                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold">
+                                                            Follow-up
+                                                        </span>
+                                                        <span className="text-xs text-slate-500">{followUp.type}</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center justify-between text-xs text-slate-500">
+                                                <div className="flex items-center gap-1">
+                                                    <Bell size={12} />
+                                                    <span>Completed</span>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+                                ))}
+                            </div>
+
+                            <Button
+                                variant="ghost"
+                                className="mt-3 text-slate-500 hover:text-slate-900 hover:bg-slate-200 w-full justify-start h-9 text-sm font-medium"
+                                onClick={() => {
+                                    setNewTask({ ...newTask, status: col });
+                                    setIsCreateOpen(true);
+                                }}
+                            >
+                                <Plus size={16} className="mr-2" /> Add Task
+                            </Button>
+                        </div>
+                    );
+                })}
             </div>
 
             {/* Create Task Modal */}
@@ -161,9 +326,9 @@ export default function TasksPage() {
                                 <Select value={newTask.assignedTo} onValueChange={(val: string) => setNewTask({ ...newTask, assignedTo: val })}>
                                     <SelectTrigger><SelectValue placeholder="Select Assignee" /></SelectTrigger>
                                     <SelectContent>
-                                        {users.map((user: any) => (
-                                            <SelectItem key={user.id} value={String(user.id)}>
-                                                {user.username} {user.first_name ? `(${user.first_name})` : ''}
+                                        {users.filter((u: any) => u.id !== user?.id).map((u: any) => (
+                                            <SelectItem key={u.id} value={String(u.id)}>
+                                                {u.username} {u.first_name ? `(${u.first_name})` : ''}
                                             </SelectItem>
                                         ))}
                                     </SelectContent>
