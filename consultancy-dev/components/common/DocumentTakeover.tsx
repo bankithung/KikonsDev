@@ -55,6 +55,14 @@ export function DocumentTakeover({
         defaultValue: false
     });
 
+    React.useEffect(() => {
+        if (fields.length > 0 && !isEnabled) {
+            setValue(checkboxName, true);
+        }
+        // Exclude isEnabled to allow manual unchecking if desired
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [fields.length, setValue, checkboxName]);
+
     return (
         <div className="space-y-4 rounded-lg border border-slate-200 p-4 bg-slate-50/50">
             <div className="flex items-center space-x-2">
@@ -83,21 +91,30 @@ export function DocumentTakeover({
             </div>
 
             {isEnabled && (
-                <div className="space-y-3 pl-6 border-l-2 border-slate-200 mt-2">
+                <div className="space-y-2 pl-6 border-l-2 border-slate-200 mt-2">
                     <p className="text-xs text-slate-500 mb-2">
-                        List the physical documents being submitted to the office. An acknowledgment receipt can be printed later.
+                        List the physical documents being submitted.
                     </p>
 
+                    {fields.length > 0 && (
+                        <div className="hidden md:grid grid-cols-12 gap-3 px-2 mb-1 text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+                            <div className="col-span-4">Document Name</div>
+                            <div className="col-span-4">ID / Number</div>
+                            <div className="col-span-3">Remarks</div>
+                            <div className="col-span-1"></div>
+                        </div>
+                    )}
+
                     {fields.map((field, index) => (
-                        <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start bg-white p-3 rounded-md border border-slate-200 shadow-sm">
-                            <div className="md:col-span-4 space-y-1">
-                                <Label className="text-xs text-slate-500">Document Name</Label>
+                        <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-2 items-center bg-white p-2 rounded-md border border-slate-200 shadow-sm">
+                            <div className="md:col-span-4">
+                                <Label className="md:hidden text-[10px] text-slate-400 mb-1 block">Document Name</Label>
                                 <div className="relative">
                                     <Input
                                         list={`doc-options-${index}`}
                                         {...register(`${name}.${index}.name` as const)}
                                         placeholder="Select or Type..."
-                                        className="h-9"
+                                        className="h-8 text-xs"
                                     />
                                     <datalist id={`doc-options-${index}`}>
                                         {COMMON_DOCUMENTS.map(doc => <option key={doc} value={doc} />)}
@@ -105,33 +122,33 @@ export function DocumentTakeover({
                                 </div>
                             </div>
 
-                            <div className="md:col-span-4 space-y-1">
-                                <Label className="text-xs text-slate-500">Document Number / ID</Label>
+                            <div className="md:col-span-4">
+                                <Label className="md:hidden text-[10px] text-slate-400 mb-1 block">Document Number / ID</Label>
                                 <Input
                                     {...register(`${name}.${index}.document_number` as const)}
                                     placeholder="e.g. A1234567"
-                                    className="h-9"
+                                    className="h-8 text-xs"
                                 />
                             </div>
 
-                            <div className="md:col-span-3 space-y-1">
-                                <Label className="text-xs text-slate-500">Remarks</Label>
+                            <div className="md:col-span-3">
+                                <Label className="md:hidden text-[10px] text-slate-400 mb-1 block">Remarks</Label>
                                 <Input
                                     {...register(`${name}.${index}.remarks` as const)}
-                                    placeholder="Condition, copies..."
-                                    className="h-9"
+                                    placeholder="Condition..."
+                                    className="h-8 text-xs"
                                 />
                             </div>
 
-                            <div className="md:col-span-1 pt-6 flex justify-center">
+                            <div className="md:col-span-1 flex justify-center pt-2 md:pt-0">
                                 <Button
                                     type="button"
                                     variant="ghost"
                                     size="icon"
-                                    className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
+                                    className="h-7 w-7 text-slate-400 hover:text-red-600 hover:bg-red-50"
                                     onClick={() => remove(index)}
                                 >
-                                    <X size={16} />
+                                    <X size={14} />
                                 </Button>
                             </div>
                         </div>

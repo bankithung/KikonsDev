@@ -14,6 +14,7 @@ const refundSchema = z.object({
     amount: z.number().positive('Amount must be positive'),
     reason: z.string().min(10, 'Please provide at least 10 characters explaining the reason'),
     refundMethod: z.string().min(1, 'Refund method is required'),
+    refundDate: z.string().min(1, 'Refund date is required'),
 });
 
 type RefundFormData = z.infer<typeof refundSchema>;
@@ -45,6 +46,7 @@ export function RefundModal({ open, onClose, onSubmit, payment, isLoading = fals
         defaultValues: {
             amount: payment.amount,
             refundMethod: payment.method,
+            refundDate: new Date().toISOString().split('T')[0],
         },
     });
 
@@ -57,6 +59,7 @@ export function RefundModal({ open, onClose, onSubmit, payment, isLoading = fals
             amount: data.amount,
             reason: data.reason,
             refundMethod: data.refundMethod,
+            refundDate: data.refundDate,
             studentName: payment.studentName,
         });
         reset();
@@ -86,20 +89,31 @@ export function RefundModal({ open, onClose, onSubmit, payment, isLoading = fals
                 </div>
 
                 <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="amount">Refund Amount (₹) *</Label>
-                        <Input
-                            id="amount"
-                            type="number"
-                            step="0.01"
-                            placeholder="Enter refund amount"
-                            {...register('amount', { valueAsNumber: true })}
-                        />
-                        {errors.amount && <p className="text-sm text-red-500">{errors.amount.message}</p>}
-                        {amount > payment.amount && (
-                            <p className="text-sm text-orange-500">Refund amount cannot exceed original payment amount</p>
-                        )}
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label htmlFor="amount">Refund Amount (₹) *</Label>
+                            <Input
+                                id="amount"
+                                type="number"
+                                step="0.01"
+                                placeholder="Enter refund amount"
+                                {...register('amount', { valueAsNumber: true })}
+                            />
+                            {errors.amount && <p className="text-sm text-red-500">{errors.amount.message}</p>}
+                        </div>
+                        <div className="space-y-2">
+                            <Label htmlFor="refundDate">Refund Date *</Label>
+                            <Input
+                                id="refundDate"
+                                type="date"
+                                {...register('refundDate')}
+                            />
+                            {errors.refundDate && <p className="text-sm text-red-500">{errors.refundDate.message}</p>}
+                        </div>
                     </div>
+                    {amount > payment.amount && (
+                        <p className="text-sm text-orange-500">Refund amount cannot exceed original payment amount</p>
+                    )}
 
                     <div className="space-y-2">
                         <Label htmlFor="refundMethod">Refund Method *</Label>

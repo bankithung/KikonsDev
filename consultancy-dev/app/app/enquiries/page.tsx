@@ -17,6 +17,7 @@ import { useAuthStore } from '@/store/authStore';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RequestActionModal } from '@/components/ui/RequestActionModal';
 import { toast } from '@/store/toastStore';
+import { INDIAN_STATES, SCHOOL_BOARDS, COURSES, PREFERRED_LOCATIONS, GENDERS } from '@/lib/utils';
 
 export default function EnquiriesPage() {
   const router = useRouter();
@@ -30,6 +31,11 @@ export default function EnquiriesPage() {
   const [actionEnquiry, setActionEnquiry] = useState<Enquiry | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
+  const [filterGender, setFilterGender] = useState<string>('all');
+  const [filterState, setFilterState] = useState<string>('all');
+  const [filterCourse, setFilterCourse] = useState<string>('all');
+  const [filterBoard, setFilterBoard] = useState<string>('all');
+  const [filterLocation, setFilterLocation] = useState<string>('all');
 
   const { data: enquiries, isLoading } = useQuery({
     queryKey: ['enquiries'],
@@ -104,94 +110,149 @@ export default function EnquiriesPage() {
       enq.mobile.includes(searchTerm) ||
       enq.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    // Check if enquiry is already registered
-    const isRegistered = registrations?.some((reg: any) =>
-      reg.enquiry === Number(enq.id) ||
-      (reg.mobile === enq.mobile && reg.studentName === enq.candidateName) // Fallback check
-    );
-
-    if (isRegistered || enq.status === 'Converted') return false;
+    if (enq.status === 'Converted') return false;
 
     const matchesStatus = filterStatus === 'all' || enq.status === filterStatus;
     const matchesStream = filterStream === 'all' || enq.stream === filterStream;
+    const matchesGender = filterGender === 'all' || enq.gender === filterGender;
+    const matchesState = filterState === 'all' || enq.familyState === filterState || enq.schoolState === filterState;
+    const matchesCourse = filterCourse === 'all' || enq.courseInterested?.includes(filterCourse);
+    const matchesBoard = filterBoard === 'all' || enq.schoolBoard === filterBoard || enq.class10Board === filterBoard;
+    const matchesLocation = filterLocation === 'all' || enq.preferredLocations?.includes(filterLocation);
 
-    return matchesSearch && matchesStatus && matchesStream;
+    return matchesSearch && matchesStatus && matchesStream && matchesGender && matchesState && matchesCourse && matchesBoard && matchesLocation;
   });
 
   if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-pulse text-slate-500">Loading enquiries...</div></div>;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-2">
+      {/* Header - Compact */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-heading">Enquiries</h1>
-          <p className="text-sm text-slate-600 mt-1 font-body">Manage and track all student enquiries</p>
+          <h1 className="text-xl font-bold text-slate-900 font-heading">Enquiries</h1>
+          <p className="text-xs text-slate-500">Manage and track all student enquiries</p>
         </div>
         <div className="flex gap-2">
           <Button
             variant="outline"
             size="sm"
-            className="h-9"
+            className="h-8 text-xs"
             onClick={() => setIsFilterOpen(!isFilterOpen)}
           >
-            <Filter className="mr-2 h-4 w-4" /> Filters
+            <Filter className="mr-1 h-3 w-3" /> Filters
           </Button>
-          <Button onClick={() => router.push('/app/enquiries/new')} className="h-9 bg-teal-600 hover:bg-teal-700">
-            <Plus className="mr-2 h-4 w-4" /> New Enquiry
+          <Button onClick={() => router.push('/app/enquiries/new')} size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700">
+            <Plus className="mr-1 h-3 w-3" /> New Enquiry
           </Button>
         </div>
       </div>
 
-      {/* Filters Panel */}
+      {/* Filters Panel - Compact Design */}
       {isFilterOpen && (
-        <Card className="border-slate-200 bg-slate-50">
-          <CardContent className="pt-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label className="text-slate-700 font-medium">Status</Label>
-                <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="h-10 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="New">New</SelectItem>
-                    <SelectItem value="Converted">Converted</SelectItem>
-                    <SelectItem value="Closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+        <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
+            <Select value={filterStatus} onValueChange={setFilterStatus}>
+              <SelectTrigger className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="New">New</SelectItem>
+                <SelectItem value="Converted">Converted</SelectItem>
+                <SelectItem value="Closed">Closed</SelectItem>
+              </SelectContent>
+            </Select>
 
-              <div className="space-y-2">
-                <Label className="text-slate-700 font-medium">Stream</Label>
-                <Select value={filterStream} onValueChange={setFilterStream}>
-                  <SelectTrigger className="h-10 bg-white">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Streams</SelectItem>
-                    <SelectItem value="Science">Science</SelectItem>
-                    <SelectItem value="Commerce">Commerce</SelectItem>
-                    <SelectItem value="Arts">Arts</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+            <Select value={filterStream} onValueChange={setFilterStream}>
+              <SelectTrigger className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Stream" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Streams</SelectItem>
+                <SelectItem value="Science">Science</SelectItem>
+                <SelectItem value="Commerce">Commerce</SelectItem>
+                <SelectItem value="Arts">Arts</SelectItem>
+              </SelectContent>
+            </Select>
 
-              <div className="flex items-end">
-                <Button
-                  variant="outline"
-                  className="w-full h-10"
-                  onClick={() => {
-                    setFilterStatus('all');
-                    setFilterStream('all');
-                  }}
-                >
-                  Clear Filters
-                </Button>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            <Select value={filterGender} onValueChange={setFilterGender}>
+              <SelectTrigger className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Gender" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Genders</SelectItem>
+                {GENDERS.map((gender) => (
+                  <SelectItem key={gender} value={gender}>{gender}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterState} onValueChange={setFilterState}>
+              <SelectTrigger className="h-9 text-xs bg-white">
+                <SelectValue placeholder="State" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="all">All States</SelectItem>
+                {INDIAN_STATES.map((state) => (
+                  <SelectItem key={state} value={state}>{state}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterCourse} onValueChange={setFilterCourse}>
+              <SelectTrigger className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Course" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="all">All Courses</SelectItem>
+                {COURSES.map((course) => (
+                  <SelectItem key={course} value={course}>{course}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterBoard} onValueChange={setFilterBoard}>
+              <SelectTrigger className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Board" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="all">All Boards</SelectItem>
+                {SCHOOL_BOARDS.map((board) => (
+                  <SelectItem key={board} value={board}>{board}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={filterLocation} onValueChange={setFilterLocation}>
+              <SelectTrigger className="h-9 text-xs bg-white">
+                <SelectValue placeholder="Location" />
+              </SelectTrigger>
+              <SelectContent className="max-h-60">
+                <SelectItem value="all">All Locations</SelectItem>
+                {PREFERRED_LOCATIONS.map((loc) => (
+                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Button
+              size="sm"
+              className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
+              onClick={() => {
+                setFilterStatus('all');
+                setFilterStream('all');
+                setFilterGender('all');
+                setFilterState('all');
+                setFilterCourse('all');
+                setFilterBoard('all');
+                setFilterLocation('all');
+              }}
+            >
+              Clear
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Search */}
@@ -201,7 +262,7 @@ export default function EnquiriesPage() {
           placeholder="Search by name, mobile, or email..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 h-11 border-slate-300"
+          className="pl-10 h-9 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500 text-sm"
         />
       </div>
 
@@ -224,9 +285,9 @@ export default function EnquiriesPage() {
               {filteredEnquiries && filteredEnquiries.length > 0 ? (
                 filteredEnquiries.map((enquiry) => (
                   <tr key={enquiry.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-4 py-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-semibold shrink-0">
+                    <td className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-semibold text-sm shrink-0">
                           {enquiry.candidateName.charAt(0)}
                         </div>
                         <div className="min-w-0">
@@ -235,39 +296,39 @@ export default function EnquiriesPage() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-4 hidden md:table-cell">
-                      <div className="space-y-1">
-                        <p className="text-sm text-slate-700 flex items-center gap-1.5">
-                          <Phone size={12} className="text-slate-400" />
+                    <td className="px-4 py-2 hidden md:table-cell">
+                      <div className="space-y-0.5">
+                        <p className="text-xs text-slate-700 flex items-center gap-1">
+                          <Phone size={11} className="text-slate-400" />
                           {enquiry.mobile}
                         </p>
-                        <p className="text-xs text-slate-500 flex items-center gap-1.5">
-                          <Mail size={12} className="text-slate-400" />
+                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                          <Mail size={11} className="text-slate-400" />
                           {enquiry.email}
                         </p>
                       </div>
                     </td>
-                    <td className="px-4 py-4 hidden lg:table-cell">
-                      <div className="space-y-1">
+                    <td className="px-4 py-2 hidden lg:table-cell">
+                      <div>
                         <p className="text-sm font-medium text-slate-900">{enquiry.courseInterested}</p>
                         <p className="text-xs text-slate-500">{enquiry.stream} • {enquiry.schoolName}</p>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-sm text-slate-600 hidden sm:table-cell">
+                    <td className="px-4 py-2 text-xs text-slate-600 hidden sm:table-cell">
                       {format(new Date(enquiry.date), 'dd MMM yyyy')}
                     </td>
-                    <td className="px-4 py-4 text-sm text-slate-600 hidden sm:table-cell">
+                    <td className="px-4 py-2 text-xs text-slate-600 hidden sm:table-cell">
                       {enquiry.created_by_name || '-'}
                     </td>
-                    <td className="px-4 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${enquiry.status === 'New' ? 'bg-blue-100 text-blue-700' :
+                    <td className="px-4 py-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${enquiry.status === 'New' ? 'bg-blue-100 text-blue-700' :
                         enquiry.status === 'Converted' ? 'bg-green-100 text-green-700' :
                           'bg-slate-100 text-slate-700'
                         }`}>
                         {enquiry.status}
                       </span>
                     </td>
-                    <td className="px-4 py-4">
+                    <td className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           variant="ghost"
@@ -320,163 +381,9 @@ export default function EnquiriesPage() {
       <Dialog.Root open={!!viewEnquiry} onOpenChange={() => setViewEnquiry(null)}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[1000px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200 overflow-y-auto">
+          <Dialog.Content className="fixed left-[50%] top-[50%] h-[85vh] w-[90vw] max-w-[900px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white shadow-xl focus:outline-none z-50 border border-slate-200 overflow-hidden flex flex-col">
             {viewEnquiry && (
-              <>
-                <Dialog.Title className="text-xl font-bold text-slate-900 mb-4 font-heading">
-                  Enquiry Details
-                </Dialog.Title>
-
-                <div className="space-y-6">
-                  {/* Student Info */}
-                  <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-full bg-teal-600 flex items-center justify-center text-white font-bold text-xl">
-                        {viewEnquiry.candidateName.charAt(0)}
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold text-slate-900 font-heading">{viewEnquiry.candidateName}</h3>
-                        <p className="text-sm text-slate-600">ID: {viewEnquiry.id}</p>
-                        <div className="flex gap-4 mt-1">
-                          <div className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded border border-teal-100">{viewEnquiry.gender || 'Gender: N/A'}</div>
-                          <div className="text-xs text-slate-500 bg-white px-2 py-0.5 rounded border border-teal-100">DOB: {viewEnquiry.dob ? format(new Date(viewEnquiry.dob), 'dd MMM yyyy') : 'N/A'}</div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contact & Course */}
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    <InfoItem label="Mobile" value={viewEnquiry.mobile} icon={Phone} />
-                    <InfoItem label="Email" value={viewEnquiry.email} icon={Mail} />
-                    <InfoItem label="Date" value={format(new Date(viewEnquiry.date), 'dd MMM yyyy')} />
-                    <InfoItem label="Course" value={viewEnquiry.courseInterested} icon={GraduationCap} />
-                  </div>
-
-                  {/* Academic Details */}
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Academic Details</h4>
-                    <div className="bg-slate-50 border border-slate-100 rounded-lg p-4">
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                        <InfoItem label="Stream" value={viewEnquiry.stream} />
-                        <InfoItem label="School" value={viewEnquiry.schoolName} />
-                        <InfoItem label="Board" value={viewEnquiry.schoolBoard || '-'} />
-                        <InfoItem label="Location" value={[viewEnquiry.schoolPlace, viewEnquiry.schoolState].filter(Boolean).join(', ') || '-'} />
-
-                        <InfoItem label="12th Year" value={viewEnquiry.class12PassingYear || '-'} />
-                        <InfoItem label="12th %" value={viewEnquiry.class12Percentage ? `${viewEnquiry.class12Percentage}%` : '-'} />
-                        <InfoItem label="10th %" value={viewEnquiry.class10Percentage ? `${viewEnquiry.class10Percentage}%` : '-'} />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Marks (Science) */}
-                  {(viewEnquiry.pcbPercentage || viewEnquiry.pcmPercentage || viewEnquiry.physicsMarks ||
-                    viewEnquiry.chemistryMarks || viewEnquiry.biologyMarks || viewEnquiry.mathsMarks) && (
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Science Scores</h4>
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                            {viewEnquiry.pcbPercentage && <InfoItem label="PCB %" value={`${viewEnquiry.pcbPercentage}%`} />}
-                            {viewEnquiry.pcmPercentage && <InfoItem label="PCM %" value={`${viewEnquiry.pcmPercentage}%`} />}
-                            {viewEnquiry.physicsMarks && <InfoItem label="Physics" value={viewEnquiry.physicsMarks} />}
-                            {viewEnquiry.chemistryMarks && <InfoItem label="Chemistry" value={viewEnquiry.chemistryMarks} />}
-                            {viewEnquiry.biologyMarks && <InfoItem label="Biology" value={viewEnquiry.biologyMarks} />}
-                            {viewEnquiry.mathsMarks && <InfoItem label="Maths" value={viewEnquiry.mathsMarks} />}
-                            {viewEnquiry.previousNeetMarks && <InfoItem label="Prev. NEET" value={viewEnquiry.previousNeetMarks} />}
-                            {viewEnquiry.presentNeetMarks && <InfoItem label="Cur. NEET" value={viewEnquiry.presentNeetMarks} />}
-                          </div>
-                          {(viewEnquiry.gapYear || viewEnquiry.collegeDropout) && (
-                            <div className="flex gap-3 mt-4 pt-4 border-t border-blue-300">
-                              {viewEnquiry.gapYear && (
-                                <div className="flex items-center gap-2">
-                                  <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">Gap Year</span>
-                                  {viewEnquiry.gapYearFrom && viewEnquiry.gapYearTo && <span className="text-xs text-blue-800">({viewEnquiry.gapYearFrom} - {viewEnquiry.gapYearTo})</span>}
-                                </div>
-                              )}
-                              {viewEnquiry.collegeDropout && (
-                                <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">
-                                  College Dropout
-                                </span>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    )}
-
-                  {/* Family Details */}
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-700 mb-3 font-heading">Family Details</h4>
-                    <div className="bg-slate-50 rounded-lg p-4 space-y-3">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium mb-1">Father's Name</p>
-                          <p className="text-sm text-slate-900 font-semibold">{viewEnquiry.fatherName}</p>
-                          <div className="flex gap-2 text-xs text-slate-600 mt-1">
-                            {viewEnquiry.fatherOccupation && <span>{viewEnquiry.fatherOccupation}</span>}
-                            {viewEnquiry.fatherMobile && <span className="flex items-center gap-1"><Phone size={10} /> {viewEnquiry.fatherMobile}</span>}
-                          </div>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium mb-1">Mother's Name</p>
-                          <p className="text-sm text-slate-900 font-semibold">{viewEnquiry.motherName}</p>
-                          <div className="flex gap-2 text-xs text-slate-600 mt-1">
-                            {viewEnquiry.motherOccupation && <span>{viewEnquiry.motherOccupation}</span>}
-                            {viewEnquiry.motherMobile && <span className="flex items-center gap-1"><Phone size={10} /> {viewEnquiry.motherMobile}</span>}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="pt-3 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium mb-1">Family Location</p>
-                          <p className="text-sm text-slate-700">{[viewEnquiry.familyPlace, viewEnquiry.familyState].filter(Boolean).join(', ') || '-'}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-slate-500 font-medium mb-1">Permanent Address</p>
-                          <p className="text-sm text-slate-700">{viewEnquiry.permanentAddress}</p>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Status */}
-                  <div className="flex items-center gap-2">
-                    <p className="text-sm text-slate-600 font-medium">Status:</p>
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold ${viewEnquiry.status === 'New' ? 'bg-blue-100 text-blue-700' :
-                      viewEnquiry.status === 'Converted' ? 'bg-green-100 text-green-700' :
-                        'bg-slate-100 text-slate-700'
-                      }`}>
-                      {viewEnquiry.status}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 mt-6 pt-6 border-t border-slate-200">
-                  <Button
-                    variant="outline"
-                    className="flex-1 h-11"
-                    onClick={() => setViewEnquiry(null)}
-                  >
-                    Close
-                  </Button>
-                  <Button
-                    className="flex-1 h-11 bg-teal-600 hover:bg-teal-700"
-                    onClick={() => {
-                      router.push(`/app/student-profile/enquiry/${viewEnquiry.id}`);
-                      setViewEnquiry(null);
-                    }}
-                  >
-                    <Edit size={16} className="mr-2" /> View Full Profile
-                  </Button>
-                </div>
-
-                <Dialog.Close asChild>
-                  <button className="absolute top-4 right-4 p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600">
-                    <X size={20} />
-                  </button>
-                </Dialog.Close>
-              </>
+              <EnquiryViewModal enquiry={viewEnquiry} onClose={() => setViewEnquiry(null)} router={router} />
             )}
           </Dialog.Content>
         </Dialog.Portal>
@@ -514,6 +421,303 @@ export default function EnquiriesPage() {
         entityName={actionEnquiry?.candidateName || ''}
         isLoading={requestMutation.isPending}
       />
+    </div>
+  );
+}
+
+// Tab configuration for the modal
+const MODAL_TABS = [
+  { id: 'personal', label: 'Personal', icon: Users },
+  { id: 'family', label: 'Family & Address', icon: Users },
+  { id: 'hslc', label: 'HSLC (Class 10)', icon: GraduationCap },
+  { id: 'hsslc', label: 'HSSLC (Class 12)', icon: GraduationCap },
+  { id: 'scores', label: 'Science & NEET', icon: GraduationCap },
+  { id: 'preferences', label: 'Preferences', icon: Filter },
+];
+
+// Enquiry View Modal Component with Tabs
+function EnquiryViewModal({ enquiry, onClose, router }: { enquiry: Enquiry; onClose: () => void; router: any }) {
+  const [activeTab, setActiveTab] = useState('personal');
+
+  const renderTabContent = () => {
+    switch (activeTab) {
+      case 'personal':
+        return (
+          <div className="space-y-6">
+            {/* Student Header */}
+            <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center text-white font-bold text-2xl">
+                  {enquiry.candidateName.charAt(0)}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-slate-900">{enquiry.candidateName}</h3>
+                  <p className="text-sm text-slate-600">ID: {enquiry.id}</p>
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    <span className="text-xs bg-white px-2 py-1 rounded border border-teal-200">{enquiry.gender || 'N/A'}</span>
+                    <span className="text-xs bg-white px-2 py-1 rounded border border-teal-200">DOB: {enquiry.dob ? format(new Date(enquiry.dob), 'dd MMM yyyy') : 'N/A'}</span>
+                    {enquiry.caste && <span className="text-xs bg-white px-2 py-1 rounded border border-teal-200">{enquiry.caste}</span>}
+                    {enquiry.religion && <span className="text-xs bg-white px-2 py-1 rounded border border-teal-200">{enquiry.religion}</span>}
+                  </div>
+                </div>
+                <span className={`px-3 py-1 rounded-full text-xs font-semibold ${enquiry.status === 'New' ? 'bg-blue-100 text-blue-700' : enquiry.status === 'Converted' ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-700'}`}>
+                  {enquiry.status}
+                </span>
+              </div>
+            </div>
+
+            {/* Contact Details */}
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Contact Information</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <ModalField label="Mobile" value={enquiry.mobile} icon={Phone} />
+                <ModalField label="Email" value={enquiry.email} icon={Mail} />
+                <ModalField label="Enquiry Date" value={format(new Date(enquiry.date), 'dd MMM yyyy')} />
+                <ModalField label="Course Interested" value={enquiry.courseInterested} icon={GraduationCap} />
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'family':
+        return (
+          <div className="space-y-6">
+            {/* Father's Details */}
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Father's Information</h4>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <ModalField label="Name" value={enquiry.fatherName || '-'} />
+                  <ModalField label="Occupation" value={enquiry.fatherOccupation || '-'} />
+                  <ModalField label="Mobile" value={enquiry.fatherMobile || '-'} icon={Phone} />
+                </div>
+              </div>
+            </div>
+
+            {/* Mother's Details */}
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Mother's Information</h4>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <ModalField label="Name" value={enquiry.motherName || '-'} />
+                  <ModalField label="Occupation" value={enquiry.motherOccupation || '-'} />
+                  <ModalField label="Mobile" value={enquiry.motherMobile || '-'} icon={Phone} />
+                </div>
+              </div>
+            </div>
+
+            {/* Address */}
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Address Details</h4>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <ModalField label="City/Place" value={enquiry.familyPlace || '-'} />
+                  <ModalField label="State" value={enquiry.familyState || '-'} />
+                  <div className="col-span-2">
+                    <ModalField label="Permanent Address" value={enquiry.permanentAddress || '-'} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'hslc':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">HSLC / Class 10 Details</h4>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <ModalField label="School Name" value={enquiry.class10SchoolName || '-'} />
+                  <ModalField label="Board" value={enquiry.class10Board || '-'} />
+                  <ModalField label="Passing Year" value={enquiry.class10PassingYear || '-'} />
+                  <ModalField label="Percentage" value={enquiry.class10Percentage ? `${enquiry.class10Percentage}%` : '-'} />
+                  <ModalField label="City/Place" value={enquiry.class10Place || '-'} />
+                  <ModalField label="State" value={enquiry.class10State || '-'} />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'hsslc':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">HSSLC / Class 12 Details</h4>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <ModalField label="School Name" value={enquiry.schoolName || '-'} />
+                  <ModalField label="Board" value={enquiry.schoolBoard || '-'} />
+                  <ModalField label="Stream" value={enquiry.stream || '-'} />
+                  <ModalField label="Passing Year" value={enquiry.class12PassingYear || '-'} />
+                  <ModalField label="Percentage" value={enquiry.class12Percentage ? `${enquiry.class12Percentage}%` : '-'} />
+                  <ModalField label="City/Place" value={enquiry.schoolPlace || '-'} />
+                  <ModalField label="State" value={enquiry.schoolState || '-'} />
+                </div>
+              </div>
+            </div>
+
+            {/* Gap Year / Dropout */}
+            {(enquiry.gapYear || enquiry.collegeDropout) && (
+              <div className="flex gap-3">
+                {enquiry.gapYear && (
+                  <div className="flex items-center gap-2">
+                    <span className="px-3 py-1 rounded-full text-xs font-semibold bg-yellow-100 text-yellow-700">Gap Year</span>
+                    {enquiry.gapYearFrom && enquiry.gapYearTo && <span className="text-sm text-slate-600">({enquiry.gapYearFrom} - {enquiry.gapYearTo})</span>}
+                  </div>
+                )}
+                {enquiry.collegeDropout && (
+                  <span className="px-3 py-1 rounded-full text-xs font-semibold bg-orange-100 text-orange-700">College Dropout</span>
+                )}
+              </div>
+            )}
+          </div>
+        );
+
+      case 'scores':
+        return (
+          <div className="space-y-6">
+            {/* Science Scorecard */}
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Science Scorecard</h4>
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <ModalField label="Physics" value={enquiry.physicsMarks || '-'} />
+                  <ModalField label="Chemistry" value={enquiry.chemistryMarks || '-'} />
+                  <ModalField label="Biology" value={enquiry.biologyMarks || '-'} />
+                  <ModalField label="Maths" value={enquiry.mathsMarks || '-'} />
+                </div>
+                <div className="grid grid-cols-2 gap-4 mt-4 pt-4 border-t border-purple-200">
+                  <ModalField label="PCB %" value={enquiry.pcbPercentage ? `${enquiry.pcbPercentage}%` : '-'} />
+                  <ModalField label="PCM %" value={enquiry.pcmPercentage ? `${enquiry.pcmPercentage}%` : '-'} />
+                </div>
+              </div>
+            </div>
+
+            {/* NEET Scores */}
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">NEET Scores</h4>
+              <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <ModalField label="Previous NEET Score" value={enquiry.previousNeetMarks || '-'} />
+                  <ModalField label="Present NEET Score" value={enquiry.presentNeetMarks || '-'} />
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+
+      case 'preferences':
+        return (
+          <div className="space-y-6">
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Preferred Education Hubs</h4>
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                {enquiry.preferredLocations?.length > 0 ? (
+                  <div className="flex flex-wrap gap-2">
+                    {enquiry.preferredLocations.map((loc: string) => (
+                      <span key={loc} className="px-3 py-1.5 bg-white border border-orange-200 rounded-lg text-sm text-slate-700">{loc}</span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-slate-500">No preferred locations selected</p>
+                )}
+              </div>
+            </div>
+
+            {enquiry.otherLocation && (
+              <div>
+                <h4 className="text-sm font-bold text-slate-700 mb-3">Other Preferred Location</h4>
+                <div className="bg-slate-50 rounded-lg p-4">
+                  <p className="text-sm text-slate-900">{enquiry.otherLocation}</p>
+                </div>
+              </div>
+            )}
+
+            <div>
+              <h4 className="text-sm font-bold text-slate-700 mb-3">Budget / Payment</h4>
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+                <p className="text-2xl font-bold text-green-700">
+                  {enquiry.paymentAmount ? `₹${enquiry.paymentAmount.toLocaleString()}` : '-'}
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <>
+      {/* Header */}
+      <div className="flex items-center justify-between p-4 border-b border-slate-200">
+        <Dialog.Title className="text-lg font-bold text-slate-900">Enquiry Details</Dialog.Title>
+        <Dialog.Close asChild>
+          <button className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600">
+            <X size={20} />
+          </button>
+        </Dialog.Close>
+      </div>
+
+      {/* Content with Sidebar */}
+      <div className="flex flex-1 overflow-hidden">
+        {/* Left Sidebar Tabs */}
+        <div className="w-48 border-r border-slate-200 p-2 flex flex-col gap-1 bg-slate-50">
+          {MODAL_TABS.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-3 py-2.5 rounded-lg text-left text-sm transition-all ${isActive ? 'bg-teal-600 text-white font-medium' : 'text-slate-600 hover:bg-slate-100'}`}
+              >
+                <Icon size={16} />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Right Content Panel */}
+        <div className="flex-1 p-6 overflow-y-auto">
+          {renderTabContent()}
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="flex justify-end gap-3 p-4 border-t border-slate-200 bg-slate-50">
+        <Button variant="outline" className="h-10 px-6 border-slate-300 hover:bg-slate-100" onClick={onClose}>
+          Close
+        </Button>
+        <Button
+          className="h-10 px-6 bg-teal-600 hover:bg-teal-700"
+          onClick={() => {
+            router.push(`/app/student-profile/enquiry/${enquiry.id}`);
+            onClose();
+          }}
+        >
+          <Edit size={16} className="mr-2" /> View Full Profile
+        </Button>
+      </div>
+    </>
+  );
+}
+
+// Field display component for the modal
+function ModalField({ label, value, icon: Icon }: { label: string; value: any; icon?: any }) {
+  return (
+    <div className="space-y-1">
+      <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
+        {Icon && <Icon size={12} className="text-slate-400" />}
+        {label}
+      </p>
+      <p className="text-sm text-slate-900 font-medium bg-white px-3 py-2 rounded border border-slate-200">{value}</p>
     </div>
   );
 }

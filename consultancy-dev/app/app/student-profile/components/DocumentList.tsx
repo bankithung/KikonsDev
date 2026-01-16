@@ -67,17 +67,17 @@ export function DocumentList({ studentName, registrationId }: DocumentListProps)
             </CardHeader>
             <CardContent>
                 {studentDocs.length > 0 ? (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {studentDocs.map((doc) => (
-                            <div key={doc.id} className="flex items-center justify-between p-3 border border-slate-200 rounded-lg hover:bg-slate-50">
-                                <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                                        <FileText size={20} />
+                            <div key={doc.id} className="flex items-center justify-between p-2 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors group">
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-8 h-8 rounded-md bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                                        <FileText size={16} />
                                     </div>
-                                    <div>
-                                        <p className="font-medium text-slate-900">{doc.fileName}</p>
-                                        <p className="text-xs text-slate-500">Uploaded {format(new Date(doc.uploadedAt), 'dd MMM yyyy')}</p>
-                                        {doc.description && <p className="text-xs text-slate-400">{doc.description}</p>}
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-slate-900 truncate max-w-[200px]">{doc.fileName}</p>
+                                        <p className="text-[10px] text-slate-500">Uploaded {format(new Date(doc.uploadedAt), 'dd MMM yyyy')}</p>
+                                        {/* {doc.description && <p className="text-[10px] text-slate-400 truncate">{doc.description}</p>} */}
                                     </div>
                                 </div>
                                 {doc.file && (

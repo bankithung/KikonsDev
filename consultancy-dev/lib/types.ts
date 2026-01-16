@@ -11,6 +11,16 @@ export interface User {
   avatar?: string;
 }
 
+export interface StudentRemark {
+  id: number;
+  registration: number;
+  user: number;
+  userName: string;
+  remark: string;
+  createdAt: string;
+  companyId: string;
+}
+
 export interface Enquiry {
   id: string;
   date: string; // ISO date
@@ -29,6 +39,11 @@ export interface Enquiry {
   permanentAddress: string;
   class12PassingYear?: string;
   class10Percentage?: number;
+  class10SchoolName?: string;
+  class10Board?: string;
+  class10PassingYear?: string;
+  class10Place?: string;
+  class10State?: string;
   class12Percentage?: number;
   schoolBoard?: string;
   schoolPlace?: string;
@@ -37,6 +52,8 @@ export interface Enquiry {
   familyState?: string;
   gender?: string;
   dob?: string;
+  caste?: string;
+  religion?: string;
   gapYearFrom?: number;
   gapYearTo?: number;
   pcbPercentage?: number;
@@ -64,6 +81,8 @@ export interface Registration {
   email: string;
   gender?: 'Male' | 'Female' | 'Other';
   dateOfBirth?: string;
+  caste?: string;
+  religion?: string;
   registrationDate: string;
   needsLoan: boolean;
   paymentStatus: 'Paid' | 'Pending' | 'Partial';
@@ -87,6 +106,11 @@ export interface Registration {
   schoolPlace?: string;
   schoolState?: string;
   class10Percentage?: number;
+  class10SchoolName?: string;
+  class10Board?: string;
+  class10PassingYear?: string;
+  class10Place?: string;
+  class10State?: string;
   class12Percentage?: number;
   class12PassingYear?: string;
 
@@ -208,12 +232,17 @@ export interface Payment {
 }
 
 
+export interface Metric {
+  value: number;
+  trend: number;
+}
+
 export interface ReportMetrics {
-  enquiriesCount: number;
-  registrationsCount: number;
-  enrollmentsCount: number;
+  enquiries: Metric;
+  registrations: Metric;
+  enrollments: Metric;
+  totalEarnings: Metric;
   pendingPayments: number;
-  pendingTransfers: number;
 }
 
 export interface ApprovalRequest {
@@ -252,6 +281,8 @@ export interface Task {
   status: 'Todo' | 'In Progress' | 'Done' | 'Pending' | 'Completed';
   priority: 'Low' | 'Medium' | 'High';
   registration?: number;
+  position?: number;
+  comments_count?: number;
   created_at: string;
 }
 

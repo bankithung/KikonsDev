@@ -76,7 +76,7 @@ export default function FollowUpDetailPage() {
     });
 
     const completeMutation = useMutation({
-        mutationFn: (comment: string) => apiClient.followUps.completeWithComment(id, comment),
+        mutationFn: (data: { comment: string, outcomeStatus: string, admissionPossibility: number }) => apiClient.followUps.completeWithComment({ id, ...data }),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['followUp', id] });
             queryClient.invalidateQueries({ queryKey: ['followUps'] });
@@ -249,6 +249,29 @@ export default function FollowUpDetailPage() {
                                 }`}>
                                 {followUp.status}
                             </Badge>
+
+                            {followUp.status === 'Completed' && followUp.outcome_status && (
+                                <Badge variant="outline" className={`text-xs ml-2 ${followUp.outcome_status === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                                        followUp.outcome_status.includes('Negative') ? 'bg-rose-50 text-rose-700 border-rose-200' :
+                                            'bg-slate-50 text-slate-600 border-slate-200'
+                                    }`}>
+                                    {followUp.outcome_status}
+                                </Badge>
+                            )}
+
+                            {followUp.status === 'Completed' && followUp.admission_possibility !== undefined && followUp.admission_possibility > 0 && (
+                                <div className="flex items-center gap-1.5 ml-2 bg-slate-50 px-2 py-1 rounded-full border border-slate-100">
+                                    <div className="h-1.5 w-12 bg-slate-200 rounded-full overflow-hidden">
+                                        <div
+                                            className={`h-full rounded-full ${followUp.admission_possibility >= 75 ? 'bg-emerald-500' :
+                                                    followUp.admission_possibility >= 40 ? 'bg-amber-500' : 'bg-rose-500'
+                                                }`}
+                                            style={{ width: `${followUp.admission_possibility}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] font-bold text-slate-600">{followUp.admission_possibility}%</span>
+                                </div>
+                            )}
                         </div>
 
                         {followUp.notes && (
@@ -415,7 +438,7 @@ export default function FollowUpDetailPage() {
                 followUp={followUp}
                 open={showCompleteModal}
                 onClose={() => setShowCompleteModal(false)}
-                onComplete={(comment) => completeMutation.mutate(comment)}
+                onComplete={(data) => completeMutation.mutate(data)}
                 isLoading={completeMutation.isPending}
             />
 

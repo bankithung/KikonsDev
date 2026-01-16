@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,14 +36,18 @@ export default function DashboardPage() {
         queryFn: apiClient.dashboard.getActivity,
     });
 
+    const [weeklyFilter, setWeeklyFilter] = useState<'7days' | '30days' | 'month'>('7days');
+
     const { data: weeklyData = [] } = useQuery({
-        queryKey: ['dashboard-weekly'],
-        queryFn: apiClient.dashboard.getWeeklyData,
+        queryKey: ['dashboard-weekly', weeklyFilter],
+        queryFn: () => apiClient.dashboard.getWeeklyData(weeklyFilter),
     });
 
+    const [revenueFilter, setRevenueFilter] = useState<'days' | 'weeks' | 'months' | 'years'>('months');
+
     const { data: revenueData = [] } = useQuery({
-        queryKey: ['dashboard-revenue'],
-        queryFn: apiClient.dashboard.getRevenueData,
+        queryKey: ['dashboard-revenue', revenueFilter],
+        queryFn: () => apiClient.dashboard.getRevenueData(revenueFilter),
     });
 
     const { data: recentEnquiries = [] } = useQuery({
@@ -55,6 +61,7 @@ export default function DashboardPage() {
             // Fetch from follow-ups or tasks endpoint
             const tasks = await apiClient.followUps.list();
             return tasks.filter((t: any) => t.status === 'Pending').slice(0, 3).map((t: any) => ({
+                id: t.id,
                 task: `Follow up with ${t.studentName}`,
                 due: new Date(t.scheduledFor) > new Date() ? 'Today' : 'Overdue',
                 priority: t.priority
@@ -87,32 +94,24 @@ export default function DashboardPage() {
     }
 
     // Calculate conversion rate from stats
-    const conversionRate = stats?.enquiriesCount && stats?.registrationsCount
-        ? Math.round((stats.registrationsCount / stats.enquiriesCount) * 100)
+    const conversionRate = stats?.enquiries?.value && stats?.registrations?.value
+        ? Math.round((stats.registrations.value / stats.enquiries.value) * 100)
         : 0;
 
     return (
-        <div className="space-y-6 lg:space-y-8">
-            {/* Header */}
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                    <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Dashboard</h1>
-                    <p className="text-sm text-slate-600 mt-1">Welcome back! Here's what's happening today.</p>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-9 text-sm font-medium" asChild>
+        <div className="space-y-2">
+            {/* Header - Compact */}
+            <div className="flex items-center justify-between">
+                <h1 className="text-lg font-bold text-slate-900">Dashboard</h1>
+                <div className="flex gap-2">
+                    <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-8 text-xs px-3" asChild>
                         <Link href="/app/enquiries/new">
-                            <Plus size={16} className="mr-2" /> New Enquiry
+                            <Plus size={14} className="mr-1.5" /> New Enquiry
                         </Link>
                     </Button>
-                    <Button size="sm" variant="outline" className="h-9 text-sm font-medium" asChild>
+                    <Button size="sm" variant="outline" className="h-8 text-xs px-3" asChild>
                         <Link href="/app/registrations/new">
-                            <UserPlus size={16} className="mr-2" /> Register Student
-                        </Link>
-                    </Button>
-                    <Button size="sm" variant="outline" className="h-9 text-sm font-medium hidden sm:inline-flex" asChild>
-                        <Link href="/app/documents">
-                            <Upload size={16} className="mr-2" /> Upload Docs
+                            <UserPlus size={14} className="mr-1.5" /> Register
                         </Link>
                     </Button>
                 </div>
@@ -122,42 +121,41 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <StatsCard
                     title="Total Enquiries"
-                    value={stats?.enquiriesCount || 0}
+                    value={stats?.enquiries?.value || 0}
                     icon={MessageSquare}
-                    trend="+12%"
-                    trendUp={true}
+                    trend={`${(stats?.enquiries?.trend || 0) > 0 ? '+' : ''}${stats?.enquiries?.trend || 0}%`}
+                    trendUp={(stats?.enquiries?.trend || 0) >= 0}
                     subtitle="This month"
                     iconBg="bg-blue-50"
                     iconColor="text-blue-600"
                 />
                 <StatsCard
                     title="Registrations"
-                    value={stats?.registrationsCount || 0}
+                    value={stats?.registrations?.value || 0}
                     icon={UserPlus}
-                    trend="+4%"
-                    trendUp={true}
+                    trend={`${(stats?.registrations?.trend || 0) > 0 ? '+' : ''}${stats?.registrations?.trend || 0}%`}
+                    trendUp={(stats?.registrations?.trend || 0) >= 0}
                     subtitle="Active students"
                     iconBg="bg-green-50"
                     iconColor="text-green-600"
                 />
                 <StatsCard
                     title="Enrollments"
-                    value={stats?.enrollmentsCount || 0}
+                    value={stats?.enrollments?.value || 0}
                     icon={GraduationCap}
-                    trend="-2%"
-                    trendUp={false}
+                    trend={`${(stats?.enrollments?.trend || 0) > 0 ? '+' : ''}${stats?.enrollments?.trend || 0}%`}
+                    trendUp={(stats?.enrollments?.trend || 0) >= 0}
                     subtitle="Programs active"
                     iconBg="bg-purple-50"
                     iconColor="text-purple-600"
                 />
                 <StatsCard
-                    title="Pending Payments"
-                    value={stats?.pendingPayments || 0}
+                    title="Total Earnings"
+                    value={`₹${(stats?.totalEarnings?.value || 0).toLocaleString()}`}
                     icon={CreditCard}
-                    trend="5 pending"
-                    trendUp={false}
-                    warning={true}
-                    subtitle="Action required"
+                    trend={`${(stats?.totalEarnings?.trend || 0) > 0 ? '+' : ''}${stats?.totalEarnings?.trend || 0}%`}
+                    trendUp={(stats?.totalEarnings?.trend || 0) >= 0}
+                    subtitle="Revenue (Net)"
                     iconBg="bg-yellow-50"
                     iconColor="text-yellow-600"
                 />
@@ -170,19 +168,35 @@ export default function DashboardPage() {
                     {/* Weekly Activity Chart */}
                     <Card className="border-slate-200">
                         <CardHeader className="pb-4">
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-between flex-wrap gap-4">
                                 <CardTitle className="text-lg font-semibold text-slate-900">Weekly Overview</CardTitle>
-                                <select className="text-sm border border-slate-200 rounded-lg px-3 py-1.5 text-slate-600 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none">
-                                    <option>Last 7 Days</option>
-                                    <option>Last 30 Days</option>
-                                    <option>This Month</option>
-                                </select>
+                                {/* Animated Filter Toggle */}
+                                <div className="flex items-center bg-slate-100 rounded-full p-1 gap-0.5">
+                                    {[
+                                        { key: '7days', label: '7 Days' },
+                                        { key: '30days', label: '30 Days' },
+                                        { key: 'month', label: 'This Month' }
+                                    ].map((item) => (
+                                        <button
+                                            key={item.key}
+                                            onClick={() => setWeeklyFilter(item.key as '7days' | '30days' | 'month')}
+                                            className={cn(
+                                                "px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-300 whitespace-nowrap",
+                                                weeklyFilter === item.key
+                                                    ? "bg-white text-teal-700 shadow-sm"
+                                                    : "text-slate-500 hover:text-slate-700"
+                                            )}
+                                        >
+                                            {item.label}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
                         </CardHeader>
                         <CardContent>
                             <div className="h-[280px] sm:h-[320px] w-full">
                                 <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={weeklyData}>
+                                    <BarChart data={weeklyData} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                         <XAxis
                                             dataKey="name"
@@ -220,7 +234,26 @@ export default function DashboardPage() {
                     {/* Revenue Trend */}
                     <Card className="border-slate-200">
                         <CardHeader className="pb-4">
-                            <CardTitle className="text-lg font-semibold text-slate-900">Revenue Trend</CardTitle>
+                            <div className="flex items-center justify-between flex-wrap gap-4">
+                                <CardTitle className="text-lg font-semibold text-slate-900">Revenue Trend</CardTitle>
+                                {/* Animated Filter Toggle */}
+                                <div className="flex items-center bg-slate-100 rounded-full p-1 gap-0.5">
+                                    {(['days', 'weeks', 'months', 'years'] as const).map((filter) => (
+                                        <button
+                                            key={filter}
+                                            onClick={() => setRevenueFilter(filter)}
+                                            className={cn(
+                                                "px-3 py-1.5 text-xs font-medium rounded-full transition-all duration-300 capitalize",
+                                                revenueFilter === filter
+                                                    ? "bg-white text-teal-700 shadow-sm"
+                                                    : "text-slate-500 hover:text-slate-700"
+                                            )}
+                                        >
+                                            {filter}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
                         </CardHeader>
                         <CardContent>
                             <div className="h-[240px] sm:h-[280px] w-full">
@@ -234,7 +267,7 @@ export default function DashboardPage() {
                                         </defs>
                                         <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                                         <XAxis
-                                            dataKey="month"
+                                            dataKey="label"
                                             tickLine={false}
                                             axisLine={false}
                                             fontSize={12}
@@ -367,7 +400,7 @@ export default function DashboardPage() {
                                 <p className="text-sm text-slate-500 text-center py-4">No recent enquiries</p>
                             ) : (
                                 recentEnquiries.map((enq: any, i: number) => (
-                                    <div key={i} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                                    <Link key={enq.id || i} href={enq.enrollmentId ? `/app/student-profile/enrollment/${enq.enrollmentId}` : `/app/enquiries/${enq.id}`} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200">
                                         <div className="flex items-center gap-3">
                                             <div className="h-10 w-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-semibold text-sm">
                                                 {enq.name?.charAt(0) || '?'}
@@ -380,7 +413,7 @@ export default function DashboardPage() {
                                         <span className={`text-xs px-2 py-1 rounded-full font-medium ${enq.status === 'New' ? 'bg-blue-100 text-blue-700' : 'bg-teal-100 text-teal-700'}`}>
                                             {enq.status}
                                         </span>
-                                    </div>
+                                    </Link>
                                 ))
                             )}
                         </div>
@@ -397,7 +430,7 @@ export default function DashboardPage() {
                     <CardContent className="flex-1 flex flex-col justify-between">
                         <div className="space-y-3">
                             {upcomingTasks.length > 0 ? upcomingTasks.map((task: any, i: number) => (
-                                <div key={i} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200">
+                                <Link key={task.id || i} href="/app/tasks" className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-slate-200">
                                     <div className="flex items-center gap-3">
                                         <div className={cn("h-2 w-2 rounded-full",
                                             task.priority === 'High' ? 'bg-red-500' :
@@ -410,7 +443,7 @@ export default function DashboardPage() {
                                             </p>
                                         </div>
                                     </div>
-                                </div>
+                                </Link>
                             )) : (
                                 <p className="text-sm text-slate-500 text-center py-4">No upcoming tasks</p>
                             )}

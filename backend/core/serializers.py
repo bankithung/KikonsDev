@@ -4,7 +4,8 @@ from .models import (
     StudentDocument, DocumentTransfer, Task, Appointment, University, Template,
     Notification, Commission, Refund, LeadSource, VisaTracking, FollowUp, FollowUpComment,
     Installment, Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest,
-    ApprovalRequest, Company, ActivityLog, Earning
+    ApprovalRequest, Company, ActivityLog, Earning, PhysicalDocumentTransfer, TransferTimeline,
+    StudentRemark
 )
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -75,6 +76,17 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
     def get_created_by_name(self, obj):
         return obj.created_by.username if obj.created_by else ''
 
+class StudentRemarkSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = StudentRemark
+        fields = ['id', 'registration', 'user', 'user_name', 'remark', 'created_at', 'company_id']
+        read_only_fields = ['user', 'created_at', 'company_id']
+
+    def get_user_name(self, obj):
+        return obj.user.username if obj.user else 'Unknown'
+
 
 class RegistrationSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
@@ -108,8 +120,8 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         return obj.created_by.username if obj.created_by else '-'
     
     # Extra fields for fee calculation
-    schoolFees = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False, default=0)
-    hostelFees = serializers.DecimalField(max_digits=10, decimal_places=2, write_only=True, required=False, default=0)
+    schoolFees = serializers.DecimalField(source='school_fees', max_digits=10, decimal_places=2, required=False)
+    hostelFees = serializers.DecimalField(source='hostel_fees', max_digits=10, decimal_places=2, required=False)
     
     # Payment fields (write_only for input)
     paymentType = serializers.ChoiceField(choices=['Full', 'Installment'], write_only=True, required=False, default='Full')
@@ -142,10 +154,34 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         ret['paymentType'] = 'Installment' if instance.installments.exists() else 'Full'
         return ret
 
+    def update(self, instance, validated_data):
+        # Update standard fields
+        # student_name is read-only from relation, cannot be updated here
+        instance.program_name = validated_data.get('program_name', instance.program_name)
+        instance.start_date = validated_data.get('start_date', instance.start_date)
+        instance.duration_months = validated_data.get('duration_months', instance.duration_months)
+        instance.university = validated_data.get('university', instance.university)
+        instance.status = validated_data.get('status', instance.status)
+        
+        # Update Fees
+        instance.commission_amount = validated_data.get('commission_amount', instance.commission_amount)
+        instance.school_fees = validated_data.get('school_fees', instance.school_fees)
+        instance.hostel_fees = validated_data.get('hostel_fees', instance.hostel_fees)
+        
+        # Recalculate Total Fees
+        instance.total_fees = instance.commission_amount + instance.school_fees + instance.hostel_fees
+        
+        instance.save()
+        
+        # Note: We are currently NOT regenerating installments on update to avoid data loss on paid installments.
+        # This can be added later if needed.
+        
+        return instance
+
     def create(self, validated_data):
         # Extract extra fields
-        school_fees = validated_data.pop('schoolFees', 0)
-        hostel_fees = validated_data.pop('hostelFees', 0)
+        school_fees = validated_data.get('school_fees', 0)
+        hostel_fees = validated_data.get('hostel_fees', 0)
         commission_amount = validated_data.get('commission_amount', 0)
         
         payment_type = validated_data.pop('paymentType', 'Full')
@@ -160,7 +196,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         import uuid
         validated_data['enrollment_no'] = f"ENR-{uuid.uuid4().hex[:8].upper()}"
         
-        enrollment = super().create(validated_data)
+        enrollment = super(serializers.ModelSerializer, self).create(validated_data)
         
         # Create Installments if applicable
         if payment_type == 'Installment' and installments_count and installments_count > 0:
@@ -188,7 +224,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     class Meta:
         model = Payment
         fields = '__all__'
-    
+        
     def get_refunds(self, obj):
         refunds = obj.refunds.all()
         return RefundSerializer(refunds, many=True).data if refunds.exists() else []
@@ -228,8 +264,28 @@ class DocumentTransferSerializer(serializers.ModelSerializer):
         model = DocumentTransfer
         fields = '__all__'
 
+class TransferTimelineSerializer(serializers.ModelSerializer):
+    updated_by_name = serializers.CharField(source='updated_by.username', read_only=True)
+    
+    class Meta:
+        model = TransferTimeline
+        fields = '__all__'
+
+
+class PhysicalDocumentTransferSerializer(serializers.ModelSerializer):
+    sender = serializers.PrimaryKeyRelatedField(read_only=True)
+    sender_name = serializers.CharField(source='sender.username', read_only=True)
+    receiver_name = serializers.CharField(source='receiver.username', read_only=True)
+    documents_details = StudentDocumentSerializer(source='documents', many=True, read_only=True)
+    timeline = TransferTimelineSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = PhysicalDocumentTransfer
+        fields = '__all__'
+
 class TaskSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.CharField(source='assigned_to.username', read_only=True)
+    comments_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Task
@@ -288,6 +344,8 @@ class FollowUpSerializer(serializers.ModelSerializer):
     assigned_to_name = serializers.SerializerMethodField()
     assigned_to_email = serializers.SerializerMethodField()
     student_name = serializers.SerializerMethodField()
+    student_email = serializers.SerializerMethodField()
+    student_phone = serializers.SerializerMethodField()
     comments = serializers.SerializerMethodField()
 
     def get_created_by_name(self, obj):
@@ -301,6 +359,12 @@ class FollowUpSerializer(serializers.ModelSerializer):
     
     def get_student_name(self, obj):
         return obj.enquiry.candidate_name if obj.enquiry else '-'
+    
+    def get_student_email(self, obj):
+        return obj.enquiry.email if obj.enquiry else '-'
+        
+    def get_student_phone(self, obj):
+        return obj.enquiry.mobile if obj.enquiry else '-'
     
     def get_comments(self, obj):
         # Only include comments in detail view

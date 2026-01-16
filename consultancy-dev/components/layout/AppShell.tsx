@@ -13,24 +13,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Auto-close mobile sidebar on route change
   useEffect(() => {
-      if (isMobile) {
-          setIsSidebarOpen(false);
-      }
+    if (isMobile) {
+      setIsSidebarOpen(false);
+    }
   }, [isMobile]);
 
   return (
     <div className="flex min-h-screen bg-slate-50">
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        isMobile={isMobile} 
+      <Sidebar
+        isOpen={isSidebarOpen}
+        isMobile={isMobile}
         onCloseMobile={() => setIsSidebarOpen(false)}
         isCollapsed={isSidebarCollapsed}
         toggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
       />
-      
+
       <div className="flex-1 flex flex-col min-w-0 w-full">
         <Topbar onMenuClick={() => setIsSidebarOpen(true)} />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4 lg:p-6">
           <div className="max-w-[1600px] mx-auto">
             {children}
           </div>

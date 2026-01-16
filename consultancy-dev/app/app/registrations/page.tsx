@@ -1,34 +1,44 @@
 'use client';
 
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { RegistrationList } from './components/RegistrationList';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { UserPlus } from 'lucide-react';
+import { UserPlus, Filter } from 'lucide-react';
+import { RegistrationList } from './components/RegistrationList';
+import { useState } from 'react';
 
 export default function RegistrationsPage() {
   const router = useRouter();
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-2">
+      {/* Compact Header */}
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Registrations</h1>
-          <p className="text-sm text-slate-600 mt-1">Track all registered students</p>
+          <h1 className="text-xl font-bold text-slate-900 font-heading">Registrations</h1>
+          <p className="text-xs text-slate-500">Track all registered students</p>
         </div>
-        <Button onClick={() => router.push('/app/registrations/new')} className="h-9 bg-teal-600 hover:bg-teal-700">
-          <UserPlus className="mr-2 h-4 w-4" /> New Registration
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 text-xs"
+            onClick={() => setIsFilterOpen(!isFilterOpen)}
+          >
+            <Filter className="mr-1 h-3 w-3" /> Filters
+          </Button>
+          <Button
+            onClick={() => router.push('/app/registrations/new')}
+            size="sm"
+            className="h-8 text-xs bg-teal-600 hover:bg-teal-700"
+          >
+            <UserPlus className="mr-1 h-3 w-3" /> New Registration
+          </Button>
+        </div>
       </div>
 
-      <Tabs defaultValue="list" className="w-full">
-        <TabsList className="grid w-full max-w-md grid-cols-1 h-11">
-          <TabsTrigger value="list" className="text-sm font-medium">Registered Students</TabsTrigger>
-        </TabsList>
-        <TabsContent value="list" className="mt-6">
-          <RegistrationList />
-        </TabsContent>
-      </Tabs>
+      {/* Registration List with passed filter state */}
+      <RegistrationList isFilterOpen={isFilterOpen} />
     </div>
   );
 }

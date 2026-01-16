@@ -30,6 +30,10 @@ class Enquiry(models.Model):
     mother_mobile = models.CharField(max_length=20, blank=True, default='')
     permanent_address = models.TextField()
     
+    # Personal Details
+    caste = models.CharField(max_length=50, blank=True, default='')
+    religion = models.CharField(max_length=50, blank=True, default='')
+    
     # Academic Fields
     class12_passing_year = models.CharField(max_length=10, blank=True, default='')
     pcb_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
@@ -49,6 +53,12 @@ class Enquiry(models.Model):
     
     # New Fields
     class_10_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    class_10_school_name = models.CharField(max_length=255, blank=True, default='')
+    class_10_board = models.CharField(max_length=100, blank=True, default='')
+    class_10_passing_year = models.CharField(max_length=10, blank=True, default='')
+    class_10_place = models.CharField(max_length=100, blank=True, default='')
+    class_10_state = models.CharField(max_length=100, blank=True, default='')
+    
     class_12_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     school_board = models.CharField(max_length=100, blank=True, default='')
     school_place = models.CharField(max_length=100, blank=True, default='')
@@ -78,6 +88,10 @@ class Registration(models.Model):
     registration_date = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
+    # Personal Details
+    caste = models.CharField(max_length=50, blank=True, default='')
+    religion = models.CharField(max_length=50, blank=True, default='')
+    
     # Parent additional details
     father_occupation = models.CharField(max_length=255, blank=True, default='')
     mother_occupation = models.CharField(max_length=255, blank=True, default='')
@@ -88,6 +102,12 @@ class Registration(models.Model):
 
     # Academic Fields
     class10_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
+    class10_school_name = models.CharField(max_length=255, blank=True, default='')
+    class10_board = models.CharField(max_length=100, blank=True, default='')
+    class10_passing_year = models.CharField(max_length=10, blank=True, default='')
+    class10_place = models.CharField(max_length=100, blank=True, default='')
+    class10_state = models.CharField(max_length=100, blank=True, default='')
+    
     class12_percentage = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True)
     school_board = models.CharField(max_length=100, blank=True, default='')
     school_place = models.CharField(max_length=100, blank=True, default='')
@@ -128,10 +148,15 @@ class Enrollment(models.Model):
     start_date = models.DateField()
     duration_months = models.IntegerField()
     total_fees = models.DecimalField(max_digits=10, decimal_places=2)
+    service_charge = models.DecimalField(max_digits=10, decimal_places=2, default=0) # Renaming or mapping commission_amount
     commission_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    school_fees = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    hostel_fees = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     status = models.CharField(max_length=20, default='Active')
     company_id = models.CharField(max_length=100, default='')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_enrollments')
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 class Installment(models.Model):
     enrollment = models.ForeignKey(Enrollment, related_name='installments', on_delete=models.CASCADE)
@@ -147,6 +172,7 @@ class Payment(models.Model):
     type = models.CharField(max_length=50)
     status = models.CharField(max_length=20, default='Success')
     method = models.CharField(max_length=50)
+    metadata = models.JSONField(default=dict, blank=True)
     company_id = models.CharField(max_length=100, default='')
 
 class Refund(models.Model):
@@ -194,14 +220,70 @@ class StudentDocument(models.Model):
     remarks = models.TextField(blank=True, default='')
     company_id = models.CharField(max_length=100, default='')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='received_documents')
+    current_holder = models.ForeignKey(User, related_name='held_physical_documents', on_delete=models.SET_NULL, null=True, blank=True)
+
+class StudentRemark(models.Model):
+    registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='remarks')
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='student_remarks')
+    remark = models.TextField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    company_id = models.CharField(max_length=100, default='')
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Remark for {self.registration.student_name} by {self.user.username if self.user else 'Unknown'}"
 
 class DocumentTransfer(models.Model):
     sender = models.ForeignKey(User, related_name='sent_transfers', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_transfers', on_delete=models.CASCADE)
     documents = models.ManyToManyField(Document)
-    status = models.CharField(max_length=20, default='Pending') # Pending, Accepted, Rejected
+    status = models.CharField(max_length=20, default='Pending', choices=(
+        ('Pending', 'Pending'), ('Accepted', 'Accepted'), ('Rejected', 'Rejected'), ('Cancelled', 'Cancelled')
+    ))
+    message = models.TextField(blank=True, default='')
     created_at = models.DateTimeField(auto_now_add=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    company_id = models.CharField(max_length=100, default='')
+
+class PhysicalDocumentTransfer(models.Model):
+    sender = models.ForeignKey(User, related_name='sent_physical_transfers', on_delete=models.CASCADE)
+    receiver = models.ForeignKey(User, related_name='received_physical_transfers', on_delete=models.CASCADE)
+    documents = models.ManyToManyField(StudentDocument)
+    status = models.CharField(max_length=20, default='Pending', choices=(
+        ('Pending', 'Pending'), 
+        ('Accepted', 'Accepted'), 
+        ('Rejected', 'Rejected'), 
+        ('Cancelled', 'Cancelled'),
+        ('Dispatched', 'Dispatched'),
+        ('In Transit', 'In Transit'),
+        ('Out for Delivery', 'Out for Delivery'),
+        ('Delivered', 'Delivered'),
+        ('Returned', 'Returned'),
+        ('Held', 'Held')
+    ))
+    message = models.TextField(blank=True, default='')
+    tracking_number = models.CharField(max_length=100, blank=True, default='')
+    courier_name = models.CharField(max_length=100, blank=True, default='')
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    accepted_at = models.DateTimeField(null=True, blank=True)
+    cancelled_at = models.DateTimeField(null=True, blank=True)
+    company_id = models.CharField(max_length=100, default='')
+
+class TransferTimeline(models.Model):
+    transfer = models.ForeignKey(PhysicalDocumentTransfer, on_delete=models.CASCADE, related_name='timeline')
+    status = models.CharField(max_length=50)
+    location = models.CharField(max_length=255, blank=True, default='')
+    note = models.TextField(blank=True, default='')
+    updated_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    company_id = models.CharField(max_length=100, default='')
+
+    class Meta:
+        ordering = ['-created_at']
 
 class Task(models.Model):
     title = models.CharField(max_length=255)
@@ -211,6 +293,10 @@ class Task(models.Model):
     priority = models.CharField(max_length=20, default='Medium')
     status = models.CharField(max_length=20, default='Todo')
     company_id = models.CharField(max_length=100, default='')
+    position = models.IntegerField(default=0)
+
+    class Meta:
+        ordering = ['position', 'due_date']
 
 class Appointment(models.Model):
     student_name = models.CharField(max_length=255)
@@ -268,6 +354,7 @@ class Notification(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     created_at = models.DateTimeField(auto_now_add=True)
     action_url = models.CharField(max_length=255, blank=True)
+    company_id = models.CharField(max_length=100, default='')
 
 class Commission(models.Model):
     agent = models.ForeignKey('Agent', on_delete=models.CASCADE, related_name='commissions', null=True, blank=True)
@@ -343,6 +430,17 @@ class FollowUp(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_followups')
     
+    # Enhanced Completion Fields
+    outcome_status = models.CharField(max_length=50, blank=True, null=True, choices=(
+        ('Positive', 'Positive - Admission Taken'),
+        ('High Interest', 'High Interest'),
+        ('Neutral', 'Neutral'),
+        ('Low Interest', 'Low Interest'),
+        ('Negative', 'Negative - Not Interested'),
+        ('Follow Up Later', 'Follow Up Later')
+    ))
+    admission_possibility = models.IntegerField(default=0, help_text="Percentage 0-100")
+
     @property
     def student_name(self):
         return self.enquiry.candidate_name if self.enquiry else '-'
@@ -495,6 +593,7 @@ class ActivityLog(models.Model):
     )
     
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='activity_logs')
+    task = models.ForeignKey('Task', on_delete=models.SET_NULL, null=True, blank=True, related_name='activity_logs')
     action_type = models.CharField(max_length=50, choices=ACTION_TYPES)
     description = models.TextField()
     metadata = models.JSONField(default=dict, blank=True)

@@ -35,6 +35,12 @@ const registrationSchema = z.object({
   schoolBoard: z.string().optional(),
   schoolPlace: z.string().optional(),
   schoolState: z.string().optional(),
+  // HSLC (Class 10)
+  class10SchoolName: z.string().optional(),
+  class10Board: z.string().optional(),
+  class10Place: z.string().optional(),
+  class10State: z.string().optional(),
+  class10PassingYear: z.string().optional(),
   class10Percentage: z.coerce.number().optional(),
   class12Percentage: z.coerce.number().optional(),
   class12PassingYear: z.string().optional(),
@@ -171,6 +177,14 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
             if (enq.schoolBoard) setValue('schoolBoard', enq.schoolBoard);
             if (enq.schoolPlace) setValue('schoolPlace', enq.schoolPlace);
             if (enq.schoolState) setValue('schoolState', enq.schoolState);
+
+            // HSLC
+            if (enq.class10SchoolName) setValue('class10SchoolName', enq.class10SchoolName);
+            if (enq.class10Board) setValue('class10Board', enq.class10Board);
+            if (enq.class10Place) setValue('class10Place', enq.class10Place);
+            if (enq.class10State) setValue('class10State', enq.class10State);
+            if (enq.class10PassingYear) setValue('class10PassingYear', enq.class10PassingYear);
+
             if (enq.class10Percentage) setValue('class10Percentage', enq.class10Percentage);
             if (enq.class12Percentage) setValue('class12Percentage', enq.class12Percentage);
             if (enq.class12PassingYear) setValue('class12PassingYear', enq.class12PassingYear);
@@ -330,64 +344,105 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
 
           <div className="col-span-full border-t pt-4 mt-4">
             <h3 className="text-lg font-medium mb-4">Academic Details</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>School Name</Label>
-                <Input {...register('schoolName')} />
+            <div className="space-y-8">
+              {/* HSLC (Class 10) Section */}
+              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide flex items-center gap-2">
+                  <span className="w-1 h-4 bg-teal-500 rounded-full"></span>
+                  HSLC (Class 10) Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>School Name</Label>
+                    <Input {...register('class10SchoolName')} placeholder="Class 10 School" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Board</Label>
+                    <Select onValueChange={(val) => setValue('class10Board', val)} value={watch('class10Board') || undefined}>
+                      <SelectTrigger><SelectValue placeholder="Select Board" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="SEBA">SEBA (Assam)</SelectItem>
+                        <SelectItem value="CBSE">CBSE</SelectItem>
+                        <SelectItem value="ICSE">ICSE</SelectItem>
+                        <SelectItem value="NBSE">NBSE (Nagaland)</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Year of Passing</Label>
+                    <Input {...register('class10PassingYear')} placeholder="YYYY" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Percentage / CGPA</Label>
+                    <Input type="number" step="0.01" {...register('class10Percentage')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Place / City</Label>
+                    <Input {...register('class10Place')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>State</Label>
+                    <Select onValueChange={(val) => setValue('class10State', val)} value={watch('class10State') || undefined}>
+                      <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
+                      <SelectContent>
+                        {INDIAN_STATES.map(state => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label>School Board</Label>
-                <Select onValueChange={(val) => setValue('schoolBoard', val)} value={watch('schoolBoard') || undefined}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Board" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="NBSE">NBSE (Nagaland)</SelectItem>
-                    <SelectItem value="CBSE">CBSE (Central Board)</SelectItem>
-                    <SelectItem value="ICSE">ICSE (CISCE)</SelectItem>
-                    <SelectItem value="SEBA">SEBA (Assam - High School)</SelectItem>
-                    <SelectItem value="AHSEC">AHSEC (Assam - Higher Secondary)</SelectItem>
-                    <SelectItem value="MBOSE">MBOSE (Meghalaya)</SelectItem>
-                    <SelectItem value="MBSE">MBSE (Mizoram)</SelectItem>
-                    <SelectItem value="TBSE">TBSE (Tripura)</SelectItem>
-                    <SelectItem value="BoSEM">BoSEM (Manipur - High School)</SelectItem>
-                    <SelectItem value="COHSEM">COHSEM (Manipur - Higher Secondary)</SelectItem>
-                    <SelectItem value="State Board">Other State Board</SelectItem>
-                    <SelectItem value="IB">IB</SelectItem>
-                    <SelectItem value="IGCSE">IGCSE</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>School Place</Label>
-                <Input {...register('schoolPlace')} />
-              </div>
-              <div className="space-y-2">
-                <Label>School State</Label>
-                <Select onValueChange={(val) => setValue('schoolState', val)} value={watch('schoolState') || undefined}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select State" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INDIAN_STATES.map(state => (
-                      <SelectItem key={state} value={state}>{state}</SelectItem>
-                    ))}
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Class 10 Percentage</Label>
-                <Input type="number" step="0.01" {...register('class10Percentage')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Class 12 Percentage</Label>
-                <Input type="number" step="0.01" {...register('class12Percentage')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Class 12 Passing Year</Label>
-                <Input {...register('class12PassingYear')} />
+
+              {/* HSSLC (Class 12) Section */}
+              <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-5">
+                <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide flex items-center gap-2">
+                  <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
+                  HSSLC (Class 12) Details
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label>School Name</Label>
+                    <Input {...register('schoolName')} placeholder="Class 12 School" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Board</Label>
+                    <Select onValueChange={(val) => setValue('schoolBoard', val)} value={watch('schoolBoard') || undefined}>
+                      <SelectTrigger><SelectValue placeholder="Select Board" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="AHSEC">AHSEC (Assam)</SelectItem>
+                        <SelectItem value="CBSE">CBSE</SelectItem>
+                        <SelectItem value="NBSE">NBSE (Nagaland)</SelectItem>
+                        <SelectItem value="ICSE">ICSE</SelectItem>
+                        <SelectItem value="Other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Year of Passing</Label>
+                    <Input {...register('class12PassingYear')} placeholder="YYYY" />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Percentage / CGPA</Label>
+                    <Input type="number" step="0.01" {...register('class12Percentage')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>School Place</Label>
+                    <Input {...register('schoolPlace')} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>School State</Label>
+                    <Select onValueChange={(val) => setValue('schoolState', val)} value={watch('schoolState') || undefined}>
+                      <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
+                      <SelectContent>
+                        {INDIAN_STATES.map(state => (
+                          <SelectItem key={state} value={state}>{state}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

@@ -9,7 +9,8 @@ from .views import (
     VisaTrackingViewSet, FollowUpViewSet, InstallmentViewSet,
     AgentViewSet, ChatConversationViewSet, ChatMessageViewSet,
     GroupChatViewSet, SignupRequestViewSet, ApprovalRequestViewSet,
-    CompanyViewSet, FollowUpCommentViewSet
+    CompanyViewSet, FollowUpCommentViewSet, DashboardViewSet, StudentRemarkViewSet,
+    PhysicalDocumentTransferViewSet
 )
 from .earnings_view import EarningsRevenueView
 
@@ -22,7 +23,9 @@ router.register(r'installments', InstallmentViewSet)
 router.register(r'payments', PaymentViewSet)
 router.register(r'documents', DocumentViewSet)
 router.register(r'student-documents', StudentDocumentViewSet)
+router.register(r'student-remarks', StudentRemarkViewSet)
 router.register(r'document-transfers', DocumentTransferViewSet)
+router.register(r'physical-transfers', PhysicalDocumentTransferViewSet)
 router.register(r'tasks', TaskViewSet)
 router.register(r'appointments', AppointmentViewSet)
 router.register(r'universities', UniversityViewSet)
@@ -44,6 +47,7 @@ router.register(r'group-chats', GroupChatViewSet)
 router.register(r'signup-requests', SignupRequestViewSet)
 router.register(r'approval-requests', ApprovalRequestViewSet)
 router.register(r'companies', CompanyViewSet)
+router.register(r'dashboard', DashboardViewSet, basename='dashboard')
 
 urlpatterns = [
     path('', include(router.urls)),

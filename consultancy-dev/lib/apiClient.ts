@@ -5,6 +5,16 @@ import {
   Payment, Task, ReportMetrics, DocumentTransfer
 } from './types';
 
+export interface StudentRemark {
+  id: number; // or string? Backend ID is number usually, but let's check serializer. Model ID is int. serialzer might return int.
+  registration: number;
+  user: number;
+  userName: string;
+  remark: string;
+  createdAt: string;
+  companyId: string;
+}
+
 // Helper to map snake_case to camelCase (simple version)
 const mapEnquiry = (data: any): Enquiry => ({
   ...data,
@@ -34,6 +44,11 @@ const mapEnquiry = (data: any): Enquiry => ({
 
   // Map New Fields
   class10Percentage: data.class_10_percentage || data.class10Percentage,
+  class10SchoolName: data.class_10_school_name || data.class10SchoolName,
+  class10Board: data.class_10_board || data.class10Board,
+  class10PassingYear: data.class_10_passing_year || data.class10PassingYear,
+  class10Place: data.class_10_place || data.class10Place,
+  class10State: data.class_10_state || data.class10State,
   class12Percentage: data.class_12_percentage || data.class12Percentage,
   schoolBoard: data.school_board || data.schoolBoard,
   schoolPlace: data.school_place || data.schoolPlace,
@@ -49,51 +64,72 @@ const mapEnquiry = (data: any): Enquiry => ({
 });
 
 const mapRegistration = (data: any): Registration => ({
-  ...data,
-  registrationNo: data.registration_no || data.registrationNo,
-  studentName: data.student_name || data.studentName,
-  registrationDate: data.registration_date || data.registrationDate,
-  needsLoan: data.needs_loan || data.needsLoan,
-  paymentStatus: data.payment_status || data.paymentStatus,
-  paymentMethod: data.payment_method || data.paymentMethod,
-  registrationFee: data.registration_fee || data.registrationFee,
-  fatherName: data.father_name || data.fatherName,
-  motherName: data.mother_name || data.motherName,
-  permanentAddress: data.permanent_address || data.permanentAddress,
+  id: data.id,
+  registrationNo: data.registration_no ?? data.registrationNo,
+  studentName: data.student_name ?? data.studentName,
+  mobile: data.mobile,
+  email: data.email,
+  registrationDate: data.registration_date ?? data.registrationDate,
+  needsLoan: data.needs_loan ?? data.needsLoan ?? false,
+  paymentStatus: data.payment_status ?? data.paymentStatus,
+  paymentMethod: data.payment_method ?? data.paymentMethod,
+  registrationFee: data.registration_fee ?? data.registrationFee,
+  fatherName: data.father_name ?? data.fatherName,
+  motherName: data.mother_name ?? data.motherName,
+  permanentAddress: data.permanent_address ?? data.permanentAddress,
 
-  // New Fields Mapping
-  fatherOccupation: data.father_occupation || data.fatherOccupation,
-  motherOccupation: data.mother_occupation || data.motherOccupation,
-  fatherMobile: data.father_mobile || data.fatherMobile,
-  motherMobile: data.mother_mobile || data.motherMobile,
+  // Personal Details
   gender: data.gender,
+  caste: data.caste,
+  religion: data.religion,
   dateOfBirth: data.date_of_birth ? data.date_of_birth.split('T')[0] : data.dateOfBirth,
 
+  // Parent Details
+  fatherOccupation: data.father_occupation ?? data.fatherOccupation,
+  motherOccupation: data.mother_occupation ?? data.motherOccupation,
+  fatherMobile: data.father_mobile ?? data.fatherMobile,
+  motherMobile: data.mother_mobile ?? data.motherMobile,
+  familyPlace: data.family_place ?? data.familyPlace,
+  familyState: data.family_state ?? data.familyState,
 
-  familyPlace: data.family_place || data.familyPlace,
-  familyState: data.family_state || data.familyState,
+  // Class 12 / School Details
+  schoolName: data.school_name ?? data.schoolName,
+  schoolBoard: data.school_board ?? data.schoolBoard,
+  schoolPlace: data.school_place ?? data.schoolPlace,
+  schoolState: data.school_state ?? data.schoolState,
+  class12Percentage: data.class12_percentage ?? data.class12Percentage,
+  class12PassingYear: data.class12_passing_year ?? data.class12PassingYear,
 
-  schoolName: data.school_name || data.schoolName,
-  schoolBoard: data.school_board || data.schoolBoard,
-  schoolPlace: data.school_place || data.schoolPlace,
-  schoolState: data.school_state || data.schoolState,
-  class10Percentage: data.class10_percentage || data.class10Percentage,
-  class12Percentage: data.class12_percentage || data.class12Percentage,
-  class12PassingYear: data.class12_passing_year || data.class12PassingYear,
+  // Class 10 / HSLC Details
+  class10SchoolName: data.class10_school_name ?? data.class10SchoolName,
+  class10Board: data.class10_board ?? data.class10Board,
+  class10Percentage: data.class10_percentage ?? data.class10Percentage,
+  class10PassingYear: data.class10_passing_year ?? data.class10PassingYear,
+  class10Place: data.class10_place ?? data.class10Place,
+  class10State: data.class10_state ?? data.class10State,
 
-  gapYear: data.gap_year || data.gapYear,
-  gapYearFrom: data.gap_year_from || data.gapYearFrom,
-  gapYearTo: data.gap_year_to || data.gapYearTo,
-  collegeDropout: data.college_dropout || data.collegeDropout,
+  // Gap Year
+  gapYear: data.gap_year ?? data.gapYear ?? false,
+  gapYearFrom: data.gap_year_from ?? data.gapYearFrom,
+  gapYearTo: data.gap_year_to ?? data.gapYearTo,
+  collegeDropout: data.college_dropout ?? data.collegeDropout ?? false,
 
-  pcbPercentage: data.pcb_percentage || data.pcbPercentage,
-  pcmPercentage: data.pcm_percentage || data.pcmPercentage,
-  physicsMarks: data.physics_marks || data.physicsMarks,
-  chemistryMarks: data.chemistry_marks || data.chemistryMarks,
-  biologyMarks: data.biology_marks || data.biologyMarks,
-  mathsMarks: data.maths_marks || data.mathsMarks,
-  previousNeetMarks: data.previous_neet_marks || data.previousNeetMarks,
-  presentNeetMarks: data.present_neet_marks || data.presentNeetMarks,
+  // Science Marks
+  pcbPercentage: data.pcb_percentage ?? data.pcbPercentage,
+  pcmPercentage: data.pcm_percentage ?? data.pcmPercentage,
+  physicsMarks: data.physics_marks ?? data.physicsMarks,
+  chemistryMarks: data.chemistry_marks ?? data.chemistryMarks,
+  biologyMarks: data.biology_marks ?? data.biologyMarks,
+  mathsMarks: data.maths_marks ?? data.mathsMarks,
+  previousNeetMarks: data.previous_neet_marks ?? data.previousNeetMarks,
+  presentNeetMarks: data.present_neet_marks ?? data.presentNeetMarks,
+
+  // Other fields from data
+  preferences: data.preferences ?? [],
+  documents: data.documents ?? [],
+  student_documents: data.student_documents ?? [],
+  enquiry: data.enquiry,
+  created_by_name: data.created_by_name,
 });
 
 const mapEnrollment = (data: any): Enrollment => ({
@@ -102,7 +138,7 @@ const mapEnrollment = (data: any): Enrollment => ({
   studentName: data.student_name || data.studentName,
   programName: data.program_name || data.programName,
   startDate: data.start_date || data.startDate,
-  durationMonths: data.duration_months || data.durationMonths,
+  durationMonths: data.duration_months || data.durationMonths || data.programDuration,
   totalFees: data.total_fees || data.totalFees,
   serviceCharge: data.commission_amount || data.serviceCharge,
   schoolFees: data.schoolFees,
@@ -123,66 +159,98 @@ export const apiClient = {
   dashboard: {
     getStats: async (): Promise<ReportMetrics> => {
       try {
-        const [enq, reg, enr, pay] = await Promise.all([
-          api.get('enquiries/'),
-          api.get('registrations/'),
-          api.get('enrollments/'),
-          api.get('payments/')
-        ]);
-        return {
-          enquiriesCount: enq.data.length,
-          registrationsCount: reg.data.length,
-          enrollmentsCount: enr.data.length,
-          pendingPayments: pay.data.filter((p: any) => p.status === 'Pending').length,
-          pendingTransfers: 0
-        };
+        const res = await api.get('dashboard/stats/');
+        return res.data;
       } catch (e) {
         console.error("Failed to fetch stats", e);
-        return { enquiriesCount: 0, registrationsCount: 0, enrollmentsCount: 0, pendingPayments: 0, pendingTransfers: 0 };
+        return {
+          enquiries: { value: 0, trend: 0 },
+          registrations: { value: 0, trend: 0 },
+          enrollments: { value: 0, trend: 0 },
+          totalEarnings: { value: 0, trend: 0 },
+          pendingPayments: 0
+        };
       }
     },
 
-    getWeeklyData: async () => {
+    getWeeklyData: async (filter: '7days' | '30days' | 'month' = '7days') => {
       try {
-        const [enq, reg, enr] = await Promise.all([
-          api.get('enquiries/'),
-          api.get('registrations/'),
-          api.get('enrollments/')
-        ]);
-
-        const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-        const today = new Date();
-        const last7Days = Array.from({ length: 7 }, (_, i) => {
-          const d = new Date(today);
-          d.setDate(d.getDate() - (6 - i));
-          return d;
-        });
-
-        return last7Days.map((date, index) => {
-          const dateStr = date.toISOString().split('T')[0];
-          const isToday = index === last7Days.length - 1;
-
-          return {
-            name: days[date.getDay()],
-            enquiries: enq.data.filter((i: any) => i.date?.startsWith(dateStr)).length,
-            registrations: reg.data.filter((i: any) => i.registration_date?.startsWith(dateStr)).length,
-            enrollments: isToday ? enr.data.length : 0,
-          };
-        });
+        const res = await api.get(`dashboard/chart-data/?filter=${filter}`);
+        return res.data;
       } catch (e) {
         console.error("Failed to fetch weekly data", e);
         return [];
       }
     },
 
-    getRevenueData: async () => {
+    getRevenueData: async (filter: 'days' | 'weeks' | 'months' | 'years' = 'months') => {
       try {
-        const res = await api.get('earnings/revenue/');
-        const monthlyEarnings = res.data.monthlyEarnings || [];
-        return monthlyEarnings.map((item: any) => ({
-          month: item.month,
-          revenue: item.revenue
-        }));
+        const res = await api.get('payments/');
+        const payments = (res.data || []).filter((p: any) => p.status === 'Success');
+        const today = new Date();
+
+        if (filter === 'days') {
+          // Last 7 days
+          const last7Days = Array.from({ length: 7 }, (_, i) => {
+            const d = new Date(today);
+            d.setDate(d.getDate() - (6 - i));
+            return d;
+          });
+          const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+          return last7Days.map(date => {
+            const dateStr = date.toISOString().split('T')[0];
+            const dayRevenue = payments
+              .filter((p: any) => p.date?.startsWith(dateStr))
+              .reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
+            return { label: days[date.getDay()], revenue: dayRevenue };
+          });
+        } else if (filter === 'weeks') {
+          // Last 4 weeks
+          const weeks = Array.from({ length: 4 }, (_, i) => {
+            const weekStart = new Date(today);
+            weekStart.setDate(weekStart.getDate() - weekStart.getDay() - (3 - i) * 7);
+            const weekEnd = new Date(weekStart);
+            weekEnd.setDate(weekEnd.getDate() + 6);
+            return { start: weekStart, end: weekEnd, label: `Week ${i + 1}` };
+          });
+          return weeks.map(week => {
+            const weekRevenue = payments
+              .filter((p: any) => {
+                const pDate = new Date(p.date);
+                return pDate >= week.start && pDate <= week.end;
+              })
+              .reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
+            return { label: week.label, revenue: weekRevenue };
+          });
+        } else if (filter === 'months') {
+          // Last 6 months
+          const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+          const last6Months = Array.from({ length: 6 }, (_, i) => {
+            const d = new Date(today);
+            d.setMonth(d.getMonth() - (5 - i));
+            return d;
+          });
+          return last6Months.map(date => {
+            const month = date.getMonth();
+            const year = date.getFullYear();
+            const monthRevenue = payments
+              .filter((p: any) => {
+                const pDate = new Date(p.date);
+                return pDate.getMonth() === month && pDate.getFullYear() === year;
+              })
+              .reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
+            return { label: months[month], revenue: monthRevenue };
+          });
+        } else {
+          // Last 5 years
+          const last5Years = Array.from({ length: 5 }, (_, i) => today.getFullYear() - (4 - i));
+          return last5Years.map(year => {
+            const yearRevenue = payments
+              .filter((p: any) => new Date(p.date).getFullYear() === year)
+              .reduce((sum: number, p: any) => sum + parseFloat(p.amount || 0), 0);
+            return { label: year.toString(), revenue: yearRevenue };
+          });
+        }
       } catch (e) {
         console.error("Failed to fetch revenue data", e);
         return [];
@@ -226,16 +294,45 @@ export const apiClient = {
 
     getRecentEnquiries: async () => {
       try {
-        const res = await api.get('enquiries/');
-        return res.data
+        const [enqRes, regRes, enrRes] = await Promise.all([
+          api.get('enquiries/'),
+          api.get('registrations/'),
+          api.get('enrollments/')
+        ]);
+
+        // Create a map of enquiry_id to registration_id
+        const enquiryToRegistration: { [key: number]: number } = {};
+        regRes.data.forEach((reg: any) => {
+          if (reg.enquiry) {
+            enquiryToRegistration[reg.enquiry] = reg.id;
+          }
+        });
+
+        // Create a map of registration_id to enrollment data
+        const registrationToEnrollment: { [key: number]: { id: number, enrollmentNo: string } } = {};
+        enrRes.data.forEach((enr: any) => {
+          if (enr.student) {
+            registrationToEnrollment[enr.student] = { id: enr.id, enrollmentNo: enr.enrollmentNo || enr.enrollment_no };
+          }
+        });
+
+        return enqRes.data
           .sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime())
           .slice(0, 5)
-          .map((e: any) => ({
-            name: e.candidate_name || e.candidateName,
-            course: e.course_interested || e.courseInterested,
-            time: new Date(e.date).toLocaleDateString(),
-            status: e.status || 'New'
-          }));
+          .map((e: any) => {
+            const registrationId = enquiryToRegistration[e.id] || null;
+            const enrollment = registrationId ? registrationToEnrollment[registrationId] || null : null;
+            return {
+              id: e.id,
+              registrationId,
+              enrollmentId: enrollment?.id || null,
+              enrollmentNo: enrollment?.enrollmentNo || null,
+              name: e.candidate_name || e.candidateName,
+              course: e.course_interested || e.courseInterested,
+              time: new Date(e.date).toLocaleDateString(),
+              status: e.status || 'New'
+            };
+          });
       } catch (e) {
         return [];
       }
@@ -285,6 +382,11 @@ export const apiClient = {
 
         // Payload for New Fields
         class_10_percentage: data.class10Percentage,
+        class_10_school_name: data.class10SchoolName,
+        class_10_board: data.class10Board,
+        class_10_passing_year: data.class10PassingYear,
+        class_10_place: data.class10Place,
+        class_10_state: data.class10State,
         class_12_percentage: data.class12Percentage,
         school_board: data.schoolBoard,
         school_place: data.schoolPlace,
@@ -293,6 +395,8 @@ export const apiClient = {
         family_state: data.familyState,
         gender: data.gender,
         dob: data.dob,
+        caste: data.caste,
+        religion: data.religion,
         gap_year_from: data.gapYearFrom,
         gap_year_to: data.gapYearTo,
 
@@ -334,6 +438,11 @@ export const apiClient = {
 
         // Payload for New Fields (Update)
         class_10_percentage: data.class10Percentage,
+        class_10_school_name: data.class10SchoolName,
+        class_10_board: data.class10Board,
+        class_10_passing_year: data.class10PassingYear,
+        class_10_place: data.class10Place,
+        class_10_state: data.class10State,
         class_12_percentage: data.class12Percentage,
         school_board: data.schoolBoard,
         school_place: data.schoolPlace,
@@ -342,6 +451,8 @@ export const apiClient = {
         family_state: data.familyState,
         gender: data.gender,
         dob: data.dob,
+        caste: data.caste,
+        religion: data.religion,
         gap_year_from: data.gapYearFrom,
         gap_year_to: data.gapYearTo,
 
@@ -431,7 +542,12 @@ export const apiClient = {
         needs_loan: data.needsLoan,
         preferences: data.preferences,
 
-        // New Fields Update
+        // Personal details
+        gender: data.gender,
+        caste: data.caste,
+        religion: data.religion,
+
+        // Parent Fields
         father_occupation: data.fatherOccupation,
         mother_occupation: data.motherOccupation,
         father_mobile: data.fatherMobile,
@@ -439,25 +555,37 @@ export const apiClient = {
         family_place: data.familyPlace,
         family_state: data.familyState,
 
+        // Class 12 / School Fields
         school_name: data.schoolName,
         school_board: data.schoolBoard,
         school_place: data.schoolPlace,
         school_state: data.schoolState,
-        class10_percentage: data.class10Percentage,
         class12_percentage: data.class12Percentage,
         class12_passing_year: data.class12PassingYear,
 
+        // Class 10 Fields
+        class10_school_name: data.class10SchoolName,
+        class10_board: data.class10Board,
+        class10_percentage: data.class10Percentage,
+        class10_passing_year: data.class10PassingYear,
+        class10_place: data.class10Place,
+        class10_state: data.class10State,
+
+        // Gap Year
         gap_year: data.gapYear,
         gap_year_from: data.gapYearFrom,
         gap_year_to: data.gapYearTo,
         college_dropout: data.collegeDropout,
 
+        // Science Marks
         pcb_percentage: data.pcbPercentage,
         pcm_percentage: data.pcmPercentage,
         physics_marks: data.physicsMarks,
         chemistry_marks: data.chemistryMarks,
         biology_marks: data.biologyMarks,
         maths_marks: data.mathsMarks,
+        previous_neet_marks: data.previousNeetMarks,
+        present_neet_marks: data.presentNeetMarks,
       };
       const res = await api.patch(`registrations/${id}/`, payload);
       return mapRegistration(res.data);
@@ -492,13 +620,21 @@ export const apiClient = {
     update: async (id: string, data: any): Promise<Enrollment> => {
       const payload = {
         ...data,
-        student_name: data.studentName,
-        program_name: data.programName,
-        start_date: data.startDate,
-        duration_months: data.durationMonths,
-        total_fees: data.totalFees,
+        // Serializer expects aliased field names
+        programName: data.programName,
+        startDate: data.startDate,
+        programDuration: data.durationMonths, // Mapped to 'programDuration' in serializer source
+
+        // Serializer expects camelCase for fees
+        serviceCharge: data.serviceCharge,
+        schoolFees: data.schoolFees,
+        hostelFees: data.hostelFees,
+        // total_fees is calculated by backend, but we can send it if needed (ignored by serializer)
+        totalFees: data.totalFees,
+
+        status: data.status,
       };
-      const res = await api.put(`enrollments/${id}/`, payload);
+      const res = await api.patch(`enrollments/${id}/`, payload);
       return mapEnrollment(res.data);
     },
     delete: async (id: string): Promise<void> => {
@@ -670,6 +806,33 @@ export const apiClient = {
   },
 
   // NEW: Tasks
+  studentRemarks: {
+    list: async (registrationId: string) => {
+      const res = await api.get(`student-remarks/?registration_id=${registrationId}`);
+      return res.data.map((r: any) => ({
+        id: r.id,
+        registration: r.registration,
+        user: r.user,
+        userName: r.user_name,
+        remark: r.remark,
+        createdAt: r.created_at,
+        companyId: r.company_id
+      }));
+    },
+    create: async (data: { registration: string, remark: string }) => {
+      const res = await api.post('student-remarks/', data);
+      return {
+        id: res.data.id,
+        registration: res.data.registration,
+        user: res.data.user,
+        userName: res.data.user_name,
+        remark: res.data.remark,
+        createdAt: res.data.created_at,
+        companyId: res.data.company_id
+      };
+    }
+  },
+
   tasks: {
     list: async () => {
       const res = await api.get('tasks/');
@@ -683,7 +846,9 @@ export const apiClient = {
       const payload = {
         ...data,
         assigned_to: data.assignedTo,
-        due_date: data.dueDate
+        due_date: data.dueDate,
+        description: data.description,
+        priority: data.priority
       };
       const res = await api.post('tasks/', payload);
       return {
@@ -696,7 +861,9 @@ export const apiClient = {
       const payload = {
         ...data,
         assigned_to: data.assignedTo,
-        due_date: data.dueDate
+        due_date: data.dueDate,
+        description: data.description,
+        priority: data.priority
       };
       const res = await api.patch(`tasks/${id}/`, payload);
       return {
@@ -707,6 +874,14 @@ export const apiClient = {
     },
     delete: async (id: string) => {
       await api.delete(`tasks/${id}/`);
+    },
+    reorder: async (items: any[]) => {
+      const res = await api.post('tasks/reorder/', { items });
+      return res.data;
+    },
+    history: async (id: number | string): Promise<any[]> => {
+      const res = await api.get(`tasks/${id}/history/`);
+      return res.data;
     }
   },
 
@@ -943,7 +1118,9 @@ export const apiClient = {
         assignedTo: f.assigned_to,
         assignedToName: f.assigned_to_name,
         assignedToEmail: f.assigned_to_email,
-        studentName: f.student_name || ''
+        studentName: f.student_name || '',
+        student_email: f.student_email,
+        student_phone: f.student_phone,
       }));
     },
     getDetails: async (id: string) => {
@@ -955,6 +1132,8 @@ export const apiClient = {
         assignedTo: res.data.assigned_to,
         assignedToName: res.data.assigned_to_name,
         studentName: res.data.student_name,
+        student_email: res.data.student_email,
+        student_phone: res.data.student_phone,
         comments: res.data.comments || []
       };
     },
@@ -978,8 +1157,12 @@ export const apiClient = {
       const res = await api.patch(`follow-ups/${id}/`, payload);
       return res.data;
     },
-    completeWithComment: async (id: string, comment: string) => {
-      const res = await api.post(`follow-ups/${id}/complete_with_comment/`, { comment });
+    completeWithComment: async (data: { id: string, comment: string, outcomeStatus?: string, admissionPossibility?: number }) => {
+      const res = await api.post(`follow-ups/${data.id}/complete_with_comment/`, {
+        comment: data.comment,
+        outcome_status: data.outcomeStatus,
+        admission_possibility: data.admissionPossibility
+      });
       return res.data;
     },
     addComment: async (followupId: string, comment: string, parentCommentId?: string) => {
@@ -1113,7 +1296,7 @@ export const apiClient = {
       };
     },
     returnDocs: async (docIds: string[]): Promise<any> => {
-      const res = await api.post('student-documents/return_docs/', { doc_ids: docIds });
+      const res = await api.post('student-documents/return_docs/', { document_ids: docIds.map(id => parseInt(id)) });
       return res.data;
     }
   },
@@ -1222,10 +1405,15 @@ export const apiClient = {
       const res = await api.get('document-transfers/');
       return res.data;
     },
+    get: async (id: string | number) => {
+      const res = await api.get(`document-transfers/${id}/`);
+      return res.data;
+    },
     create: async (data: any) => {
       const payload = {
         receiver: parseInt(data.receiver),
-        documents: data.documents.map((id: string) => parseInt(id))
+        documents: data.documents.map((id: string) => parseInt(id)),
+        message: data.message || ''
       };
       const res = await api.post('document-transfers/', payload);
       return res.data;
@@ -1237,7 +1425,47 @@ export const apiClient = {
     reject: async (id: string | number) => {
       const res = await api.post(`document-transfers/${id}/reject/`);
       return res.data;
+    },
+    cancel: async (id: string | number) => {
+      const res = await api.post(`document-transfers/${id}/cancel/`);
+      return res.data;
     }
+  },
+
+  physicalTransfers: {
+    list: async () => {
+      const res = await api.get('physical-transfers/');
+      return res.data;
+    },
+    get: async (id: string | number) => {
+      const res = await api.get(`physical-transfers/${id}/`);
+      return res.data;
+    },
+    create: async (data: any) => {
+      const payload = {
+        receiver: parseInt(data.receiver),
+        documents: data.documents.map((id: string) => parseInt(id)),
+        message: data.message || ''
+      };
+      const res = await api.post('physical-transfers/', payload);
+      return res.data;
+    },
+    accept: async (id: string | number) => {
+      const res = await api.post(`physical-transfers/${id}/accept/`);
+      return res.data;
+    },
+    reject: async (id: string | number, reason?: string) => {
+      const res = await api.post(`physical-transfers/${id}/reject/`, { reason: reason || '' });
+      return res.data;
+    },
+    cancel: async (id: string | number) => {
+      const res = await api.post(`physical-transfers/${id}/cancel/`);
+      return res.data;
+    },
+    updateStatus: async (id: string, data: { status: string, note?: string, location?: string, tracking_number?: string, courier_name?: string }) => {
+      const res = await api.post(`physical-transfers/${id}/update_status/`, data);
+      return res.data;
+    },
   },
 
   refunds: {
@@ -1246,6 +1474,7 @@ export const apiClient = {
         payment: data.paymentId,
         amount: data.amount,
         refund_method: data.refundMethod,
+        refund_date: data.refundDate,
         reason: data.reason,
         student_name: data.studentName,
         status: 'Pending',
@@ -1265,9 +1494,6 @@ export const apiClient = {
       const res = await api.post(`refunds/${id}/approve/`);
       return res.data;
     },
-    reject: async (id: number, reason: string) => {
-      const res = await api.post(`refunds/${id}/reject/`, { reason });
-      return res.data;
-    }
-  }
+  },
+
 };

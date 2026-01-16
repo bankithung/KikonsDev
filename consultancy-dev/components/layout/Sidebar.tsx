@@ -131,9 +131,9 @@ const SidebarContent = ({
   const displayName = user?.first_name || user?.username || 'User';
 
   return (
-    <div className="flex flex-col h-full bg-card border-r border-border text-sm font-medium">
+    <div className="flex flex-col h-full bg-card border-r border-slate-200 text-sm font-medium">
       {/* Header */}
-      <div className={cn("flex items-center h-16 px-4 border-b border-border", isCollapsed && !isMobile ? "justify-center" : "justify-between")}>
+      <div className={cn("flex items-center h-14 px-4 border-b border-slate-200", isCollapsed && !isMobile ? "justify-center" : "justify-between")}>
         {(!isCollapsed || isMobile) && (
           <span className="text-lg font-bold text-teal-600 truncate">Consultancy Dev</span>
         )}
@@ -187,7 +187,7 @@ const SidebarContent = ({
       </div>
 
       {/* Footer */}
-      <div className="p-4 border-t border-border">
+      <div className="p-4 border-t border-slate-200">
         <div className={cn("flex items-center justify-between", isCollapsed && !isMobile ? "justify-center" : "gap-2")}>
           <Link
             href="/app/profile"
@@ -264,7 +264,7 @@ export function Sidebar({ isOpen, isMobile, onCloseMobile, toggleCollapse, isCol
               animate={{ x: 0 }}
               exit={{ x: "-100%" }}
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
-              className="fixed inset-y-0 left-0 w-64 z-50 shadow-xl border-r border-border bg-card"
+              className="fixed inset-y-0 left-0 w-64 z-50 shadow-xl border-r border-slate-200 bg-card"
               key="sidebar"
             >
               <SidebarContent {...contentProps} />
@@ -279,7 +279,7 @@ export function Sidebar({ isOpen, isMobile, onCloseMobile, toggleCollapse, isCol
     <motion.div
       animate={{ width: isCollapsed ? 80 : 256 }}
       transition={{ duration: 0.3, ease: "easeInOut" }}
-      className="hidden md:block h-screen sticky top-0 z-30 shadow-sm flex-shrink-0 border-r border-border bg-card"
+      className="hidden md:block h-screen sticky top-0 z-30 shadow-sm flex-shrink-0 border-r border-slate-200 bg-card"
     >
       <SidebarContent {...contentProps} />
     </motion.div>

@@ -4,8 +4,9 @@ from .models import (
     Document, StudentDocument, DocumentTransfer, Task, Appointment, University, Template,
     Notification, Commission, LeadSource, VisaTracking, FollowUp, FollowUpComment,
     Agent, ChatConversation, ChatMessage, GroupChat, SignupRequest, ApprovalRequest, Company,
-    ActivityLog, Earning
+    ActivityLog, Earning, StudentRemark, PhysicalDocumentTransfer, TransferTimeline
 )
+
 from .serializers import (
     UserSerializer, CompanySerializer, EnquirySerializer, RegistrationSerializer, EnrollmentSerializer,
     InstallmentSerializer, PaymentSerializer, RefundSerializer, DocumentSerializer, StudentDocumentSerializer,
@@ -13,7 +14,7 @@ from .serializers import (
     TemplateSerializer, NotificationSerializer, CommissionSerializer, LeadSourceSerializer,
     VisaTrackingSerializer, FollowUpSerializer, FollowUpCommentSerializer, AgentSerializer, ChatConversationSerializer,
     ChatMessageSerializer, GroupChatSerializer, SignupRequestSerializer, ApprovalRequestSerializer,
-    CompanySerializer
+    CompanySerializer, StudentRemarkSerializer, PhysicalDocumentTransferSerializer
 )
 
 from rest_framework.decorators import action
@@ -24,6 +25,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from django.db.models.functions import Concat
 from django.db.models import Count, Sum, Avg, Q, F, Value
+from django.db import transaction
 
 class CompanyIsolationMixin:
     """
@@ -595,6 +597,157 @@ class DocumentTransferViewSet(viewsets.ModelViewSet):
         
         return Response({'status': 'rejected'})
 
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'Pending':
+            return Response({'error': 'Can only cancel pending transfers'}, status=400)
+        
+        if request.user != transfer.sender:
+            return Response({'error': 'Not authorized'}, status=403)
+
+        transfer.status = 'Cancelled'
+        transfer.cancelled_at = timezone.now()
+        transfer.save()
+        
+        return Response({'status': 'cancelled'})
+
+class PhysicalDocumentTransferViewSet(viewsets.ModelViewSet):
+    queryset = PhysicalDocumentTransfer.objects.all()
+    serializer_class = PhysicalDocumentTransferSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        user = self.request.user
+        if user.role == 'DEV_ADMIN':
+            return PhysicalDocumentTransfer.objects.all().select_related('sender', 'receiver').prefetch_related('documents')
+        else:
+            return PhysicalDocumentTransfer.objects.filter(
+                Q(sender__company_id=user.company_id) |
+                Q(receiver__company_id=user.company_id)
+            ).select_related('sender', 'receiver').prefetch_related('documents')
+
+    def perform_create(self, serializer):
+        instance = serializer.save(sender=self.request.user, company_id=self.request.user.company_id)
+        # Notify receiver
+        Notification.objects.create(
+            user=instance.receiver,
+            title='Physical Document Transfer',
+            message=f'{self.request.user.username} is sending you physical documents. Please verify receipt.',
+            type='info',
+            company_id=instance.company_id
+        )
+
+    @action(detail=True, methods=['post'])
+    def update_status(self, request, pk=None):
+        transfer = self.get_object()
+        status = request.data.get('status')
+        note = request.data.get('note', '')
+        location = request.data.get('location', '')
+        
+        valid_statuses = dict(PhysicalDocumentTransfer._meta.get_field('status').choices).keys()
+        
+        if status not in valid_statuses:
+            return Response({'error': 'Invalid status'}, status=400)
+            
+        transfer.status = status
+        
+        # Update tracking info if provided
+        if 'tracking_number' in request.data:
+            transfer.tracking_number = request.data['tracking_number']
+        if 'courier_name' in request.data:
+            transfer.courier_name = request.data['courier_name']
+            
+        transfer.save()
+        
+        # Create timeline entry
+        TransferTimeline.objects.create(
+            transfer=transfer,
+            status=status,
+            note=note,
+            location=location,
+            updated_by=request.user,
+            company_id=transfer.company_id
+        )
+        
+        # Notify relevant party
+        recipient = transfer.receiver if request.user == transfer.sender else transfer.sender
+        Notification.objects.create(
+            user=recipient,
+            title='Transfer Status Updated',
+            message=f'Transfer #{transfer.id} status updated to {status}',
+            type='info',
+            company_id=transfer.company_id
+        )
+        
+        return Response(PhysicalDocumentTransferSerializer(transfer).data)
+
+    @action(detail=True, methods=['post'])
+    def accept(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'Pending':
+            return Response({'error': 'Transfer already processed'}, status=400)
+        
+        if request.user != transfer.receiver:
+            return Response({'error': 'Not authorized'}, status=403)
+
+        transfer.status = 'Accepted'
+        transfer.accepted_at = timezone.now()
+        transfer.save()
+
+        # Update documents holder
+        for doc in transfer.documents.all():
+            doc.current_holder = request.user
+            doc.save()
+
+        # Notify sender
+        Notification.objects.create(
+            user=transfer.sender,
+            title='Physical Transfer Accepted',
+            message=f'{request.user.username} has accepted the physical documents.',
+            type='success',
+            company_id=transfer.company_id
+        )
+        
+        return Response({'status': 'accepted'})
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'Pending':
+            return Response({'error': 'Transfer already processed'}, status=400)
+
+        if request.user != transfer.receiver:
+            return Response({'error': 'Not authorized'}, status=403)
+
+        transfer.status = 'Rejected'
+        transfer.save()
+
+        Notification.objects.create(
+            user=transfer.sender,
+            title='Physical Transfer Rejected',
+            message=f'{request.user.username} rejected the physical documents.',
+            type='error',
+            company_id=transfer.company_id
+        )
+        
+        return Response({'status': 'rejected'})
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        transfer = self.get_object()
+        if transfer.status != 'Pending':
+            return Response({'error': 'Can only cancel pending transfers'}, status=400)
+        
+        if request.user != transfer.sender:
+            return Response({'error': 'Not authorized'}, status=403)
+
+        transfer.status = 'Cancelled'
+        transfer.cancelled_at = timezone.now()
+        transfer.save()
+        
+        return Response({'status': 'cancelled'})
+
 class TaskViewSet(viewsets.ModelViewSet):
     queryset = Task.objects.all()
     serializer_class = TaskSerializer
@@ -611,7 +764,7 @@ class TaskViewSet(viewsets.ModelViewSet):
         if user.role == 'EMPLOYEE':
             queryset = queryset.filter(assigned_to=user)
             
-        return queryset.order_by('due_date')
+        return queryset.annotate(comments_count=Count('activity_logs')).order_by('position', 'due_date')
 
     def perform_create(self, serializer):
         instance = serializer.save(company_id=self.request.user.company_id)
@@ -624,6 +777,72 @@ class TaskViewSet(viewsets.ModelViewSet):
             type='Info',
             action_url='/app/tasks'
         )
+
+    @action(detail=False, methods=['post'])
+    def reorder(self, request):
+        """
+        Reorder tasks. 
+        Expected data: { items: [{ id: 1, position: 0, status: 'Todo', reason: 'Optional reason' }, ...] }
+        """
+        items = request.data.get('items', [])
+        if not items:
+            return Response({'error': 'No items provided'}, status=400)
+            
+        try:
+            with transaction.atomic():
+                for item in items:
+                    task_id = item.get('id')
+                    position = item.get('position')
+                    status = item.get('status')
+                    reason = item.get('reason')
+                    
+                    if task_id is not None:
+                        # Update position and status
+                        # Validate that the task belongs to the user's company
+                        task = Task.objects.filter(
+                            id=task_id, 
+                            company_id=request.user.company_id
+                        ).first()
+                        
+                        if task:
+                            old_status = task.status
+                            task.position = position
+                            if status:
+                                task.status = status
+                            task.save()
+                            
+                            # Log activity if reason provided and status changed
+                            if reason and status and old_status != status:
+                                ActivityLog.objects.create(
+                                    user=request.user,
+                                    task=task,
+                                    action_type='update_task',
+                                    description=f'Moved task "{task.title}" from {old_status} to {status}. Reason: {reason}',
+                                    company_id=request.user.company_id
+                                )
+
+            return Response({'status': 'success'})
+        except Exception as e:
+            return Response({'error': str(e)}, status=500)
+
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None):
+        """
+        Get activity logs for a specific task.
+        """
+        task = self.get_object()
+        logs = ActivityLog.objects.filter(task=task).order_by('-timestamp')
+        
+        # Serialize simply (or use a serializer if needed)
+        data = [{
+            'id': log.id,
+            'user': f"{log.user.first_name} {log.user.last_name}".strip() or log.user.username,
+            'action_type': log.action_type,
+            'description': log.description,
+            'timestamp': log.timestamp,
+        } for log in logs]
+        
+        return Response(data)
 
 class AppointmentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Appointment.objects.all()
@@ -668,33 +887,31 @@ class AppointmentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
         return Response(serializer.data)
 
 
-class StudentDocumentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
-    queryset = StudentDocument.objects.all()
-    serializer_class = StudentDocumentSerializer
+
+
+class StudentRemarkViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
+    queryset = StudentRemark.objects.all()
+    serializer_class = StudentRemarkSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
         queryset = super().get_queryset()
         registration_id = self.request.query_params.get('registration_id')
-        if registration_id:
-            queryset = queryset.filter(registration_id=registration_id)
+        if registration_id is not None:
+            if registration_id == '':
+                return queryset.none()
+            return queryset.filter(registration_id=registration_id)
         return queryset
 
-    @action(detail=False, methods=['post'])
-    def return_docs(self, request):
-        doc_ids = request.data.get('doc_ids', [])
-        if not doc_ids:
-            return Response({'error': 'No document IDs provided'}, status=400)
-        
-        docs = StudentDocument.objects.filter(id__in=doc_ids)
-        updated_count = docs.update(
-            status='Returned',
-            returned_at=timezone.now(),
-            remarks=Conact(F('remarks'), Value(f'\nReturned on {timezone.now().date()}'))
+    def perform_create(self, serializer):
+        serializer.save(
+            user=self.request.user,
+            company_id=self.request.user.company_id
         )
-        return Response({'message': f'{updated_count} documents returned successfully'})
+
 
 class UniversityViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
+
     queryset = University.objects.all()
     serializer_class = UniversitySerializer
 
@@ -778,6 +995,9 @@ class FollowUpViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
             }, status=403)
         
         comment_text = request.data.get('comment', '').strip()
+        outcome_status = request.data.get('outcome_status')
+        admission_possibility = request.data.get('admission_possibility')
+
         if not comment_text:
             return Response({'error': 'Comment is required to complete follow-up'}, status=400)
         
@@ -793,6 +1013,11 @@ class FollowUpViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
         
         # Mark as completed
         followup.status = 'Completed'
+        if outcome_status:
+            followup.outcome_status = outcome_status
+        if admission_possibility is not None:
+            followup.admission_possibility = admission_possibility
+            
         followup.save()
         
         # Create notification for creator if different from completer
@@ -1107,9 +1332,10 @@ class StudentDocumentViewSet(viewsets.ModelViewSet):
         user = self.request.user
         queryset = StudentDocument.objects.all()
         
-        # Filter by company
+        # Filter by company (include documents with null company_id for old data)
         if user.role != 'DEV_ADMIN':
-            queryset = queryset.filter(company_id=user.company_id)
+            from django.db.models import Q
+            queryset = queryset.filter(Q(company_id=user.company_id) | Q(company_id__isnull=True) | Q(company_id=''))
         
         # Filter by registration if provided
         registration_id = self.request.query_params.get('registration', None)
@@ -1123,6 +1349,10 @@ class StudentDocumentViewSet(viewsets.ModelViewSet):
         
         return queryset.order_by('-received_at')
     
+    def perform_create(self, serializer):
+        """Automatically set company_id when creating a document"""
+        serializer.save(company_id=self.request.user.company_id)
+    
     @action(detail=False, methods=['post'])
     def return_docs(self, request):
         """
@@ -1134,12 +1364,12 @@ class StudentDocumentViewSet(viewsets.ModelViewSet):
         if not document_ids:
             return Response({'error': 'No documents specified'}, status=400)
         
-        # Update documents
+        # Update documents (include those with null company_id for old data)
+        from django.db.models import Q
         docs = StudentDocument.objects.filter(
             id__in=document_ids,
-            company_id=request.user.company_id,
             status='Held'
-        )
+        ).filter(Q(company_id=request.user.company_id) | Q(company_id__isnull=True) | Q(company_id=''))
         
         count = docs.count()
         docs.update(status='Returned', returned_at=timezone.now())
@@ -1149,3 +1379,163 @@ class StudentDocumentViewSet(viewsets.ModelViewSet):
             'returned_count': count,
             'message': f'{count} document(s) marked as returned'
         })
+
+class DashboardViewSet(viewsets.ViewSet):
+    permission_classes = [IsAuthenticated]
+
+    def get_date_range(self, time_range):
+        today = timezone.localtime()
+        end_of_day = today.replace(hour=23, minute=59, second=59, microsecond=999999)
+
+        if time_range == '7days':
+            # Last 7 days including today
+            start_date = today - timedelta(days=6)
+            return start_date.replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
+        elif time_range == '30days':
+             start_date = today - timedelta(days=29)
+             return start_date.replace(hour=0, minute=0, second=0, microsecond=0), end_of_day
+        elif time_range == 'month':
+            # This month
+            return today.replace(day=1, hour=0, minute=0, second=0, microsecond=0), end_of_day
+        return today, end_of_day # Single day fallback
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        user = request.user
+        company_id = user.company_id
+        
+        # Base QuerySets (filtered by company)
+        # Note: DEV_ADMIN gets all? Or just company context? The user has only 1 workspace context usually.
+        # Assuming current user context.
+        enquiries = Enquiry.objects.filter(company_id=company_id) if user.role != 'DEV_ADMIN' else Enquiry.objects.all()
+        registrations = Registration.objects.filter(company_id=company_id) if user.role != 'DEV_ADMIN' else Registration.objects.all()
+        enrollments = Enrollment.objects.filter(company_id=company_id) if user.role != 'DEV_ADMIN' else Enrollment.objects.all()
+        payments = Payment.objects.filter(company_id=company_id, status='Success') if user.role != 'DEV_ADMIN' else Payment.objects.filter(status='Success')
+        pending_payments = Payment.objects.filter(company_id=company_id, status='Pending') if user.role != 'DEV_ADMIN' else Payment.objects.filter(status='Pending')
+        refunds = Refund.objects.filter(company_id=company_id, status='Approved') if user.role != 'DEV_ADMIN' else Refund.objects.filter(status='Approved')
+
+        # Current Counts
+        enquiries_count = enquiries.count()
+        registrations_count = registrations.count()
+        enrollments_count = enrollments.count()
+        
+        # Total Earnings Calculation
+        total_payment_amount = payments.aggregate(sum=Sum('amount'))['sum'] or 0
+        total_refund_amount = refunds.aggregate(sum=Sum('amount'))['sum'] or 0
+        total_earnings = total_payment_amount - total_refund_amount
+
+        # Last Month Calculations for Trends
+        today = timezone.now()
+        first_day_this_month = today.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+        last_month_end = first_day_this_month - timedelta(seconds=1)
+        last_month_start = last_month_end.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+
+        # Helper for % change
+        def get_percentage_change(current_qs, date_field):
+            this_month_count = current_qs.filter(**{f"{date_field}__gte": first_day_this_month}).count()
+            last_month_count = current_qs.filter(**{f"{date_field}__gte": last_month_start, f"{date_field}__lte": last_month_end}).count()
+            
+            if last_month_count == 0:
+                change = 100 if this_month_count > 0 else 0
+            else:
+                change = ((this_month_count - last_month_count) / last_month_count) * 100
+            
+            return round(change, 1)
+
+        enq_trend = get_percentage_change(enquiries, 'date')
+        reg_trend = get_percentage_change(registrations, 'created_at')
+        enr_trend = get_percentage_change(enrollments, 'created_at') # Use created_at now
+        
+        # Earnings Trend
+        this_month_earnings = (payments.filter(date__gte=first_day_this_month).aggregate(s=Sum('amount'))['s'] or 0) - \
+                              (refunds.filter(processed_at__gte=first_day_this_month).aggregate(s=Sum('amount'))['s'] or 0)
+        last_month_earnings = (payments.filter(date__gte=last_month_start, date__lte=last_month_end).aggregate(s=Sum('amount'))['s'] or 0) - \
+                              (refunds.filter(processed_at__gte=last_month_start, processed_at__lte=last_month_end).aggregate(s=Sum('amount'))['s'] or 0)
+                              
+        if last_month_earnings == 0:
+            earnings_trend = 100 if this_month_earnings > 0 else 0
+        else:
+            earnings_trend = ((this_month_earnings - last_month_earnings) / last_month_earnings) * 100
+        
+        earnings_trend = round(earnings_trend, 1)
+
+        return Response({
+            'enquiries': { 'value': enquiries_count, 'trend': enq_trend },
+            'registrations': { 'value': registrations_count, 'trend': reg_trend },
+            'enrollments': { 'value': enrollments_count, 'trend': enr_trend },
+            'totalEarnings': { 'value': float(total_earnings), 'trend': earnings_trend },
+            'pendingPayments': pending_payments.count(), # Keep for legacy support or action items
+        })
+
+    @action(detail=False, methods=['get'], url_path='chart-data')
+    def chart_data(self, request):
+        time_range = request.query_params.get('filter', '7days')
+        start_date, end_date = self.get_date_range(time_range)
+        
+        user = request.user
+        company_id = user.company_id
+        
+        # Base Q
+        enquiries = Enquiry.objects.filter(company_id=company_id) if user.role != 'DEV_ADMIN' else Enquiry.objects.all()
+        registrations = Registration.objects.filter(company_id=company_id) if user.role != 'DEV_ADMIN' else Registration.objects.all()
+        enrollments = Enrollment.objects.filter(company_id=company_id) if user.role != 'DEV_ADMIN' else Enrollment.objects.all()
+
+        date_list = []
+        # Generate labels and buckets
+        if time_range == '7days':
+            # Daily buckets for 7 days
+            curr = start_date
+            while curr <= end_date:
+                label = curr.strftime("%a") # Sun, Mon
+                # Buckets
+                day_start = curr
+                day_end = curr.replace(hour=23, minute=59, second=59)
+                
+                date_list.append({
+                    'name': label,
+                    'enquiries': enquiries.filter(date__range=(day_start, day_end)).count(),
+                    'registrations': registrations.filter(created_at__range=(day_start, day_end)).count(),
+                    'enrollments': enrollments.filter(created_at__range=(day_start, day_end)).count(),
+                })
+                curr += timedelta(days=1)
+                
+        elif time_range == '30days':
+             # 6 chunks of 5 days
+             curr = start_date
+             for i in range(6):
+                 chunk_start = curr
+                 # chunk covers curr + 4 days (5 days total)
+                 chunk_end_date = curr + timedelta(days=4)
+                 chunk_end = chunk_end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                 
+                 if chunk_end > end_date: 
+                     chunk_end = end_date # Clamp
+                 
+                 label = f"{chunk_start.day} {chunk_start.strftime('%b')}"
+                 date_list.append({
+                     'name': label,
+                     'enquiries': enquiries.filter(date__range=(chunk_start, chunk_end)).count(),
+                     'registrations': registrations.filter(created_at__range=(chunk_start, chunk_end)).count(),
+                     'enrollments': enrollments.filter(created_at__range=(chunk_start, chunk_end)).count(),
+                 })
+                 curr += timedelta(days=5)
+
+        elif time_range == 'month':
+             # Weekly breakdown
+             curr = start_date
+             week_num = 1
+             while curr <= end_date:
+                 chunk_end_date = curr + timedelta(days=6)
+                 chunk_end = chunk_end_date.replace(hour=23, minute=59, second=59, microsecond=999999)
+                 
+                 label = f"Week {week_num}"
+                 date_list.append({
+                     'name': label,
+                     'enquiries': enquiries.filter(date__range=(curr, chunk_end)).count(),
+                     'registrations': registrations.filter(created_at__range=(curr, chunk_end)).count(),
+                     'enrollments': enrollments.filter(created_at__range=(curr, chunk_end)).count(),
+                 })
+                 curr += timedelta(days=7)
+                 week_num += 1
+
+        return Response(date_list)

@@ -2,60 +2,86 @@
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { DocumentList } from './components/DocumentList';
-import { DocumentExpiry } from './components/DocumentExpiry';
 import { DocumentTransfer } from './components/DocumentTransfer';
 import { DocumentTracking } from './components/DocumentTracking';
+import { PhysicalDocumentList } from './components/PhysicalDocumentList';
+import { PhysicalDocumentTransfer } from './components/PhysicalDocumentTransfer';
+import { FileText, FolderOpen, ArrowRightLeft, Send, Clock } from 'lucide-react';
 
 export default function DocumentsPage() {
     return (
-        <div className="space-y-8">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-                <div className="space-y-1">
-                    <h1 className="text-3xl font-bold tracking-tight text-slate-900 font-heading">Documents Management</h1>
-                    <p className="text-slate-500 font-body">Manage, track, and transfer student documents with ease</p>
+        <div className="space-y-2">
+            {/* Header - Compact */}
+            <div className="flex items-center justify-between">
+                <div>
+                    <h1 className="text-xl font-bold text-slate-900 font-heading">Documents Management</h1>
+                    <p className="text-xs text-slate-500">Manage, track, and transfer student documents</p>
                 </div>
             </div>
 
-            <Tabs defaultValue="all" className="w-full">
-                <div className="border-b border-slate-200 mb-6">
-                    <TabsList className="bg-transparent h-auto p-0 gap-8">
+            <Tabs defaultValue="digital" className="w-full">
+                <div className="border-b border-slate-200 mb-3">
+                    <TabsList className="bg-transparent h-auto p-0 gap-1">
                         <TabsTrigger
-                            value="all"
-                            className="relative h-10 bg-transparent px-0 pb-3 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-semibold transition-all"
+                            value="digital"
+                            className="relative h-9 bg-transparent px-3 pb-2.5 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-medium text-sm transition-all flex items-center gap-1.5"
                         >
-                            All Documents
+                            <FileText size={14} />
+                            Digital Docs
                         </TabsTrigger>
                         <TabsTrigger
-                            value="transfer"
-                            className="relative h-10 bg-transparent px-0 pb-3 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-semibold transition-all"
+                            value="digital-transfer"
+                            className="relative h-9 bg-transparent px-3 pb-2.5 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-medium text-sm transition-all flex items-center gap-1.5"
                         >
-                            Transfer
+                            <Send size={14} />
+                            Digital Transfer
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="physical"
+                            className="relative h-9 bg-transparent px-3 pb-2.5 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-medium text-sm transition-all flex items-center gap-1.5"
+                        >
+                            <FolderOpen size={14} />
+                            Physical Docs
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="physical-transfer"
+                            className="relative h-9 bg-transparent px-3 pb-2.5 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-medium text-sm transition-all flex items-center gap-1.5"
+                        >
+                            <ArrowRightLeft size={14} />
+                            Physical Transfer
                         </TabsTrigger>
                         <TabsTrigger
                             value="tracking"
-                            className="relative h-10 bg-transparent px-0 pb-3 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-semibold transition-all"
+                            className="relative h-9 bg-transparent px-3 pb-2.5 pt-2 rounded-none border-b-2 border-transparent data-[state=active]:border-teal-600 data-[state=active]:bg-transparent data-[state=active]:text-teal-600 data-[state=active]:shadow-none font-medium text-sm transition-all flex items-center gap-1.5"
                         >
+                            <Clock size={14} />
                             Tracking
                         </TabsTrigger>
                     </TabsList>
                 </div>
 
-                <TabsContent value="all" className="outline-none">
+                <TabsContent value="digital" className="outline-none mt-0">
                     <DocumentList />
                 </TabsContent>
 
-                {/* <TabsContent value="expiry" className="outline-none">
-                    <DocumentExpiry />
-                </TabsContent> */}
-
-                <TabsContent value="transfer" className="outline-none">
+                <TabsContent value="digital-transfer" className="outline-none mt-0">
                     <DocumentTransfer />
                 </TabsContent>
 
-                <TabsContent value="tracking" className="outline-none">
+                <TabsContent value="physical" className="outline-none mt-0">
+                    <PhysicalDocumentList />
+                </TabsContent>
+
+                <TabsContent value="physical-transfer" className="outline-none mt-0">
+                    <PhysicalDocumentTransfer />
+                </TabsContent>
+
+                <TabsContent value="tracking" className="outline-none mt-0">
                     <DocumentTracking />
                 </TabsContent>
             </Tabs>
         </div>
     );
 }
+
+

@@ -72,46 +72,46 @@ export function DataTable<T extends { id: string | number }>({
         </div>
       </div>
 
-      <div className="rounded-md border border-border bg-card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left text-foreground">
-            <thead className="bg-muted border-b border-border text-muted-foreground font-medium">
-              <tr>
-                {columns.map((col, idx) => (
-                  <th key={idx} className={cn("px-4 py-3 font-semibold", col.className)}>
-                    {col.header}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border">
-              {paginatedData.length > 0 ? (
-                paginatedData.map((item) => (
-                  <tr
-                    key={item.id}
-                    onClick={() => onRowClick?.(item)}
-                    className={cn(
-                      "hover:bg-muted/50 transition-colors",
-                      onRowClick && "cursor-pointer"
-                    )}
-                  >
-                    {columns.map((col, idx) => (
-                      <td key={idx} className={cn("px-4 py-3", col.className)}>
-                        {col.cell ? col.cell(item) : (item[col.accessorKey as keyof T] as React.ReactNode)}
-                      </td>
-                    ))}
-                  </tr>
-                ))
-              ) : (
-                <tr>
-                  <td colSpan={columns.length} className="px-4 py-8 text-center text-muted-foreground">
-                    No results found.
-                  </td>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm text-left text-slate-700">
+          <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 uppercase tracking-wider">
+            <tr>
+              {columns.map((col, idx) => (
+                <th key={idx} className={cn("px-4 py-3 text-left text-xs font-semibold uppercase tracking-wider", col.className)}>
+                  {col.header}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100 bg-white">
+            {paginatedData.length > 0 ? (
+              paginatedData.map((item) => (
+                <tr
+                  key={item.id}
+                  onClick={() => onRowClick?.(item)}
+                  className={cn(
+                    "hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-0",
+                    onRowClick && "cursor-pointer"
+                  )}
+                >
+                  {columns.map((col, idx) => (
+                    <td key={idx} className={cn("px-4 py-2 text-sm text-slate-600", col.className)}>
+                      {col.cell ? col.cell(item) : (item[col.accessorKey as keyof T] as React.ReactNode)}
+                    </td>
+                  ))}
                 </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              ))
+            ) : (
+              <tr>
+                <td colSpan={columns.length} className="px-4 py-12 text-center text-slate-500">
+                  <div className="flex flex-col items-center gap-2">
+                    <p className="font-medium">No results found</p>
+                  </div>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
       </div>
 
       {totalPages > 1 && (

@@ -19,18 +19,16 @@ export default function NewEnquiryPage() {
   });
 
   return (
-    <div className="max-w-3xl mx-auto py-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <BackButton />
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">New Enquiry</h1>
-          <p className="text-sm text-slate-600 mt-1">Fill in the details below to create a new student enquiry</p>
-        </div>
+    <div className="py-6 space-y-6 px-4">
+      <div className="max-w-3xl mx-auto">
+        <BackButton />
+        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">New Enquiry</h1>
+        <p className="text-sm text-slate-600 mt-1">Fill in the details below to create a new student enquiry</p>
       </div>
-      
-      <EnquiryForm 
-        onSubmit={(data) => mutation.mutate(data as any)} 
-        isLoading={mutation.isPending} 
+
+      <EnquiryForm
+        onSubmit={(data) => mutation.mutate(data as any)}
+        isLoading={mutation.isPending}
       />
     </div>
   );

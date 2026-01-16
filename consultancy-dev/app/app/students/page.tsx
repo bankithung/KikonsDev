@@ -8,8 +8,9 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
-import { Search, Eye, Filter, UserCircle, Phone, Mail } from 'lucide-react';
+import { Search, Eye, Filter, UserCircle, Phone, Mail, Plus } from 'lucide-react';
 import { format } from 'date-fns';
+import { GENDERS, COURSES, INDIAN_STATES, SCHOOL_BOARDS, PREFERRED_LOCATIONS } from '@/lib/utils';
 
 // Normalized Student Interface for the list
 interface StudentRow {
@@ -22,12 +23,24 @@ interface StudentRow {
     date: string | Date; // Enquiry Date / Reg Date / Start Date
     status: string;
     program?: string; // For interest/program
+    gender?: string;
+    state?: string;
+    created_by_name?: string;
 }
 
 export default function StudentsPage() {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
-    const [typeFilter, setTypeFilter] = useState<string>('all');
+    const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+    // Filter States
+    const [filterStage, setFilterStage] = useState('all');
+    const [filterStatus, setFilterStatus] = useState('all');
+    const [filterGender, setFilterGender] = useState('all');
+    const [filterState, setFilterState] = useState('all');
+    const [filterCourse, setFilterCourse] = useState('all');
+    const [filterProgram, setFilterProgram] = useState('all'); // Usually same as course
+    const [filterLocation, setFilterLocation] = useState('all');
 
     // Fetch all data sources
     const { data: enquiries, isLoading: loadingEnquiries } = useQuery({
@@ -62,7 +75,10 @@ export default function StudentsPage() {
                     mobile: e.mobile,
                     date: e.date,
                     status: e.status,
-                    program: e.courseInterested
+                    program: e.courseInterested,
+                    gender: e.gender,
+                    state: e.familyState,
+                    created_by_name: e.created_by_name
                 });
             });
         }
@@ -77,19 +93,18 @@ export default function StudentsPage() {
                     email: r.email,
                     mobile: r.mobile,
                     date: r.registrationDate,
-                    status: r.paymentStatus === 'Paid' ? 'Registered' : 'Pending Payment', // Simplify status or use paymentStatus
-                    program: r.preferences?.[0]?.courseName || 'N/A'
+                    status: r.paymentStatus === 'Paid' ? 'Registered' : 'Pending Payment',
+                    program: r.preferences?.[0]?.courseName || 'N/A',
+                    gender: r.gender, // Assuming avail or undefined
+                    state: r.familyState,
+                    created_by_name: r.created_by_name // Assuming avail
                 });
             });
         }
 
         if (enrollments) {
             enrollments.forEach(en => {
-                // Find matching registration to get contact info
-                // Assuming en.studentId corresponds to registration.id
-                // If IDs are numbers vs strings, ensure lenient comparison or conversion
                 const linkedReg = registrations?.find(r => String(r.id) === String(en.studentId));
-
                 list.push({
                     uniqueId: `enr-${en.id}`,
                     id: en.id,
@@ -99,7 +114,10 @@ export default function StudentsPage() {
                     mobile: linkedReg?.mobile || '',
                     date: en.startDate,
                     status: en.status,
-                    program: en.programName
+                    program: en.programName,
+                    gender: linkedReg?.gender,
+                    state: linkedReg?.familyState,
+                    created_by_name: en.created_by_name // Assuming avail
                 });
             });
         }
@@ -116,11 +134,16 @@ export default function StudentsPage() {
                 student.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
                 student.mobile.includes(searchTerm);
 
-            const matchesType = typeFilter === 'all' || student.type.toLowerCase() === typeFilter.toLowerCase();
+            const matchesStage = filterStage === 'all' || student.type.toLowerCase() === filterStage.toLowerCase();
+            const matchesStatus = filterStatus === 'all' || student.status === filterStatus;
+            const matchesGender = filterGender === 'all' || student.gender === filterGender;
+            const matchesState = filterState === 'all' || student.state === filterState;
+            // For course/program we check generic program field
+            const matchesProgram = filterProgram === 'all' || (student.program && student.program === filterProgram);
 
-            return matchesSearch && matchesType;
+            return matchesSearch && matchesStage && matchesStatus && matchesGender && matchesState && matchesProgram;
         });
-    }, [allStudents, searchTerm, typeFilter]);
+    }, [allStudents, searchTerm, filterStage, filterStatus, filterGender, filterState, filterProgram]);
 
     // Statistics
     const stats = {
@@ -143,57 +166,132 @@ export default function StudentsPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="space-y-2">
+            {/* Header - Compact */}
+            <div className="flex items-center justify-between">
                 <div>
-                    <h1 className="text-2xl font-bold text-slate-900 font-heading">Students Directory</h1>
-                    <p className="text-sm text-slate-500">View and manage all students across every stage</p>
+                    <h1 className="text-xl font-bold text-slate-900 font-heading">Students Directory</h1>
+                    <p className="text-xs text-slate-500">View and manage all students across every stage</p>
+                </div>
+                <div className="flex gap-2">
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 text-xs"
+                        onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    >
+                        <Filter className="mr-1 h-3 w-3" /> Filters
+                    </Button>
+                    {/* Could add Export button detailed here later */}
                 </div>
             </div>
 
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card className="p-4 bg-white border-slate-200">
-                    <p className="text-xs font-medium text-slate-500 uppercase">Total Students</p>
-                    <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
-                </Card>
-                <Card className="p-4 bg-blue-50 border-blue-100">
-                    <p className="text-xs font-medium text-blue-600 uppercase">Enquiries</p>
-                    <p className="text-2xl font-bold text-blue-700">{stats.enquiries}</p>
-                </Card>
-                <Card className="p-4 bg-purple-50 border-purple-100">
-                    <p className="text-xs font-medium text-purple-600 uppercase">Registered</p>
-                    <p className="text-2xl font-bold text-purple-700">{stats.registrations}</p>
-                </Card>
-                <Card className="p-4 bg-green-50 border-green-100">
-                    <p className="text-xs font-medium text-green-600 uppercase">Enrolled</p>
-                    <p className="text-2xl font-bold text-green-700">{stats.enrollments}</p>
-                </Card>
+            {/* Compact Stats */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="bg-white border border-slate-200 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-slate-500 uppercase">Total Students</span>
+                    <span className="text-lg font-bold text-slate-900">{stats.total}</span>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-blue-600 uppercase">Enquiries</span>
+                    <span className="text-lg font-bold text-blue-700">{stats.enquiries}</span>
+                </div>
+                <div className="bg-purple-50 border border-purple-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-purple-600 uppercase">Registered</span>
+                    <span className="text-lg font-bold text-purple-700">{stats.registrations}</span>
+                </div>
+                <div className="bg-green-50 border border-green-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-green-600 uppercase">Enrolled</span>
+                    <span className="text-lg font-bold text-green-700">{stats.enrollments}</span>
+                </div>
             </div>
 
-            {/* Filters */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="relative md:col-span-2">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <Input
-                        placeholder="Search by name, email, or mobile..."
-                        value={searchTerm}
-                        onChange={(e) => setSearchTerm(e.target.value)}
-                        className="pl-10 h-11 border-slate-300"
-                    />
+            {/* Filters Panel - Compact Design */}
+            {isFilterOpen && (
+                <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                        <Select value={filterStage} onValueChange={setFilterStage}>
+                            <SelectTrigger className="h-9 text-xs bg-white">
+                                <SelectValue placeholder="Stage" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Stages</SelectItem>
+                                <SelectItem value="Enquiry">Enquiry</SelectItem>
+                                <SelectItem value="Registration">Registration</SelectItem>
+                                <SelectItem value="Enrollment">Enrollment</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={filterStatus} onValueChange={setFilterStatus}>
+                            <SelectTrigger className="h-9 text-xs bg-white">
+                                <SelectValue placeholder="Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Status</SelectItem>
+                                <SelectItem value="New">New</SelectItem>
+                                <SelectItem value="Converted">Converted</SelectItem>
+                                <SelectItem value="Registered">Registered</SelectItem>
+                                <SelectItem value="Pending Payment">Pending Payment</SelectItem>
+                                <SelectItem value="Active">Active</SelectItem>
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={filterGender} onValueChange={setFilterGender}>
+                            <SelectTrigger className="h-9 text-xs bg-white">
+                                <SelectValue placeholder="Gender" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">All Genders</SelectItem>
+                                {GENDERS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={filterState} onValueChange={setFilterState}>
+                            <SelectTrigger className="h-9 text-xs bg-white">
+                                <SelectValue placeholder="State" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                                <SelectItem value="all">All States</SelectItem>
+                                {INDIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+
+                        <Select value={filterProgram} onValueChange={setFilterProgram}>
+                            <SelectTrigger className="h-9 text-xs bg-white">
+                                <SelectValue placeholder="Program" />
+                            </SelectTrigger>
+                            <SelectContent className="max-h-60">
+                                <SelectItem value="all">All Programs</SelectItem>
+                                {COURSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+
+                        <Button
+                            size="sm"
+                            className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
+                            onClick={() => {
+                                setFilterStage('all');
+                                setFilterStatus('all');
+                                setFilterGender('all');
+                                setFilterState('all');
+                                setFilterProgram('all');
+                            }}
+                        >
+                            Clear
+                        </Button>
+                    </div>
                 </div>
-                <Select value={typeFilter} onValueChange={setTypeFilter}>
-                    <SelectTrigger className="h-11 bg-white">
-                        <Filter size={16} className="mr-2 text-slate-400" />
-                        <SelectValue placeholder="Filter by Type" />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Types</SelectItem>
-                        <SelectItem value="enquiry">Enquiry</SelectItem>
-                        <SelectItem value="registration">Registration</SelectItem>
-                        <SelectItem value="enrollment">Enrollment</SelectItem>
-                    </SelectContent>
-                </Select>
+            )}
+
+            {/* Search */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                    placeholder="Search by name, email, or mobile..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-11 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500"
+                />
             </div>
 
             {/* Main Table */}
@@ -202,81 +300,89 @@ export default function StudentsPage() {
                     <table className="w-full text-sm text-left">
                         <thead className="bg-slate-50 border-b border-slate-200">
                             <tr>
-                                <th className="px-6 py-4 font-semibold text-slate-700">Student Name</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700">Stage</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 hidden md:table-cell">Contact</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 hidden lg:table-cell">Program/Interest</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 hidden xl:table-cell">Date</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700">Status</th>
-                                <th className="px-6 py-4 font-semibold text-slate-700 text-right">Action</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider">Student Name</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider">Stage</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider hidden md:table-cell">Contact</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider hidden lg:table-cell">Program</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider hidden xl:table-cell">Date</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider hidden xl:table-cell">Created By</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider">Status</th>
+                                <th className="px-4 py-2 font-semibold text-slate-700 text-xs uppercase tracking-wider text-right">Action</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 bg-white">
                             {filteredStudents.length > 0 ? (
                                 filteredStudents.map((student) => (
                                     <tr key={student.uniqueId} className="hover:bg-slate-50 transition-colors group">
-                                        <td className="px-6 py-4">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 font-bold text-lg
+                                        <td className="px-4 py-2">
+                                            <div className="flex items-center gap-2">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs
                                 ${student.type === 'Enquiry' ? 'bg-blue-100 text-blue-600' :
                                                         student.type === 'Registration' ? 'bg-purple-100 text-purple-600' : 'bg-green-100 text-green-600'}`}
                                                 >
                                                     {student.name.charAt(0)}
                                                 </div>
                                                 <div>
-                                                    <div className="font-semibold text-slate-900">{student.name}</div>
+                                                    <div className="font-medium text-sm text-slate-900">{student.name}</div>
                                                     <div className="text-xs text-slate-500 md:hidden">{student.program}</div>
                                                 </div>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border
+                                        <td className="px-4 py-2">
+                                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] uppercase font-bold tracking-wide border
                               ${student.type === 'Enquiry' ? 'bg-blue-50 text-blue-700 border-blue-100' :
                                                     student.type === 'Registration' ? 'bg-purple-50 text-purple-700 border-purple-100' : 'bg-green-50 text-green-700 border-green-100'}`}
                                             >
                                                 {student.type}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 hidden md:table-cell">
-                                            <div className="space-y-1">
+                                        <td className="px-4 py-2 hidden md:table-cell">
+                                            <div className="space-y-0.5">
                                                 {student.mobile ? (
-                                                    <div className="flex items-center gap-1.5 text-slate-600">
-                                                        <Phone size={12} className="text-slate-400" /> {student.mobile}
+                                                    <div className="flex items-center gap-1 text-slate-600 text-xs">
+                                                        <Phone size={11} className="text-slate-400" /> {student.mobile}
                                                     </div>
                                                 ) : <span className="text-slate-400 text-xs italic">No mobile</span>}
                                                 {student.email ? (
-                                                    <div className="flex items-center gap-1.5 text-slate-600">
-                                                        <Mail size={12} className="text-slate-400" /> {student.email}
+                                                    <div className="flex items-center gap-1 text-slate-600 text-xs">
+                                                        <Mail size={11} className="text-slate-400" /> {student.email}
                                                     </div>
                                                 ) : <span className="text-slate-400 text-xs italic md:hidden lg:inline-block">No email</span>}
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 hidden lg:table-cell text-slate-600">
+                                        <td className="px-4 py-2 hidden lg:table-cell text-slate-600 text-xs font-medium">
                                             {student.program || '-'}
                                         </td>
-                                        <td className="px-6 py-4 hidden xl:table-cell text-slate-600">
+                                        <td className="px-4 py-2 hidden xl:table-cell text-slate-600 text-xs">
                                             {student.date ? format(new Date(student.date), 'dd MMM yyyy') : '-'}
                                         </td>
-                                        <td className="px-6 py-4">
-                                            <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2 py-1 rounded">
+                                        <td className="px-4 py-2 hidden xl:table-cell text-slate-600 text-xs">
+                                            <div className="flex items-center gap-1">
+                                                <UserCircle size={12} className="text-slate-400" />
+                                                {student.created_by_name || '-'}
+                                            </div>
+                                        </td>
+                                        <td className="px-4 py-2">
+                                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
                                                 {student.status}
                                             </span>
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="px-4 py-2 text-right">
                                             <Button
                                                 size="sm"
-                                                variant="outline"
-                                                className="text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
+                                                variant="ghost"
+                                                className="h-7 w-7 p-0 rounded-full hover:bg-teal-50 text-slate-400 hover:text-teal-600 transition-colors"
                                                 onClick={() => router.push(`/app/student-profile/${student.type.toLowerCase()}/${student.id}`)}
+                                                title="View Profile"
                                             >
-                                                <Eye size={16} className="mr-2" /> View Profile
+                                                <Eye size={14} />
                                             </Button>
                                         </td>
                                     </tr>
                                 ))
                             ) : (
                                 <tr>
-                                    <td colSpan={7} className="px-6 py-12 text-center text-slate-500">
+                                    <td colSpan={8} className="px-6 py-12 text-center text-slate-500">
                                         <UserCircle size={48} className="mx-auto mb-4 text-slate-200" />
                                         <p className="font-medium">No students found matching your criteria</p>
                                     </td>
@@ -285,7 +391,7 @@ export default function StudentsPage() {
                         </tbody>
                     </table>
                 </div>
-                <div className="border-t border-slate-200 bg-slate-50 px-6 py-4 text-xs text-slate-500 flex justify-between">
+                <div className="border-t border-slate-200 bg-slate-50 px-4 py-2 text-xs text-slate-500 flex justify-between">
                     <span>Showing {filteredStudents.length} of {stats.total} records</span>
                 </div>
             </Card>

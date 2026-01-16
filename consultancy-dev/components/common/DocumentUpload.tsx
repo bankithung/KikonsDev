@@ -204,15 +204,15 @@ export function DocumentUpload({
             <Button
                 type="button"
                 variant="outline"
-                className="w-full border-teal-600/20 bg-teal-50/30 text-teal-700 hover:bg-teal-50 hover:text-teal-800 border-dashed border-2 py-6 h-auto flex-col gap-2 rounded-xl transition-all"
+                className="w-full border-teal-600/20 bg-teal-50/30 text-teal-700 hover:bg-teal-50 hover:text-teal-800 border-dashed border-2 py-3 h-auto flex flex-row items-center justify-center gap-3 rounded-xl transition-all"
                 onClick={() => fileInputRef.current?.click()}
             >
-                <div className="h-10 w-10 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center">
-                    <Plus size={20} />
+                <div className="h-8 w-8 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center">
+                    <Plus size={16} />
                 </div>
-                <div className="flex flex-col items-center">
+                <div className="flex flex-col items-start">
                     <span className="font-bold text-sm">Add Documents</span>
-                    <span className="text-[11px] opacity-70">PNG, JPG, PDF up to 10MB</span>
+                    <span className="text-[10px] opacity-70">PNG, JPG, PDF up to 10MB</span>
                 </div>
             </Button>
 
@@ -240,7 +240,7 @@ export function DocumentUpload({
     );
 
     const DocsList = () => (
-        <div className="space-y-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             {documents.length === 0 ? (
                 <div className="text-center py-10 px-4">
                     <div className="h-12 w-12 bg-slate-50 text-slate-300 rounded-2xl flex items-center justify-center mx-auto mb-3">
@@ -250,9 +250,9 @@ export function DocumentUpload({
                 </div>
             ) : (
                 documents.map((doc, index) => (
-                    <div key={index} className="group relative flex items-start gap-3 p-3 bg-white rounded-xl border border-slate-100 hover:border-teal-100 hover:shadow-sm transition-all">
-                        <div className="h-10 w-10 bg-slate-50 text-slate-400 rounded-lg flex items-center justify-center shrink-0 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
-                            <FileText size={20} />
+                    <div key={index} className="group relative flex items-start gap-3 p-2 bg-white rounded-lg border border-slate-100 hover:border-teal-100 hover:shadow-sm transition-all">
+                        <div className="h-8 w-8 bg-slate-50 text-slate-400 rounded-md flex items-center justify-center shrink-0 group-hover:bg-teal-50 group-hover:text-teal-600 transition-colors">
+                            <FileText size={16} />
                         </div>
 
                         <div className="flex-1 min-w-0 space-y-1">
@@ -304,7 +304,7 @@ export function DocumentUpload({
 
     if (variant === 'minimal') {
         return (
-            <div className="space-y-4">
+            <div className="space-y-3">
                 {!readOnly && <Controls />}
                 <div className="pt-2">
                     <DocsList />
