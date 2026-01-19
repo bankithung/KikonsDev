@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Registration } from '@/lib/types';
 import { format } from 'date-fns';
 import { Eye, Edit, Trash2, Phone, Mail, FileText, Search, X, GraduationCap, UserCircle, Filter } from 'lucide-react';
-import { INDIAN_STATES, SCHOOL_BOARDS, COURSES, PREFERRED_LOCATIONS, GENDERS } from '@/lib/utils';
+import { INDIAN_STATES, SCHOOL_BOARDS, COURSES, PREFERRED_LOCATIONS, GENDERS, getAvatarColor, getInitials } from '@/lib/utils';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useRouter } from 'next/navigation';
 import { useAuthStore } from '@/store/authStore';
@@ -346,8 +346,8 @@ export function RegistrationList({ isFilterOpen = false }: RegistrationListProps
                   <tr key={reg.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center text-green-600 font-semibold text-sm shrink-0">
-                          {reg.studentName.charAt(0)}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shrink-0 ${getAvatarColor(reg.studentName).bg} ${getAvatarColor(reg.studentName).text}`}>
+                          {getInitials(reg.studentName)}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 truncate">{reg.studentName}</p>
@@ -582,8 +582,8 @@ function RegistrationViewModal({
             {/* Student Header */}
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center text-white font-bold text-2xl">
-                  {registration.studentName.charAt(0)}
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl ${getAvatarColor(registration.studentName).bg} ${getAvatarColor(registration.studentName).text}`}>
+                  {getInitials(registration.studentName)}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-slate-900">{registration.studentName}</h3>

@@ -13,13 +13,18 @@ const routeAccess: Record<string, string[]> = {
 };
 
 // Public routes that don't require authentication
-const publicRoutes = ['/', '/login', '/signup', '/privacy', '/terms', '/contact', '/help'];
+const publicRoutes = ['/', '/signup', '/privacy', '/terms', '/contact', '/help'];
 
 // Routes that require authentication but are accessible to all roles
 const protectedRoutes = ['/app'];
 
 export function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+
+    // Redirect /login to /
+    if (pathname === '/login') {
+        return NextResponse.redirect(new URL('/', request.url));
+    }
 
     // Allow public routes
     if (publicRoutes.some(route => pathname === route || pathname.startsWith(`${route}/`))) {
@@ -32,7 +37,7 @@ export function middleware(request: NextRequest) {
 
     // If no token and trying to access protected route, redirect to login
     if (!token && (pathname.startsWith('/app') || protectedRoutes.some(route => pathname.startsWith(route)))) {
-        const loginUrl = new URL('/login', request.url);
+        const loginUrl = new URL('/', request.url);
         loginUrl.searchParams.set('from', pathname);
         return NextResponse.redirect(loginUrl);
     }

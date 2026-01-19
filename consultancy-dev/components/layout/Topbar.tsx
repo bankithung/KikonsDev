@@ -4,12 +4,63 @@ import { Bell, Search, Menu, User } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { useChatStore } from '@/store/chatStore';
 import { Menu as HeadlessMenu, Transition } from '@headlessui/react';
-import { Fragment, useState } from 'react';
+import { Fragment, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { ChatList } from '@/components/chat/ChatList';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
+
+// Route to page title mapping
+const PAGE_TITLES: Record<string, string> = {
+  '/app/dashboard': 'Dashboard',
+  '/app/tasks': 'Tasks',
+  '/app/students': 'Students Directory',
+  '/app/my-students': 'My Students',
+  '/app/follow-ups': 'Follow-ups',
+  '/app/enquiries': 'Enquiries',
+  '/app/enquiries/new': 'New Enquiry',
+  '/app/registrations': 'Registrations',
+  '/app/registrations/new': 'New Registration',
+  '/app/enrollments': 'Enrollments',
+  '/app/documents': 'Documents',
+  '/app/payments': 'Payments',
+  '/app/appointments': 'Appointments',
+  '/app/universities': 'University Database',
+  '/app/users': 'User Management',
+  '/app/counselors': 'Team Members',
+  '/app/settings': 'Settings',
+  '/app/profile': 'My Profile',
+  '/app/notifications': 'Notifications',
+  '/app/approval-requests': 'Approval Requests',
+  '/app/my-requests': 'My Requests',
+  '/app/chat': 'Chat',
+};
+
+// Route to page subtitle mapping
+const PAGE_SUBTITLES: Record<string, string> = {
+  '/app/dashboard': "Here's your overview",
+  '/app/students': 'View and manage all students across every stage',
+  '/app/my-students': 'Manage enquiries and registrations assigned to you',
+  '/app/follow-ups': 'Manage and track your communications',
+  '/app/enquiries': 'Manage and track all student enquiries',
+  '/app/enquiries/new': 'Create a new student enquiry',
+  '/app/registrations': 'Track all registered students',
+  '/app/registrations/new': 'Register a new student',
+  '/app/enrollments': 'Manage course enrollments and fee structures',
+  '/app/documents': 'Manage, track, and transfer student documents',
+  '/app/payments': 'Manage financial transactions and history',
+  '/app/appointments': 'Schedule and manage appointments',
+  '/app/universities': 'Browse and manage university partnerships',
+  '/app/users': 'Manage team members and access control',
+  '/app/counselors': 'Manage and track your team performance',
+  '/app/settings': 'Manage your company profile and preferences',
+  '/app/profile': 'View and edit your profile',
+  '/app/notifications': 'Stay updated with important events',
+  '/app/approval-requests': 'Review delete/update requests',
+  '/app/my-requests': 'Track status of your approval requests',
+  '/app/chat': 'Team communication',
+};
 
 interface TopbarProps {
   onMenuClick: () => void;
@@ -17,11 +68,56 @@ interface TopbarProps {
 
 export function Topbar({ onMenuClick }: TopbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuthStore();
   const { conversations } = useChatStore();
   const [isChatListOpen, setIsChatListOpen] = useState(false);
 
   const totalUnread = conversations.reduce((sum, c) => sum + c.unreadCount, 0);
+
+  // Calculate page title based on current path
+  const pageTitle = useMemo(() => {
+    // Exact match first
+    if (PAGE_TITLES[pathname]) {
+      return PAGE_TITLES[pathname];
+    }
+
+    // Check for partial matches (for dynamic routes like /app/enquiries/123)
+    const pathParts = pathname.split('/');
+    for (let i = pathParts.length; i > 0; i--) {
+      const partialPath = pathParts.slice(0, i).join('/');
+      if (PAGE_TITLES[partialPath]) {
+        return PAGE_TITLES[partialPath];
+      }
+    }
+
+    // Fallback: generate title from last path segment
+    const lastSegment = pathParts[pathParts.length - 1] || pathParts[pathParts.length - 2];
+    if (lastSegment && lastSegment !== 'app') {
+      return lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1).replace(/-/g, ' ');
+    }
+
+    return 'Dashboard';
+  }, [pathname]);
+
+  // Calculate page subtitle based on current path
+  const pageSubtitle = useMemo(() => {
+    // Exact match first
+    if (PAGE_SUBTITLES[pathname]) {
+      return PAGE_SUBTITLES[pathname];
+    }
+
+    // Check for partial matches (for dynamic routes)
+    const pathParts = pathname.split('/');
+    for (let i = pathParts.length; i > 0; i--) {
+      const partialPath = pathParts.slice(0, i).join('/');
+      if (PAGE_SUBTITLES[partialPath]) {
+        return PAGE_SUBTITLES[partialPath];
+      }
+    }
+
+    return '';
+  }, [pathname]);
 
   const { data: notifications = [] } = useQuery({
     queryKey: ['notifications'],
@@ -29,29 +125,48 @@ export function Topbar({ onMenuClick }: TopbarProps) {
     staleTime: 30000, // Refresh every 30 seconds
   });
 
+  // Fetch tasks for stats (only when on tasks page)
+  const isTasksPage = pathname === '/app/tasks';
+  const { data: tasks = [] } = useQuery({
+    queryKey: ['tasks'],
+    queryFn: apiClient.tasks.list,
+    enabled: isTasksPage,
+    staleTime: 30000,
+  });
+
+  // Calculate task stats
+  const taskStats = useMemo(() => {
+    if (!isTasksPage || tasks.length === 0) return null;
+    const total = tasks.length;
+    const completed = tasks.filter((t: any) => t.status === 'Done').length;
+    const inProgress = tasks.filter((t: any) => t.status === 'In Progress').length;
+    return { total, completed, inProgress };
+  }, [tasks, isTasksPage]);
+
   const notificationCount = notifications.filter((n: any) => !n.read).length;
 
   return (
     <>
-      <header className="bg-white border-b border-gray-200 h-14 flex items-center justify-between px-4 sticky top-0 z-50 shadow-sm">
+      <header className="bg-white border-b border-gray-200 h-16 flex items-center justify-between px-4 sticky top-0 z-50 shadow-sm transition-all duration-200">
         <div className="flex items-center flex-1">
-          <button onClick={onMenuClick} className="md:hidden p-2 rounded-md hover:bg-gray-100 mr-2 text-gray-600">
+          <button onClick={onMenuClick} className="md:hidden p-2 rounded-md hover:bg-gray-100 mr-2 text-gray-600 transition-colors">
             <Menu size={20} />
           </button>
 
-          <div className="hidden md:flex items-center text-sm font-medium text-gray-900 font-heading">
-            <span>Dashboard</span>
-          </div>
-
-          <div className="ml-4 md:ml-8 flex-1 max-w-md relative hidden sm:block">
-            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-              <Search size={16} className="text-gray-400" />
+          <div className="hidden md:flex flex-col">
+            <span className="text-lg font-bold text-gray-800 font-heading tracking-tight leading-tight">{pageTitle}</span>
+            <div className="flex items-center gap-3">
+              {pageSubtitle && <span className="text-xs text-gray-500 leading-tight">{pageSubtitle}</span>}
+              {/* Task Stats for Tasks Page */}
+              {taskStats && (
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="text-teal-600 font-medium">{taskStats.completed}/{taskStats.total} completed</span>
+                  {taskStats.inProgress > 0 && (
+                    <span className="text-blue-600 font-medium">{taskStats.inProgress} in progress</span>
+                  )}
+                </div>
+              )}
             </div>
-            <input
-              type="text"
-              placeholder="Search..."
-              className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-gray-50 placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 sm:text-sm transition duration-150 ease-in-out text-gray-900 font-body"
-            />
           </div>
         </div>
 

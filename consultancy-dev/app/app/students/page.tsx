@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card } from '@/components/ui/card';
-import { Search, Eye, Filter, UserCircle, Phone, Mail, Plus } from 'lucide-react';
+import { Search, ExternalLink, Filter, UserCircle, Phone, Mail, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { GENDERS, COURSES, INDIAN_STATES, SCHOOL_BOARDS, PREFERRED_LOCATIONS } from '@/lib/utils';
 
@@ -167,23 +167,16 @@ export default function StudentsPage() {
 
     return (
         <div className="space-y-2">
-            {/* Header - Compact */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-xl font-bold text-slate-900 font-heading">Students Directory</h1>
-                    <p className="text-xs text-slate-500">View and manage all students across every stage</p>
-                </div>
-                <div className="flex gap-2">
-                    <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 text-xs"
-                        onClick={() => setIsFilterOpen(!isFilterOpen)}
-                    >
-                        <Filter className="mr-1 h-3 w-3" /> Filters
-                    </Button>
-                    {/* Could add Export button detailed here later */}
-                </div>
+            {/* Filters Button */}
+            <div className="flex justify-end">
+                <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs"
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                >
+                    <Filter className="mr-1 h-3 w-3" /> Filters
+                </Button>
             </div>
 
             {/* Compact Stats */}
@@ -368,15 +361,12 @@ export default function StudentsPage() {
                                             </span>
                                         </td>
                                         <td className="px-4 py-2 text-right">
-                                            <Button
-                                                size="sm"
-                                                variant="ghost"
-                                                className="h-7 w-7 p-0 rounded-full hover:bg-teal-50 text-slate-400 hover:text-teal-600 transition-colors"
+                                            <button
                                                 onClick={() => router.push(`/app/student-profile/${student.type.toLowerCase()}/${student.id}`)}
-                                                title="View Profile"
+                                                className="inline-flex items-center gap-1 text-xs text-teal-600 hover:text-teal-700 font-medium"
                                             >
-                                                <Eye size={14} />
-                                            </Button>
+                                                View <ExternalLink size={12} />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))

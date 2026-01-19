@@ -7,10 +7,34 @@ class User(AbstractUser):
         ('COMPANY_ADMIN', 'Company Admin'),
         ('MANAGER', 'Manager'),
         ('EMPLOYEE', 'Employee'),
+        ('HR', 'HR'),
+        ('SALES', 'Sales & Marketing'),
+        ('ACCOUNTS', 'Accounts / Finance'),
+        ('COUNSELOR', 'Counselor'),
+        ('OPERATIONS', 'Operations'),
+        ('IT_SUPPORT', 'IT Support'),
+        ('TEAM_LEADER', 'Team Leader'),
     )
     role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='EMPLOYEE')
     company_id = models.CharField(max_length=100, blank=True, null=True)
     avatar = models.URLField(blank=True, null=True)
+    
+    # Personal Details
+    gender = models.CharField(max_length=10, choices=(('Male', 'Male'), ('Female', 'Female'), ('Other', 'Other')), blank=True, null=True)
+    phone_number = models.CharField(max_length=15, blank=True, null=True)
+    dob = models.DateField(blank=True, null=True)
+    parents_name = models.CharField(max_length=255, blank=True, null=True)
+    religion = models.CharField(max_length=50, blank=True, null=True)
+    state_from = models.CharField(max_length=100, blank=True, null=True)
+
+    # Employment Details
+    date_of_joining = models.DateField(blank=True, null=True)
+    salary = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
+
+    # Assignments
+    assigned_state = models.CharField(max_length=100, blank=True, null=True)
+    assigned_district = models.CharField(max_length=100, blank=True, null=True)
+    assigned_location = models.CharField(max_length=255, blank=True, null=True)
 
 class Enquiry(models.Model):
     STATUS_CHOICES = (('New', 'New'), ('Converted', 'Converted'), ('Closed', 'Closed'))
@@ -329,6 +353,7 @@ class University(models.Model):
     admission_deadline = models.CharField(max_length=100, blank=True, default='')
     requirements = models.JSONField(default=list)
     rating = models.FloatField(default=0.0)
+    company_id = models.CharField(max_length=100, default='', blank=True)
 
 class Template(models.Model):
     name = models.CharField(max_length=100)
@@ -370,7 +395,6 @@ class Commission(models.Model):
     student = models.ForeignKey(Registration, on_delete=models.SET_NULL, null=True)
     enrollment_date = models.DateTimeField(auto_now_add=True)
     company_id = models.CharField(max_length=100, default='')
-
 
 class LeadSource(models.Model):
     name = models.CharField(max_length=100)
@@ -466,6 +490,7 @@ class ChatConversation(models.Model):
     is_group = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    company_id = models.CharField(max_length=100, default='')
 
 class ChatMessage(models.Model):
     conversation = models.ForeignKey(ChatConversation, related_name='messages', on_delete=models.CASCADE)
@@ -473,6 +498,7 @@ class ChatMessage(models.Model):
     text = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
     read = models.BooleanField(default=False)
+    company_id = models.CharField(max_length=100, default='')
 
 class GroupChat(models.Model):
     conversation = models.OneToOneField(ChatConversation, on_delete=models.CASCADE, related_name='group_info')
@@ -481,6 +507,7 @@ class GroupChat(models.Model):
     admins = models.ManyToManyField(User, related_name='admin_groups')
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_groups')
     created_at = models.DateTimeField(auto_now_add=True)
+    company_id = models.CharField(max_length=100, default='')
 
 class Agent(models.Model):
     name = models.CharField(max_length=255)

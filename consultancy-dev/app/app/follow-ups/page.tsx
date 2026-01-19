@@ -10,6 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Clock, Phone, Mail, MessageSquare, Plus, Search, Filter, BarChart2, Eye, Calendar, MessageCircle, AlertCircle, X, ChevronRight, Send, User, MoreVertical, Trash2, Edit2, Reply, Layout, FileText, CalendarDays, Clock3, MoreHorizontal, UserCircle2, CheckCircle2 } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { getAvatarColor, getInitials } from '@/lib/utils';
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog';
 import { Enquiry } from '@/lib/types';
 import toast from 'react-hot-toast';
@@ -278,30 +279,24 @@ export default function FollowUpsPage() {
 
   return (
     <div className="h-[calc(100vh-100px)] flex flex-col gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between shrink-0">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 font-heading">Follow-ups</h1>
-          <p className="text-xs text-slate-500">Manage and track your communications</p>
-        </div>
-        <div className="flex gap-2">
-          {selectedFollowUp && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-8 text-xs text-slate-500 hidden md:flex"
-              onClick={() => setSelectedFollowUpId(null)}
-            >
-              Close Details
-            </Button>
-          )}
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2 shrink-0">
+        {selectedFollowUp && (
           <Button
-            onClick={() => setIsCreateOpen(true)}
-            className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+            variant="ghost"
+            size="sm"
+            className="h-8 text-xs text-slate-500 hidden md:flex"
+            onClick={() => setSelectedFollowUpId(null)}
           >
-            <Plus className="mr-1 h-3 w-3" /> Add Follow-up
+            Close Details
           </Button>
-        </div>
+        )}
+        <Button
+          onClick={() => setIsCreateOpen(true)}
+          className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+        >
+          <Plus className="mr-1 h-3 w-3" /> Add Follow-up
+        </Button>
       </div>
 
       {/* Stats */}
@@ -380,9 +375,9 @@ export default function FollowUpsPage() {
                 >
                   <div className="flex gap-3 items-start">
                     <div className="shrink-0 pt-0.5">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold text-white
-                                        ${followUp.status === 'Completed' ? 'bg-emerald-500' : 'bg-slate-900'}`}>
-                        {followUp.studentName.slice(0, 2).toUpperCase()}
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-semibold shrink-0
+                                        ${getAvatarColor(followUp.studentName).bg} ${getAvatarColor(followUp.studentName).text}`}>
+                        {getInitials(followUp.studentName, 2)}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -443,9 +438,8 @@ export default function FollowUpsPage() {
             <div className="p-5 border-b border-slate-100 bg-white shrink-0 relative">
               <div className="flex items-start justify-between mb-4">
                 <div className="flex gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 shrink-0 ${selectedFollowUp.status === 'Completed' ? 'bg-emerald-50 text-emerald-600 border-emerald-100' : 'bg-slate-50 text-slate-600 border-slate-100'
-                    }`}>
-                    {selectedFollowUp.studentName.charAt(0).toUpperCase()}
+                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 shrink-0 ${getAvatarColor(selectedFollowUp.studentName).bg} ${getAvatarColor(selectedFollowUp.studentName).text} border-white shadow-sm`}>
+                    {getInitials(selectedFollowUp.studentName)}
                   </div>
                   <div>
                     <h2 className="text-xl font-bold text-slate-900 leading-tight">{selectedFollowUp.studentName}</h2>

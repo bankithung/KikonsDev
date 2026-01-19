@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
+import { useQuery } from '@tanstack/react-query'; // Import useQuery
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Minus, Send, Phone, Video, Users, Info } from 'lucide-react';
 import { useChatStore } from '@/store/chatStore';
@@ -23,30 +24,32 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
   const [showGroupInfo, setShowGroupInfo] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  // Refactored to use React Query for real-time updates via WebSocket
+  const { data: messages, refetch } = useQuery({
+    queryKey: ['chat-messages', conversationId],
+    queryFn: () => apiClient.chat.getMessages(conversationId),
+    enabled: !!conversationId,
+    // Poll every 10s as backup, but rely on WebSocket for instant updates
+    refetchInterval: 10000,
+  });
+
+  // Sync React Query data to Chat Store
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversation?.messages]);
+    if (messages) {
+      useChatStore.setState(state => ({
+        conversations: state.conversations.map(conv =>
+          conv.id === conversationId ? { ...conv, messages } : conv
+        )
+      }));
+    }
+  }, [messages, conversationId]);
 
+  // Initial scroll
   useEffect(() => {
-    if (!conversationId) return;
-
-    const pollMessages = async () => {
-      try {
-        const messages = await apiClient.chat.getMessages(conversationId);
-        useChatStore.setState(state => ({
-          conversations: state.conversations.map(conv =>
-            conv.id === conversationId ? { ...conv, messages } : conv
-          )
-        }));
-      } catch (error) {
-        console.error('Failed to poll messages:', error);
-      }
-    };
-
-    pollMessages();
-    const interval = setInterval(pollMessages, 3000);
-    return () => clearInterval(interval);
-  }, [conversationId]);
+    if (messages) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages]);
 
   if (!conversation) return null;
 

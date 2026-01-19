@@ -140,8 +140,10 @@ export function PhysicalDocumentList() {
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Document Name</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Student</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden md:table-cell">Doc Number</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">Created By</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">Held By</th>
                                     <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider">Status</th>
-                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden lg:table-cell">Received</th>
+                                    <th className="px-4 py-3 text-left text-xs font-semibold text-slate-700 uppercase tracking-wider hidden xl:table-cell">Received</th>
                                     <th className="px-4 py-3 text-center text-xs font-semibold text-slate-700 uppercase tracking-wider">Action</th>
                                 </tr>
                             </thead>
@@ -170,6 +172,12 @@ export function PhysicalDocumentList() {
                                         <td className="px-4 py-2 hidden md:table-cell">
                                             <span className="text-slate-500 text-xs font-mono">{doc.documentNumber || '-'}</span>
                                         </td>
+                                        <td className="px-4 py-2 hidden lg:table-cell">
+                                            <span className="text-slate-600 text-xs">{doc.created_by_name || '-'}</span>
+                                        </td>
+                                        <td className="px-4 py-2 hidden lg:table-cell">
+                                            <span className="text-slate-600 text-xs font-medium">{doc.current_holder_name || '-'}</span>
+                                        </td>
                                         <td className="px-4 py-2">
                                             <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${doc.status === 'Held'
                                                 ? 'bg-blue-100 text-blue-700'
@@ -179,7 +187,7 @@ export function PhysicalDocumentList() {
                                                 {doc.status}
                                             </span>
                                         </td>
-                                        <td className="px-4 py-2 hidden lg:table-cell">
+                                        <td className="px-4 py-2 hidden xl:table-cell">
                                             <span className="text-slate-500 text-xs">
                                                 {doc.receivedAt ? format(new Date(doc.receivedAt), 'dd MMM yyyy') : '-'}
                                             </span>
@@ -222,7 +230,7 @@ export function PhysicalDocumentList() {
                                 ))}
                                 {paginatedDocs.length === 0 && (
                                     <tr>
-                                        <td colSpan={6} className="px-4 py-12 text-center text-slate-500">
+                                        <td colSpan={8} className="px-4 py-12 text-center text-slate-500">
                                             <FolderOpen className="h-8 w-8 text-slate-200 mx-auto mb-2" />
                                             <p className="text-sm font-medium">No physical documents found</p>
                                             <p className="text-xs text-slate-400 mt-1">Physical documents are added from student profiles</p>

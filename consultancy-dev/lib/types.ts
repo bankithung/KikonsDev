@@ -1,4 +1,4 @@
-export type Role = 'DEV_ADMIN' | 'COMPANY_ADMIN' | 'MANAGER' | 'EMPLOYEE';
+export type Role = 'DEV_ADMIN' | 'COMPANY_ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'HR' | 'SALES' | 'ACCOUNTS' | 'COUNSELOR' | 'OPERATIONS' | 'IT_SUPPORT' | 'TEAM_LEADER';
 
 export interface User {
   id: number;
@@ -7,8 +7,21 @@ export interface User {
   last_name?: string;
   email: string;
   role: Role;
-  company_id: string;
+  company_id?: string;
   avatar?: string;
+
+  // Extended Profile
+  gender?: 'Male' | 'Female' | 'Other';
+  phone_number?: string;
+  dob?: string;
+  parents_name?: string;
+  religion?: string;
+  state_from?: string;
+  date_of_joining?: string;
+  salary?: string | number; // API might return string
+  assigned_state?: string;
+  assigned_district?: string;
+  assigned_location?: string;
 }
 
 export interface StudentRemark {
@@ -181,6 +194,9 @@ export interface StudentDocument {
   returnedAt?: string;
   remarks?: string;
   createdBy?: string;
+  created_by_name?: string;
+  current_holder?: number;
+  current_holder_name?: string;
 }
 
 export interface Document {

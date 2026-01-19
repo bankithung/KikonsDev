@@ -11,7 +11,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, isWithinInterval, startOfDay, endOfDay } from 'date-fns';
-import { Filter, Eye, FileText, MoreHorizontal, RotateCcw, Download, Plus, Search, Calendar, RefreshCw } from 'lucide-react';
+import { Filter, Eye, FileText, MoreHorizontal, RotateCcw, Download, Plus, Search, Calendar, RefreshCw, FileSpreadsheet } from 'lucide-react';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import { PaymentModal } from '@/components/common/PaymentModal';
 import { PaymentDetailsModal } from '@/components/common/PaymentDetailsModal';
 import { RefundModal } from '@/components/common/RefundModal';
@@ -24,7 +26,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { cn } from '@/lib/utils';
+import { cn, getAvatarColor, getInitials } from '@/lib/utils';
 import { DateRange } from 'react-day-picker';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -144,9 +146,14 @@ export default function PaymentsPage() {
       header: 'Student',
       accessorKey: 'studentName',
       cell: (item: any) => (
-        <div className="flex flex-col">
-          <span className="font-semibold text-slate-900">{item.studentName}</span>
-          <span className="text-[10px] text-slate-500 uppercase">{item.type}</span>
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shrink-0 ${getAvatarColor(item.studentName).bg} ${getAvatarColor(item.studentName).text}`}>
+            {getInitials(item.studentName)}
+          </div>
+          <div className="flex flex-col">
+            <span className="font-semibold text-slate-900">{item.studentName}</span>
+            <span className="text-[10px] text-slate-500 uppercase">{item.type}</span>
+          </div>
         </div>
       )
     },
@@ -237,7 +244,10 @@ export default function PaymentsPage() {
       header: 'Student',
       accessorKey: 'studentName',
       cell: (item: any) => (
-        <div className="flex flex-col">
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shrink-0 ${getAvatarColor(item.studentName).bg} ${getAvatarColor(item.studentName).text}`}>
+            {getInitials(item.studentName)}
+          </div>
           <span className="font-semibold text-slate-900">{item.studentName}</span>
         </div>
       )
@@ -277,10 +287,127 @@ export default function PaymentsPage() {
     },
   ];
 
-  // Export Logic (simplified)
-  const exportToExcel = () => {
-    // Implement export logic based on activeTab if needed
-    toast({ title: 'Export', description: 'Export functionality coming soon for new layout.' });
+  // Export Logic - CSV Download
+  const exportToCSV = () => {
+    const dataToExport = activeTab === 'transactions' ? filteredPayments : filteredRefunds;
+
+    if (dataToExport.length === 0) {
+      toast({ title: 'No Data', description: 'No records to export.' });
+      return;
+    }
+
+    let csvContent = '';
+    let filename = '';
+
+    if (activeTab === 'transactions') {
+      // CSV Header for Transactions
+      csvContent = 'Student Name,Reference Number,Date,Amount,Method,Status,Type\n';
+
+      // CSV Rows
+      dataToExport.forEach((pay: any) => {
+        const row = [
+          `"${pay.studentName || ''}"`,
+          `"${pay.referenceNumber || ''}"`,
+          pay.date ? format(new Date(pay.date), 'yyyy-MM-dd') : '',
+          pay.amount || 0,
+          `"${pay.method || ''}"`,
+          `"${pay.status || ''}"`,
+          `"${pay.type || ''}"`
+        ].join(',');
+        csvContent += row + '\n';
+      });
+      filename = `payments_export_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
+    } else {
+      // CSV Header for Refunds
+      csvContent = 'Student Name,Refund Amount,Original Amount,Refund Date,Reason,Status\n';
+
+      // CSV Rows
+      dataToExport.forEach((ref: any) => {
+        const row = [
+          `"${ref.studentName || ''}"`,
+          ref.amount || 0,
+          ref.originalAmount || 0,
+          ref.refundDate ? format(new Date(ref.refundDate), 'yyyy-MM-dd') : '',
+          `"${(ref.reason || '').replace(/"/g, '""')}"`,
+          `"${ref.status || ''}"`
+        ].join(',');
+        csvContent += row + '\n';
+      });
+      filename = `refunds_export_${format(new Date(), 'yyyyMMdd_HHmmss')}.csv`;
+    }
+
+    // Create and download the file
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    const url = URL.createObjectURL(blob);
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    toast({ title: 'Export Successful', description: `Downloaded ${filename}` });
+  };
+
+  // Export Logic - PDF Download
+  const exportToPDF = () => {
+    const dataToExport = activeTab === 'transactions' ? filteredPayments : filteredRefunds;
+
+    if (dataToExport.length === 0) {
+      toast({ title: 'No Data', description: 'No records to export.' });
+      return;
+    }
+
+    const doc = new jsPDF();
+    const title = activeTab === 'transactions' ? 'Payments Report' : 'Refunds Report';
+    const filename = activeTab === 'transactions'
+      ? `payments_report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`
+      : `refunds_report_${format(new Date(), 'yyyyMMdd_HHmmss')}.pdf`;
+
+    // Add title
+    doc.setFontSize(18);
+    doc.text(title, 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated on ${format(new Date(), 'PPpp')}`, 14, 30);
+
+    if (activeTab === 'transactions') {
+      const tableData = dataToExport.map((pay: any) => [
+        pay.studentName || '',
+        pay.referenceNumber || '',
+        pay.date ? format(new Date(pay.date), 'dd MMM yyyy') : '',
+        `₹${Number(pay.amount || 0).toLocaleString()}`,
+        pay.method || '',
+        pay.status || ''
+      ]);
+
+      autoTable(doc, {
+        head: [['Student', 'Reference', 'Date', 'Amount', 'Method', 'Status']],
+        body: tableData,
+        startY: 38,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [15, 118, 110] }
+      });
+    } else {
+      const tableData = dataToExport.map((ref: any) => [
+        ref.studentName || '',
+        `₹${Number(ref.amount || 0).toLocaleString()}`,
+        `₹${Number(ref.originalAmount || 0).toLocaleString()}`,
+        ref.refundDate ? format(new Date(ref.refundDate), 'dd MMM yyyy') : '',
+        ref.status || ''
+      ]);
+
+      autoTable(doc, {
+        head: [['Student', 'Refund Amount', 'Original Amount', 'Date', 'Status']],
+        body: tableData,
+        startY: 38,
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [15, 118, 110] }
+      });
+    }
+
+    doc.save(filename);
+    toast({ title: 'Export Successful', description: `Downloaded ${filename}` });
   };
 
   if (isLoading) return (
@@ -295,23 +422,28 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-3 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-2">
 
-      {/* Header Section */}
-      <div className="flex items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight font-heading">Payments & Refunds</h1>
-          </div>
-          <p className="text-xs text-slate-500 font-medium">Manage financial transactions and history</p>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-slate-200 bg-white hover:bg-slate-50">
-            <Download className="mr-2 h-3.5 w-3.5 text-slate-500" /> Export Report
-          </Button>
-          <Button onClick={() => setIsPaymentModalOpen(true)} size="sm" className="h-8 text-xs font-semibold bg-teal-600 hover:bg-teal-700 shadow-sm shadow-teal-200 text-white">
-            <Plus className="mr-2 h-3.5 w-3.5" /> Record Payment
-          </Button>
-        </div>
+      {/* Header Action Buttons */}
+      <div className="flex items-center justify-end gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-slate-200 bg-white hover:bg-slate-50">
+              <Download className="mr-2 h-3.5 w-3.5 text-slate-500" /> Export Report
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-[160px] bg-white shadow-lg border border-slate-200">
+            <DropdownMenuLabel className="text-xs font-bold text-slate-500">Export Format</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={exportToCSV} className="text-xs font-medium cursor-pointer">
+              <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /> Export as CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={exportToPDF} className="text-xs font-medium cursor-pointer">
+              <FileText className="mr-2 h-4 w-4 text-red-600" /> Export as PDF
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+        <Button onClick={() => setIsPaymentModalOpen(true)} size="sm" className="h-8 text-xs font-semibold bg-teal-600 hover:bg-teal-700 shadow-sm shadow-teal-200 text-white">
+          <Plus className="mr-2 h-3.5 w-3.5" /> Record Payment
+        </Button>
       </div>
 
       {/* Stats Overview */}

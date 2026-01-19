@@ -17,6 +17,7 @@ import { RequestActionModal } from '@/components/ui/RequestActionModal';
 import { toast } from '@/store/toastStore';
 import { useRouter } from 'next/navigation';
 import { ExistingDocumentsList } from '@/components/common/ExistingDocumentsList';
+import { getAvatarColor, getInitials } from '@/lib/utils';
 
 interface EnrollmentListProps {
   isFilterOpen?: boolean;
@@ -228,8 +229,8 @@ export function EnrollmentList({ isFilterOpen = false }: EnrollmentListProps) {
                   <tr key={enr.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center text-purple-600 font-semibold text-sm shrink-0">
-                          {enr.studentName.charAt(0)}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shrink-0 ${getAvatarColor(enr.studentName).bg} ${getAvatarColor(enr.studentName).text}`}>
+                          {getInitials(enr.studentName)}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 truncate">{enr.studentName}</p>
@@ -390,8 +391,8 @@ function EnrollmentViewModal({
             {/* Student Header */}
             <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-purple-600 flex items-center justify-center text-white font-bold text-2xl">
-                  {enrollment.studentName.charAt(0)}
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl ${getAvatarColor(enrollment.studentName).bg} ${getAvatarColor(enrollment.studentName).text}`}>
+                  {getInitials(enrollment.studentName)}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-slate-900">{enrollment.studentName}</h3>

@@ -102,56 +102,86 @@ export default function ApprovalRequestsPage() {
     }
 
     return (
-        <div className="space-y-6">
-            <div>
-                <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 font-heading">Approval Requests</h1>
-                <p className="text-sm text-slate-600 mt-1 font-body">Review and manage delete/update requests from employees</p>
-            </div>
+        <div className="space-y-4">
 
             <Tabs defaultValue="pending" className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
-                    <TabsTrigger value="pending" className="relative">
-                        Pending
-                        {pendingRequests.length > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] text-white">
-                                {pendingRequests.length}
-                            </span>
-                        )}
-                    </TabsTrigger>
-                    <TabsTrigger value="history">History</TabsTrigger>
-                </TabsList>
+                <div className="flex items-center justify-between mb-4">
+                    <TabsList className="bg-slate-100 p-1 rounded-lg border border-slate-200 inline-flex h-9">
+                        <TabsTrigger
+                            value="pending"
+                            className="px-4 text-xs font-semibold text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all rounded-md relative flex items-center gap-2"
+                        >
+                            Pending
+                            {pendingRequests.length > 0 && (
+                                <span className="flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] text-white">
+                                    {pendingRequests.length}
+                                </span>
+                            )}
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="history"
+                            className="px-4 text-xs font-semibold text-slate-500 data-[state=active]:bg-white data-[state=active]:text-slate-900 data-[state=active]:shadow-sm transition-all rounded-md"
+                        >
+                            History
+                        </TabsTrigger>
+                    </TabsList>
+                </div>
 
                 <TabsContent value="pending" className="mt-6">
                     {pendingRequests.length === 0 ? (
-                        <Card className="border-dashed border-2 border-slate-200 bg-slate-50">
-                            <CardContent className="flex flex-col items-center justify-center py-12 text-center">
-                                <Check className="w-12 h-12 text-green-500 mb-4 bg-green-100 p-2 rounded-full" />
-                                <h3 className="text-lg font-medium text-slate-900">All Caught Up!</h3>
-                                <p className="text-slate-500 mt-1">There are no pending requests to review.</p>
-                            </CardContent>
-                        </Card>
+                        <div className="flex flex-col items-center justify-center py-12 text-center bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                            <Check className="w-10 h-10 text-green-500 mb-3 bg-green-100 p-2 rounded-full" />
+                            <h3 className="text-sm font-semibold text-slate-900">All Caught Up!</h3>
+                            <p className="text-xs text-slate-500 mt-1">No pending requests.</p>
+                        </div>
                     ) : (
-                        <div className="grid gap-4">
-                            {pendingRequests.map((request: any) => (
-                                <RequestCard
-                                    key={request.id}
-                                    request={request}
-                                    onApprove={() => handleAction(request, 'APPROVE')}
-                                    onReject={() => handleAction(request, 'REJECT')}
-                                />
-                            ))}
+                        <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase text-slate-500 tracking-wider">
+                                    <tr>
+                                        <th className="px-4 py-3 w-[100px]">Action</th>
+                                        <th className="px-4 py-3 w-[200px]">Entity</th>
+                                        <th className="px-4 py-3 w-[180px]">Requested By</th>
+                                        <th className="px-4 py-3">Reason</th>
+                                        <th className="px-4 py-3 w-[180px] text-right">Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {pendingRequests.map((request: any) => (
+                                        <RequestRow
+                                            key={request.id}
+                                            request={request}
+                                            onApprove={() => handleAction(request, 'APPROVE')}
+                                            onReject={() => handleAction(request, 'REJECT')}
+                                        />
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-6">
                     {historyRequests.length === 0 ? (
-                        <div className="text-center py-12 text-slate-500">No history available</div>
+                        <div className="text-center py-12 text-slate-500 text-sm">No history available</div>
                     ) : (
-                        <div className="grid gap-4">
-                            {historyRequests.map((request: any) => (
-                                <RequestCard key={request.id} request={request} isHistory />
-                            ))}
+                        <div className="border border-slate-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                            <table className="w-full text-sm text-left">
+                                <thead className="bg-slate-50 border-b border-slate-200 text-xs font-semibold uppercase text-slate-500 tracking-wider">
+                                    <tr>
+                                        <th className="px-4 py-3 w-[100px]">Status</th>
+                                        <th className="px-4 py-3 w-[200px]">Entity</th>
+                                        <th className="px-4 py-3 w-[180px]">Requested By</th>
+                                        <th className="px-4 py-3">Reason</th>
+                                        <th className="px-4 py-3 w-[140px] text-right">Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100">
+                                    {historyRequests.map((request: any) => (
+                                        <RequestRow key={request.id} request={request} isHistory />
+                                    ))}
+                                </tbody>
+                            </table>
                         </div>
                     )}
                 </TabsContent>
@@ -160,61 +190,57 @@ export default function ApprovalRequestsPage() {
             {/* Review Modal */}
             <Dialog.Root open={!!selectedRequest} onOpenChange={handleCloseModal}>
                 <Dialog.Portal>
-                    <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-                    <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-6 shadow-xl focus:outline-none z-50 border border-slate-200">
+                    <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50 backdrop-blur-sm transition-all duration-300" />
+                    <Dialog.Content className="fixed left-[50%] top-[50%] w-full max-w-md translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white p-0 shadow-2xl focus:outline-none z-50 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
                         {selectedRequest && (
-                            <>
-                                <Dialog.Title className="text-xl font-bold text-slate-900 mb-1 font-heading flex items-center gap-2">
-                                    {actionType === 'APPROVE' ? (
-                                        <Check className="w-6 h-6 text-green-600" />
-                                    ) : (
-                                        <X className="w-6 h-6 text-red-600" />
-                                    )}
-                                    {actionType === 'APPROVE' ? 'Approve Request' : 'Reject Request'}
-                                </Dialog.Title>
-                                <Dialog.Description className="text-slate-500 mb-6">
-                                    You are about to {actionType?.toLowerCase()} this request.
-                                </Dialog.Description>
-
-                                <div className="space-y-4">
-                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                        <div className="flex items-center gap-2 mb-2">
-                                            <Badge variant={selectedRequest.action === 'DELETE' ? 'destructive' : 'default'}>
+                            <div className="flex flex-col max-h-[90vh]">
+                                <div className={`p-5 text-white ${actionType === 'APPROVE' ? 'bg-teal-600' : 'bg-red-600'}`}>
+                                    <h2 className="text-lg font-bold flex items-center gap-2">
+                                        {actionType === 'APPROVE' ? <Check className="w-5 h-5" /> : <X className="w-5 h-5" />}
+                                        {actionType === 'APPROVE' ? 'Approve Request' : 'Reject Request'}
+                                    </h2>
+                                    <p className="text-white/80 text-xs mt-1">
+                                        Please confirm your action below.
+                                    </p>
+                                </div>
+                                <div className="p-5 overflow-y-auto">
+                                    <div className="bg-slate-50 p-4 rounded-lg border border-slate-100 mb-4">
+                                        <div className="flex items-center gap-2 mb-1">
+                                            <Badge variant={selectedRequest.action === 'DELETE' ? 'destructive' : 'default'} className="h-5 text-[10px] px-1.5">
                                                 {selectedRequest.action}
                                             </Badge>
-                                            <span className="font-medium text-slate-900">{selectedRequest.entity_type}</span>
+                                            <span className="text-xs font-bold text-slate-400 uppercase">{selectedRequest.entity_type}</span>
                                         </div>
-                                        <p className="text-sm text-slate-700 font-medium">{selectedRequest.entity_name}</p>
-                                        <p className="text-xs text-slate-500 mt-2">Reason: "{selectedRequest.message}"</p>
+                                        <p className="font-semibold text-slate-900 text-sm mb-2">{selectedRequest.entity_name}</p>
+                                        <div className="text-xs text-slate-600 bg-white p-2 rounded border border-slate-100">
+                                            <span className="font-semibold text-slate-800">Reason:</span> {selectedRequest.message}
+                                        </div>
                                     </div>
 
-                                    <div>
-                                        <label className="block text-sm font-medium text-slate-700 mb-2">
+                                    <div className="space-y-2">
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">
                                             Review Note (Optional)
                                         </label>
                                         <textarea
-                                            className="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-teal-500 resize-none"
-                                            rows={3}
-                                            placeholder="Add a note..."
+                                            className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-500 transition-all resize-none min-h-[80px]"
+                                            placeholder="Add comments for the requestor..."
                                             value={reviewNote}
                                             onChange={(e) => setReviewNote(e.target.value)}
                                         />
                                     </div>
-
-                                    <div className="flex gap-3 justify-end mt-4">
-                                        <Button variant="outline" onClick={handleCloseModal}>
-                                            Cancel
-                                        </Button>
-                                        <Button
-                                            className={actionType === 'APPROVE' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}
-                                            onClick={handleSubmitReview}
-                                            disabled={approveMutation.isPending || rejectMutation.isPending}
-                                        >
-                                            {actionType === 'APPROVE' ? 'Confirm Approval' : 'Confirm Rejection'}
-                                        </Button>
-                                    </div>
                                 </div>
-                            </>
+                                <div className="p-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                                    <Button variant="ghost" size="sm" onClick={handleCloseModal}>Cancel</Button>
+                                    <Button
+                                        size="sm"
+                                        className={actionType === 'APPROVE' ? 'bg-teal-600 hover:bg-teal-700' : 'bg-red-600 hover:bg-red-700'}
+                                        onClick={handleSubmitReview}
+                                        disabled={approveMutation.isPending || rejectMutation.isPending}
+                                    >
+                                        {approveMutation.isPending || rejectMutation.isPending ? 'Processing...' : 'Confirm'}
+                                    </Button>
+                                </div>
+                            </div>
                         )}
                     </Dialog.Content>
                 </Dialog.Portal>
@@ -223,76 +249,68 @@ export default function ApprovalRequestsPage() {
     );
 }
 
-function RequestCard({ request, onApprove, onReject, isHistory }: any) {
+function RequestRow({ request, onApprove, onReject, isHistory }: any) {
     const isDelete = request.action === 'DELETE';
+    const statusColor = request.status === 'APPROVED' ? 'text-green-600 bg-green-50 border-green-200' :
+        request.status === 'REJECTED' ? 'text-red-600 bg-red-50 border-red-200' : 'text-yellow-600 bg-yellow-50 border-yellow-200';
 
     return (
-        <Card className={`border-l-4 ${request.status === 'APPROVED' ? 'border-l-green-500' :
-            request.status === 'REJECTED' ? 'border-l-red-500' :
-                isDelete ? 'border-l-red-500' : 'border-l-blue-500'
-            }`}>
-            <CardContent className="p-5">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                            <Badge variant={isDelete ? 'destructive' : 'secondary'} className="uppercase">
-                                {isDelete ? <Trash2 className="w-3 h-3 mr-1" /> : <FileEdit className="w-3 h-3 mr-1" />}
-                                {request.action}
-                            </Badge>
-                            <span className="text-sm font-medium text-slate-500 uppercase tracking-wide">
-                                {request.entity_type}
-                            </span>
-                            {isHistory && (
-                                <Badge variant={request.status === 'APPROVED' ? 'default' : 'destructive'} className={request.status === 'APPROVED' ? 'bg-green-100 text-green-700 hover:bg-green-200' : 'bg-red-100 text-red-700 hover:bg-red-200'}>
-                                    {request.status}
-                                </Badge>
-                            )}
-                        </div>
-
-                        <div>
-                            <h3 className="text-lg font-semibold text-slate-900">{request.entity_name}</h3>
-                            <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-                                <UserIcon className="w-4 h-4" />
-                                <span>Requested by <span className="font-medium text-slate-700">{request.requested_by_name || 'Employee'}</span></span>
-                                <span>•</span>
-                                <Clock className="w-4 h-4" />
-                                <span>{format(new Date(request.created_at), 'MMM d, yyyy h:mm a')}</span>
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-50 p-3 rounded-md text-sm text-slate-700 border border-slate-100">
-                            <span className="font-medium text-slate-900">Reason: </span>
-                            {request.message}
-                        </div>
-
-                        {isHistory && request.review_note && (
-                            <div className="text-xs text-slate-500 italic">
-                                Admin Note: {request.review_note}
-                            </div>
-                        )}
-                    </div>
-
-                    {!isHistory && (
-                        <div className="flex items-center gap-2 shrink-0">
-                            <Button
-                                variant="outline"
-                                className="border-red-200 text-red-700 hover:bg-red-50 hover:text-red-800"
-                                onClick={onReject}
-                            >
-                                <X className="w-4 h-4 mr-2" />
-                                Reject
-                            </Button>
-                            <Button
-                                className="bg-green-600 hover:bg-green-700 text-white"
-                                onClick={onApprove}
-                            >
-                                <Check className="w-4 h-4 mr-2" />
-                                Approve
-                            </Button>
-                        </div>
-                    )}
+        <tr className="hover:bg-slate-50/80 transition-colors group">
+            <td className="px-4 py-3 align-top">
+                {isHistory ? (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${statusColor}`}>
+                        {request.status}
+                    </span>
+                ) : (
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase border ${isDelete ? 'text-red-700 bg-red-50 border-red-200' : 'text-blue-700 bg-blue-50 border-blue-200'}`}>
+                        {isDelete ? <Trash2 className="w-3 h-3 mr-1" /> : <FileEdit className="w-3 h-3 mr-1" />}
+                        {request.action}
+                    </span>
+                )}
+            </td>
+            <td className="px-4 py-3 align-top">
+                <div className="flex flex-col">
+                    <span className="font-semibold text-slate-800 text-sm">{request.entity_name}</span>
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{request.entity_type}</span>
                 </div>
-            </CardContent>
-        </Card>
+            </td>
+            <td className="px-4 py-3 align-top">
+                <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500 font-bold border border-slate-200">
+                        {request.requested_by_name?.charAt(0) || <UserIcon size={10} />}
+                    </div>
+                    <div className="flex flex-col">
+                        <span className="text-xs font-medium text-slate-700">{request.requested_by_name || 'System'}</span>
+                        <span className="text-[10px] text-slate-400">{format(new Date(request.created_at), 'MMM d, HH:mm')}</span>
+                    </div>
+                </div>
+            </td>
+            <td className="px-4 py-3 align-top">
+                <p className="text-sm text-slate-600 line-clamp-2 max-w-xs" title={request.message}>
+                    {request.message}
+                </p>
+                {isHistory && request.review_note && (
+                    <p className="text-xs text-slate-400 italic mt-1 border-l-2 border-slate-200 pl-2">
+                        Note: {request.review_note}
+                    </p>
+                )}
+            </td>
+            {isHistory ? (
+                <td className="px-4 py-3 align-top text-right text-xs text-slate-400 font-mono">
+                    {format(new Date(request.created_at), 'yyyy-MM-dd')}
+                </td>
+            ) : (
+                <td className="px-4 py-3 align-top text-right">
+                    <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button size="icon" variant="outline" className="h-7 w-7 border-red-200 text-red-600 hover:bg-red-50" onClick={onReject} title="Reject">
+                            <X className="w-3.5 h-3.5" />
+                        </Button>
+                        <Button size="icon" className="h-7 w-7 bg-teal-600 hover:bg-teal-700 text-white" onClick={onApprove} title="Approve">
+                            <Check className="w-3.5 h-3.5" />
+                        </Button>
+                    </div>
+                </td>
+            )}
+        </tr>
     );
 }

@@ -55,19 +55,23 @@ export function useUpcomingReminders() {
         );
 
         const overdueFollowUps = myFollowUps.filter((f: any) => {
+            if (!f.scheduledFor) return false;
             return isPast(parseISO(f.scheduledFor)) && !isToday(parseISO(f.scheduledFor));
         });
 
         const todayFollowUps = myFollowUps.filter((f: any) => {
+            if (!f.scheduledFor) return false;
             return isToday(parseISO(f.scheduledFor));
         });
 
         const tomorrowFollowUps = myFollowUps.filter((f: any) => {
+            if (!f.scheduledFor) return false;
             return isTomorrow(parseISO(f.scheduledFor));
         });
 
         // Check for upcoming within next 2 hours
         const upcomingSoonFollowUps = myFollowUps.filter((f: any) => {
+            if (!f.scheduledFor) return false;
             const scheduledTime = parseISO(f.scheduledFor);
             const now = new Date();
             const twoHoursFromNow = addHours(now, 2);
@@ -80,10 +84,12 @@ export function useUpcomingReminders() {
         );
 
         const todayAppointments = myAppointments.filter((appt: any) => {
+            if (!appt.scheduled_time) return false;
             return isToday(parseISO(appt.scheduled_time));
         });
 
         const upcomingSoonAppointments = myAppointments.filter((appt: any) => {
+            if (!appt.scheduled_time) return false;
             const scheduledTime = parseISO(appt.scheduled_time);
             const now = new Date();
             const twoHoursFromNow = addHours(now, 2);
@@ -181,7 +187,7 @@ export function useUpcomingReminders() {
         pendingTasksCount: tasks.filter((t: any) => t.assigned_to === user?.id && t.status !== 'Done').length,
         pendingFollowUpsCount: followUps.filter((f: any) => f.assignedTo === user?.id && f.status === 'Pending').length,
         todayAppointmentsCount: appointments.filter((a: any) =>
-            a.assigned_to === user?.id && isToday(parseISO(a.scheduled_time))
+            a.assigned_to === user?.id && a.scheduled_time && isToday(parseISO(a.scheduled_time))
         ).length,
     };
 }

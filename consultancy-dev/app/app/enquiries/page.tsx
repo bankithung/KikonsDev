@@ -17,7 +17,7 @@ import { useAuthStore } from '@/store/authStore';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { RequestActionModal } from '@/components/ui/RequestActionModal';
 import { toast } from '@/store/toastStore';
-import { INDIAN_STATES, SCHOOL_BOARDS, COURSES, PREFERRED_LOCATIONS, GENDERS } from '@/lib/utils';
+import { INDIAN_STATES, SCHOOL_BOARDS, COURSES, PREFERRED_LOCATIONS, GENDERS, getAvatarColor, getInitials } from '@/lib/utils';
 
 export default function EnquiriesPage() {
   const router = useRouter();
@@ -127,25 +127,19 @@ export default function EnquiriesPage() {
 
   return (
     <div className="space-y-2">
-      {/* Header - Compact */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 font-heading">Enquiries</h1>
-          <p className="text-xs text-slate-500">Manage and track all student enquiries</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <Filter className="mr-1 h-3 w-3" /> Filters
-          </Button>
-          <Button onClick={() => router.push('/app/enquiries/new')} size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700">
-            <Plus className="mr-1 h-3 w-3" /> New Enquiry
-          </Button>
-        </div>
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+        >
+          <Filter className="mr-1 h-3 w-3" /> Filters
+        </Button>
+        <Button onClick={() => router.push('/app/enquiries/new')} size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700">
+          <Plus className="mr-1 h-3 w-3" /> New Enquiry
+        </Button>
       </div>
 
       {/* Filters Panel - Compact Design */}
@@ -287,8 +281,8 @@ export default function EnquiriesPage() {
                   <tr key={enquiry.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 rounded-full bg-teal-100 flex items-center justify-center text-teal-600 font-semibold text-sm shrink-0">
-                          {enquiry.candidateName.charAt(0)}
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm shrink-0 ${getAvatarColor(enquiry.candidateName).bg} ${getAvatarColor(enquiry.candidateName).text}`}>
+                          {getInitials(enquiry.candidateName)}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-semibold text-slate-900 truncate">{enquiry.candidateName}</p>
@@ -447,8 +441,8 @@ function EnquiryViewModal({ enquiry, onClose, router }: { enquiry: Enquiry; onCl
             {/* Student Header */}
             <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-teal-600 flex items-center justify-center text-white font-bold text-2xl">
-                  {enquiry.candidateName.charAt(0)}
+                <div className={`w-16 h-16 rounded-full flex items-center justify-center font-bold text-2xl ${getAvatarColor(enquiry.candidateName).bg} ${getAvatarColor(enquiry.candidateName).text}`}>
+                  {getInitials(enquiry.candidateName)}
                 </div>
                 <div className="flex-1">
                   <h3 className="text-lg font-bold text-slate-900">{enquiry.candidateName}</h3>

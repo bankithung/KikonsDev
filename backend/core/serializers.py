@@ -18,7 +18,11 @@ class UserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
-        fields = ['id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_id', 'avatar', 'password', 'is_active']
+        fields = [
+            'id', 'username', 'email', 'first_name', 'last_name', 'role', 'company_id', 'avatar', 'password', 'is_active',
+            'gender', 'phone_number', 'dob', 'parents_name', 'religion', 'state_from',
+            'date_of_joining', 'salary', 'assigned_state', 'assigned_district', 'assigned_location'
+        ]
         extra_kwargs = {
             'password': {'write_only': True},
             'company_id': {'read_only': True}
@@ -68,6 +72,7 @@ class DocumentSerializer(serializers.ModelSerializer):
 
 class StudentDocumentSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
+    current_holder_name = serializers.SerializerMethodField()
     
     class Meta:
         model = StudentDocument
@@ -75,6 +80,9 @@ class StudentDocumentSerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj):
         return obj.created_by.username if obj.created_by else ''
+    
+    def get_current_holder_name(self, obj):
+        return obj.current_holder.username if obj.current_holder else ''
 
 class StudentRemarkSerializer(serializers.ModelSerializer):
     user_name = serializers.SerializerMethodField()
@@ -196,7 +204,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
         import uuid
         validated_data['enrollment_no'] = f"ENR-{uuid.uuid4().hex[:8].upper()}"
         
-        enrollment = super(serializers.ModelSerializer, self).create(validated_data)
+        enrollment = super().create(validated_data)
         
         # Create Installments if applicable
         if payment_type == 'Installment' and installments_count and installments_count > 0:

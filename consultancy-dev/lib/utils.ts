@@ -146,3 +146,30 @@ export const RELIGIONS = [
   "Jain",
   "Other"
 ];
+
+// Avatar color generator - returns consistent color based on name
+const AVATAR_COLORS = [
+  { bg: 'bg-blue-100', text: 'text-blue-600' },
+  { bg: 'bg-purple-100', text: 'text-purple-600' },
+  { bg: 'bg-green-100', text: 'text-green-600' },
+  { bg: 'bg-amber-100', text: 'text-amber-600' },
+  { bg: 'bg-rose-100', text: 'text-rose-600' },
+  { bg: 'bg-teal-100', text: 'text-teal-600' },
+  { bg: 'bg-indigo-100', text: 'text-indigo-600' },
+  { bg: 'bg-pink-100', text: 'text-pink-600' },
+  { bg: 'bg-cyan-100', text: 'text-cyan-600' },
+  { bg: 'bg-orange-100', text: 'text-orange-600' },
+];
+
+export function getAvatarColor(name: string): { bg: string; text: string } {
+  if (!name) return AVATAR_COLORS[0];
+  const charCode = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return AVATAR_COLORS[charCode % AVATAR_COLORS.length];
+}
+
+export function getInitials(name: string, count: number = 1): string {
+  if (!name) return '?';
+  const parts = name.trim().split(' ').filter(Boolean);
+  if (count === 1) return parts[0]?.charAt(0).toUpperCase() || '?';
+  return parts.slice(0, count).map(p => p.charAt(0).toUpperCase()).join('');
+}

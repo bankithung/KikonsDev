@@ -11,13 +11,6 @@ import { FileText, FolderOpen, ArrowRightLeft, Send, Clock } from 'lucide-react'
 export default function DocumentsPage() {
     return (
         <div className="space-y-2">
-            {/* Header - Compact */}
-            <div className="flex items-center justify-between">
-                <div>
-                    <h1 className="text-xl font-bold text-slate-900 font-heading">Documents Management</h1>
-                    <p className="text-xs text-slate-500">Manage, track, and transfer student documents</p>
-                </div>
-            </div>
 
             <Tabs defaultValue="digital" className="w-full">
                 <div className="border-b border-slate-200 mb-3">

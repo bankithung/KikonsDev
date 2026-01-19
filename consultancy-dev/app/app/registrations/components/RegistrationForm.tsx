@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trash2, Plus } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Trash2, Plus, Loader2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
 import { DocumentUpload } from '@/components/common/DocumentUpload';
 import { DocumentTakeover } from '@/components/common/DocumentTakeover';
 import { INDIAN_STATES } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 
 const registrationSchema = z.object({
   studentName: z.string().min(1, "Required"),
@@ -30,18 +31,19 @@ const registrationSchema = z.object({
   motherMobile: z.string().optional(),
   permanentAddress: z.string().min(1, "Required"),
 
-  // New Fields
+  // Academic Fields
   schoolName: z.string().optional(),
   schoolBoard: z.string().optional(),
   schoolPlace: z.string().optional(),
   schoolState: z.string().optional(),
-  // HSLC (Class 10)
+
   class10SchoolName: z.string().optional(),
   class10Board: z.string().optional(),
   class10Place: z.string().optional(),
   class10State: z.string().optional(),
   class10PassingYear: z.string().optional(),
   class10Percentage: z.coerce.number().optional(),
+
   class12Percentage: z.coerce.number().optional(),
   class12PassingYear: z.string().optional(),
   gapYear: z.boolean().default(false),
@@ -103,7 +105,7 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
     reset,
     formState: { errors },
   } = useForm<RegistrationFormValues>({
-    // @ts-ignore - zod resolver type mismatch with coerce.number()
+    // @ts-ignore
     resolver: zodResolver(registrationSchema),
     defaultValues: initialData || {
       paymentMethod: 'Cash',
@@ -111,6 +113,9 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
       needsLoan: false,
       registrationFee: 5000,
       preferences: [{ courseName: '', location: '', priority: 1 }],
+      gapYear: false,
+      student_documents: [],
+      documentTakeoverEnabled: false,
     },
   });
 
@@ -126,12 +131,10 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
   const mathsMarks = watch('mathsMarks');
 
   useEffect(() => {
-    // Helper to check if a value is effectively a number
     const isValid = (val: any) => val !== '' && val !== undefined && val !== null && !isNaN(Number(val));
 
     if (isValid(physicsMarks) && isValid(chemistryMarks) && isValid(biologyMarks)) {
       const pcb = (Number(physicsMarks) + Number(chemistryMarks) + Number(biologyMarks)) / 3;
-      // Use parseFloat to avoid trailing zeros string if needed, mostly toFixed(2) returns string
       setValue('pcbPercentage', parseFloat(pcb.toFixed(2)));
     }
 
@@ -157,56 +160,53 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
         try {
           const enq = await apiClient.enquiries.get(enquiryId);
           if (enq) {
-            setValue('studentName', enq.candidateName);
-            setValue('email', enq.email);
-            setValue('mobile', enq.mobile);
-            setValue('fatherName', enq.fatherName);
-            setValue('motherName', enq.motherName);
-            setValue('fatherOccupation', enq.fatherOccupation);
-            setValue('motherOccupation', enq.motherOccupation);
-            setValue('fatherMobile', enq.fatherMobile);
-            setValue('motherMobile', enq.motherMobile);
-            setValue('permanentAddress', enq.permanentAddress);
+            const fieldsToMap: any = {
+              studentName: enq.candidateName,
+              email: enq.email,
+              mobile: enq.mobile,
+              fatherName: enq.fatherName,
+              motherName: enq.motherName,
+              fatherOccupation: enq.fatherOccupation,
+              motherOccupation: enq.motherOccupation,
+              fatherMobile: enq.fatherMobile,
+              motherMobile: enq.motherMobile,
+              permanentAddress: enq.permanentAddress,
+              schoolName: enq.schoolName,
+              schoolBoard: enq.schoolBoard,
+              schoolPlace: enq.schoolPlace,
+              schoolState: enq.schoolState,
+              class10SchoolName: enq.class10SchoolName,
+              class10Board: enq.class10Board,
+              class10Place: enq.class10Place,
+              class10State: enq.class10State,
+              class10PassingYear: enq.class10PassingYear,
+              class10Percentage: enq.class10Percentage,
+              class12Percentage: enq.class12Percentage,
+              class12PassingYear: enq.class12PassingYear,
+              gapYear: enq.gapYear,
+              gapYearFrom: enq.gapYearFrom,
+              gapYearTo: enq.gapYearTo,
+              familyPlace: enq.familyPlace,
+              familyState: enq.familyState,
+              pcbPercentage: enq.pcbPercentage,
+              pcmPercentage: enq.pcmPercentage,
+              physicsMarks: enq.physicsMarks,
+              chemistryMarks: enq.chemistryMarks,
+              biologyMarks: enq.biologyMarks,
+              mathsMarks: enq.mathsMarks,
+              previousNeetMarks: enq.previousNeetMarks,
+              presentNeetMarks: enq.presentNeetMarks,
+            };
 
-            // New fields
-            if (enq.gender) setValue('gender', enq.gender as any);
-            if (enq.dob) setValue('dateOfBirth', enq.dob.split('T')[0]);
+            if (enq.gender) fieldsToMap.gender = enq.gender;
+            if (enq.dob) fieldsToMap.dateOfBirth = enq.dob.split('T')[0];
 
-            // Pre-fill new fields
-            if (enq.schoolName) setValue('schoolName', enq.schoolName);
-            if (enq.schoolBoard) setValue('schoolBoard', enq.schoolBoard);
-            if (enq.schoolPlace) setValue('schoolPlace', enq.schoolPlace);
-            if (enq.schoolState) setValue('schoolState', enq.schoolState);
+            Object.entries(fieldsToMap).forEach(([key, value]) => {
+              if (value !== undefined && value !== null) {
+                setValue(key as any, value);
+              }
+            });
 
-            // HSLC
-            if (enq.class10SchoolName) setValue('class10SchoolName', enq.class10SchoolName);
-            if (enq.class10Board) setValue('class10Board', enq.class10Board);
-            if (enq.class10Place) setValue('class10Place', enq.class10Place);
-            if (enq.class10State) setValue('class10State', enq.class10State);
-            if (enq.class10PassingYear) setValue('class10PassingYear', enq.class10PassingYear);
-
-            if (enq.class10Percentage) setValue('class10Percentage', enq.class10Percentage);
-            if (enq.class12Percentage) setValue('class12Percentage', enq.class12Percentage);
-            if (enq.class12PassingYear) setValue('class12PassingYear', enq.class12PassingYear);
-            if (enq.gapYear) setValue('gapYear', enq.gapYear);
-            if (enq.gapYearFrom) setValue('gapYearFrom', enq.gapYearFrom);
-            if (enq.gapYearTo) setValue('gapYearTo', enq.gapYearTo);
-
-            if (enq.familyPlace) setValue('familyPlace', enq.familyPlace);
-            if (enq.familyState) setValue('familyState', enq.familyState);
-
-            // Marks
-            if (enq.pcbPercentage) setValue('pcbPercentage', enq.pcbPercentage);
-            if (enq.pcmPercentage) setValue('pcmPercentage', enq.pcmPercentage);
-            if (enq.physicsMarks) setValue('physicsMarks', enq.physicsMarks);
-            if (enq.chemistryMarks) setValue('chemistryMarks', enq.chemistryMarks);
-            if (enq.biologyMarks) setValue('biologyMarks', enq.biologyMarks);
-            if (enq.mathsMarks) setValue('mathsMarks', enq.mathsMarks);
-            if (enq.previousNeetMarks) setValue('previousNeetMarks', enq.previousNeetMarks);
-            if (enq.presentNeetMarks) setValue('presentNeetMarks', enq.presentNeetMarks);
-
-
-            // Preferences
             if (enq.preferredLocations.length > 0 && enq.courseInterested) {
               setValue('preferences', enq.preferredLocations.map((loc, idx) => ({
                 courseName: enq.courseInterested,
@@ -215,7 +215,6 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
               })));
             }
 
-            // Fetch documents for this student
             const allDocs = await apiClient.documents.list();
             const studentDocs = allDocs.filter(d =>
               d.studentName?.toLowerCase() === enq.candidateName.toLowerCase()
@@ -235,13 +234,12 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
   }, [enquiryId, setValue]);
 
   const handleFormSubmit: SubmitHandler<RegistrationFormValues> = (data) => {
-    // Process preferences to allow comma-separated locations
     const processedPreferences = data.preferences.flatMap(pref => {
       if (pref.location && pref.location.includes(',')) {
         return pref.location.split(',').map(loc => ({
           ...pref,
           location: loc.trim()
-        })).filter(p => p.location); // Remove empty strings
+        })).filter(p => p.location);
       }
       return pref;
     });
@@ -252,403 +250,409 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
     });
   };
 
+  const gapYear = watch('gapYear');
+
   return (
-    <form onSubmit={handleSubmit(handleFormSubmit as any)} className="space-y-8">
-      <Card>
-        <CardHeader>
-          <CardTitle>Student Information</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-2">
-            <Label htmlFor="studentName">Student Name</Label>
-            <Input {...register('studentName')} />
-            {errors.studentName && <p className="text-sm text-red-500">{errors.studentName.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">Email</Label>
-            <Input {...register('email')} />
-            {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="mobile">Mobile</Label>
-            <Input {...register('mobile')} />
-            {errors.mobile && <p className="text-sm text-red-500">{errors.mobile.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="gender">Gender</Label>
-            <Controller
-              name="gender"
-              control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} value={field.value || ""}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select Gender" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Male">Male</SelectItem>
-                    <SelectItem value="Female">Female</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="dateOfBirth">Date of Birth</Label>
-            <Input type="date" {...register('dateOfBirth')} />
-            {errors.dateOfBirth && <p className="text-sm text-red-500">{errors.dateOfBirth.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fatherName">Father's Name</Label>
-            <Input {...register('fatherName')} />
-            {errors.fatherName && <p className="text-sm text-red-500">{errors.fatherName.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="motherName">Mother's Name</Label>
-            <Input {...register('motherName')} />
-            {errors.motherName && <p className="text-sm text-red-500">{errors.motherName.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fatherOccupation">Father's Occupation</Label>
-            <Input {...register('fatherOccupation')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="fatherMobile">Father's Mobile</Label>
-            <Input {...register('fatherMobile')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="motherOccupation">Mother's Occupation</Label>
-            <Input {...register('motherOccupation')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="motherMobile">Mother's Mobile</Label>
-            <Input {...register('motherMobile')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="familyPlace">Family City/Place</Label>
-            <Input {...register('familyPlace')} />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="familyState">Family State</Label>
-            <Select onValueChange={(val) => setValue('familyState', val)} value={watch('familyState') || undefined}>
-              <SelectTrigger>
-                <SelectValue placeholder="Select State" />
-              </SelectTrigger>
-              <SelectContent>
-                {INDIAN_STATES.map((state) => (
-                  <SelectItem key={state} value={state}>{state}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+    <div className="space-y-6">
+      <form onSubmit={handleSubmit(handleFormSubmit as any)}>
+        <Card className="bg-white border-none shadow-sm rounded-xl">
+          <CardContent className="p-6 md:p-8 space-y-8">
 
-          <div className="col-span-full border-t pt-4 mt-4">
-            <h3 className="text-lg font-medium mb-4">Academic Details</h3>
-            <div className="space-y-8">
-              {/* HSLC (Class 10) Section */}
-              <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
-                <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide flex items-center gap-2">
-                  <span className="w-1 h-4 bg-teal-500 rounded-full"></span>
-                  HSLC (Class 10) Details
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>School Name</Label>
-                    <Input {...register('class10SchoolName')} placeholder="Class 10 School" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Board</Label>
-                    <Select onValueChange={(val) => setValue('class10Board', val)} value={watch('class10Board') || undefined}>
-                      <SelectTrigger><SelectValue placeholder="Select Board" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="SEBA">SEBA (Assam)</SelectItem>
-                        <SelectItem value="CBSE">CBSE</SelectItem>
-                        <SelectItem value="ICSE">ICSE</SelectItem>
-                        <SelectItem value="NBSE">NBSE (Nagaland)</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Year of Passing</Label>
-                    <Input {...register('class10PassingYear')} placeholder="YYYY" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Percentage / CGPA</Label>
-                    <Input type="number" step="0.01" {...register('class10Percentage')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Place / City</Label>
-                    <Input {...register('class10Place')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>State</Label>
-                    <Select onValueChange={(val) => setValue('class10State', val)} value={watch('class10State') || undefined}>
-                      <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
-                      <SelectContent>
-                        {INDIAN_STATES.map(state => (
-                          <SelectItem key={state} value={state}>{state}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            {/* Student Info */}
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Personal Information</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Student Name</Label>
+                  <Input {...register('studentName')} className="h-11 border-slate-300" placeholder="Full Name" />
+                  {errors.studentName && <p className="text-sm text-red-500">{errors.studentName.message}</p>}
                 </div>
-              </div>
-
-              {/* HSSLC (Class 12) Section */}
-              <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-5">
-                <h3 className="text-sm font-bold text-slate-800 mb-4 uppercase tracking-wide flex items-center gap-2">
-                  <span className="w-1 h-4 bg-blue-500 rounded-full"></span>
-                  HSSLC (Class 12) Details
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label>School Name</Label>
-                    <Input {...register('schoolName')} placeholder="Class 12 School" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Board</Label>
-                    <Select onValueChange={(val) => setValue('schoolBoard', val)} value={watch('schoolBoard') || undefined}>
-                      <SelectTrigger><SelectValue placeholder="Select Board" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="AHSEC">AHSEC (Assam)</SelectItem>
-                        <SelectItem value="CBSE">CBSE</SelectItem>
-                        <SelectItem value="NBSE">NBSE (Nagaland)</SelectItem>
-                        <SelectItem value="ICSE">ICSE</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Year of Passing</Label>
-                    <Input {...register('class12PassingYear')} placeholder="YYYY" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Percentage / CGPA</Label>
-                    <Input type="number" step="0.01" {...register('class12Percentage')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>School Place</Label>
-                    <Input {...register('schoolPlace')} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>School State</Label>
-                    <Select onValueChange={(val) => setValue('schoolState', val)} value={watch('schoolState') || undefined}>
-                      <SelectTrigger><SelectValue placeholder="Select State" /></SelectTrigger>
-                      <SelectContent>
-                        {INDIAN_STATES.map(state => (
-                          <SelectItem key={state} value={state}>{state}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Email Address</Label>
+                  <Input {...register('email')} className="h-11 border-slate-300" placeholder="email@example.com" />
+                  {errors.email && <p className="text-sm text-red-500">{errors.email.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Mobile Number</Label>
+                  <Input {...register('mobile')} className="h-11 border-slate-300" placeholder="+91" />
+                  {errors.mobile && <p className="text-sm text-red-500">{errors.mobile.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Gender</Label>
+                  <Controller
+                    name="gender"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <SelectTrigger className="h-11 border-slate-300">
+                          <SelectValue placeholder="Select Gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Male">Male</SelectItem>
+                          <SelectItem value="Female">Female</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Date of Birth</Label>
+                  <Input type="date" {...register('dateOfBirth')} className="h-11 border-slate-300" />
+                  {errors.dateOfBirth && <p className="text-sm text-red-500">{errors.dateOfBirth.message}</p>}
                 </div>
               </div>
             </div>
-          </div>
 
-          <div className="col-span-full border-t pt-4 mt-4">
-            <div className="flex items-center space-x-2 mb-4">
-              <Controller
-                name="gapYear"
-                control={control}
-                render={({ field }) => (
-                  <Checkbox checked={field.value} onCheckedChange={field.onChange} id="gapYear" />
+            <div className="border-t border-slate-100 pt-2"></div>
+
+            {/* Parents Info */}
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Parents & Address</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Father's Name</Label>
+                  <Input {...register('fatherName')} className="h-11 border-slate-300" placeholder="Father's Full Name" />
+                  {errors.fatherName && <p className="text-sm text-red-500">{errors.fatherName.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Mother's Name</Label>
+                  <Input {...register('motherName')} className="h-11 border-slate-300" placeholder="Mother's Full Name" />
+                  {errors.motherName && <p className="text-sm text-red-500">{errors.motherName.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Father's Occupation</Label>
+                  <Input {...register('fatherOccupation')} className="h-11 border-slate-300" placeholder="e.g. Govt. Servant" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Mother's Occupation</Label>
+                  <Input {...register('motherOccupation')} className="h-11 border-slate-300" placeholder="e.g. Housewife" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Father's Mobile</Label>
+                  <Input {...register('fatherMobile')} className="h-11 border-slate-300" placeholder="Father's Contact No" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Mother's Mobile</Label>
+                  <Input {...register('motherMobile')} className="h-11 border-slate-300" placeholder="Mother's Contact No" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Family City/Place</Label>
+                  <Input {...register('familyPlace')} className="h-11 border-slate-300" placeholder="City or Town" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Family State</Label>
+                  <Controller
+                    name="familyState"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value || ""}>
+                        <SelectTrigger className="h-11 border-slate-300"><SelectValue placeholder="Select State" /></SelectTrigger>
+                        <SelectContent className="max-h-60">
+                          {INDIAN_STATES.map(state => <SelectItem key={state} value={state}>{state}</SelectItem>)}
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="md:col-span-2 space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Permanent Address</Label>
+                  <Input {...register('permanentAddress')} className="h-11 border-slate-300" placeholder="Full Permanent Address" />
+                  {errors.permanentAddress && <p className="text-sm text-red-500">{errors.permanentAddress.message}</p>}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-100 pt-2"></div>
+
+            {/* Academic Details */}
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Academic Details</h3>
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Class 10 */}
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+                  <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <div className="w-1 h-4 bg-teal-500 rounded-full"></div>
+                    HSLC (Class 10)
+                  </h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">School Name</Label>
+                      <Input {...register('class10SchoolName')} className="h-10 bg-white" placeholder="School Name" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Board</Label>
+                        <Controller name="class10Board" control={control} render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <SelectTrigger className="h-10 bg-white"><SelectValue placeholder="Board" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="SEBA">SEBA</SelectItem><SelectItem value="CBSE">CBSE</SelectItem>
+                              <SelectItem value="ICSE">ICSE</SelectItem><SelectItem value="NBSE">NBSE</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Passing Year</Label>
+                        <Input {...register('class10PassingYear')} className="h-10 bg-white" placeholder="YYYY" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">% / CGPA</Label>
+                      <Input type="number" step="0.01" {...register('class10Percentage')} className="h-10 bg-white" placeholder="e.g. 85.50" />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Class 12 */}
+                <div className="bg-blue-50/50 border border-blue-100 rounded-lg p-5">
+                  <h4 className="text-sm font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <div className="w-1 h-4 bg-blue-500 rounded-full"></div>
+                    HSSLC (Class 12)
+                  </h4>
+                  <div className="grid grid-cols-1 gap-4">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">School Name</Label>
+                      <Input {...register('schoolName')} className="h-10 bg-white" placeholder="School Name" />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Board</Label>
+                        <Controller name="schoolBoard" control={control} render={({ field }) => (
+                          <Select onValueChange={field.onChange} value={field.value || ""}>
+                            <SelectTrigger className="h-10 bg-white"><SelectValue placeholder="Board" /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="AHSEC">AHSEC</SelectItem><SelectItem value="CBSE">CBSE</SelectItem>
+                              <SelectItem value="NBSE">NBSE</SelectItem><SelectItem value="ICSE">ICSE</SelectItem>
+                              <SelectItem value="Other">Other</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )} />
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs text-slate-500">Passing Year</Label>
+                        <Input {...register('class12PassingYear')} className="h-10 bg-white" placeholder="YYYY" />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">% / CGPA</Label>
+                      <Input type="number" step="0.01" {...register('class12Percentage')} className="h-10 bg-white" placeholder="e.g. 85.50" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Marks */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-6">
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500">Physics</Label>
+                  <Input type="number" {...register('physicsMarks')} className="h-10" placeholder="Marks" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500">Chemistry</Label>
+                  <Input type="number" {...register('chemistryMarks')} className="h-10" placeholder="Marks" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500">Biology</Label>
+                  <Input type="number" {...register('biologyMarks')} className="h-10" placeholder="Marks" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500">Maths</Label>
+                  <Input type="number" {...register('mathsMarks')} className="h-10" placeholder="Marks" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500 font-medium">PCB %</Label>
+                  <Input type="number" step="0.01" {...register('pcbPercentage')} className="h-10 bg-slate-50" readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500 font-medium">PCM %</Label>
+                  <Input type="number" step="0.01" {...register('pcmPercentage')} className="h-10 bg-slate-50" readOnly />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500">Prev. NEET</Label>
+                  <Input type="number" {...register('previousNeetMarks')} className="h-10" placeholder="Score" />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs text-slate-500">Cur. NEET</Label>
+                  <Input type="number" {...register('presentNeetMarks')} className="h-10" placeholder="Score" />
+                </div>
+              </div>
+
+              {/* Gap Year */}
+              <div className="mt-6 p-4 bg-yellow-50/50 rounded-lg border border-yellow-100">
+                <div className="flex items-center space-x-2 mb-4">
+                  <Controller
+                    name="gapYear"
+                    control={control}
+                    render={({ field }) => (
+                      <Checkbox checked={field.value} onCheckedChange={field.onChange} id="gapYear" />
+                    )}
+                  />
+                  <Label htmlFor="gapYear" className="font-medium cursor-pointer text-slate-800">Has Gap Year?</Label>
+                </div>
+                {gapYear && (
+                  <div className="grid grid-cols-2 gap-6 pl-6">
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">From Year</Label>
+                      <Input type="number" {...register('gapYearFrom')} className="h-10 bg-white" placeholder="YYYY" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">To Year</Label>
+                      <Input type="number" {...register('gapYearTo')} className="h-10 bg-white" placeholder="YYYY" />
+                    </div>
+                  </div>
                 )}
-              />
-              <Label htmlFor="gapYear">Gap Year</Label>
-            </div>
-            {/* Gap Year Fields could be conditional, but simpler to just show if checked or always */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label>Gap Year From</Label>
-                <Input type="number" {...register('gapYearFrom')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Gap Year To</Label>
-                <Input type="number" {...register('gapYearTo')} />
               </div>
             </div>
-          </div>
 
-          <div className="col-span-full border-t pt-4 mt-4">
-            <h3 className="text-lg font-medium mb-4">Science & Competitive Scores</h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              <div className="space-y-2">
-                <Label>PCB %</Label>
-                <Input type="number" step="0.01" {...register('pcbPercentage')} />
+            <div className="border-t border-slate-100 pt-2"></div>
+
+            {/* Study Preferences */}
+            <div>
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-slate-900">Study Preferences</h3>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => append({ courseName: '', location: '', priority: fields.length + 1 })}
+                  className="text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700 h-9"
+                >
+                  <Plus size={16} className="mr-2" /> Add
+                </Button>
               </div>
-              <div className="space-y-2">
-                <Label>PCM %</Label>
-                <Input type="number" step="0.01" {...register('pcmPercentage')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Prev. NEET</Label>
-                <Input type="number" {...register('previousNeetMarks')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Cur. NEET</Label>
-                <Input type="number" {...register('presentNeetMarks')} />
+
+              <div className="space-y-3">
+                {fields.map((field, index) => (
+                  <div key={field.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <div className="md:col-span-1 flex items-center justify-center p-2 mb-1">
+                      <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center text-xs font-bold font-mono">
+                        {index + 1}
+                      </span>
+                    </div>
+                    <div className="md:col-span-5 space-y-1">
+                      <Label className="text-xs text-slate-500">Course</Label>
+                      <Input {...register(`preferences.${index}.courseName`)} className="h-9 bg-white" placeholder="e.g. MBBS" />
+                    </div>
+                    <div className="md:col-span-5 space-y-1">
+                      <Label className="text-xs text-slate-500">Location(s)</Label>
+                      <Input {...register(`preferences.${index}.location`)} className="h-9 bg-white" placeholder="City or Country" />
+                    </div>
+                    <div className="md:col-span-1 flex justify-center pb-1">
+                      <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="text-red-400 hover:text-red-600 hover:bg-red-50 h-8 w-8">
+                        <Trash2 size={16} />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {errors.preferences && <p className="text-sm text-red-500 px-1">{errors.preferences.message}</p>}
               </div>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-4">
-              <div className="space-y-2">
-                <Label>Physics</Label>
-                <Input type="number" {...register('physicsMarks')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Chemistry</Label>
-                <Input type="number" {...register('chemistryMarks')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Biology</Label>
-                <Input type="number" {...register('biologyMarks')} />
-              </div>
-              <div className="space-y-2">
-                <Label>Maths</Label>
-                <Input type="number" {...register('mathsMarks')} />
+
+            <div className="border-t border-slate-100 pt-2"></div>
+
+            {/* Registration Details */}
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Registration Details</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Fee Amount</Label>
+                  <Input type="number" {...register('registrationFee')} className="h-11 border-slate-300" placeholder="e.g. 5000" />
+                  {errors.registrationFee && <p className="text-sm text-red-500">{errors.registrationFee.message}</p>}
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Payment Method</Label>
+                  <Controller
+                    name="paymentMethod"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="h-11 border-slate-300"><SelectValue placeholder="Select Method" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Cash">Cash</SelectItem>
+                          <SelectItem value="Card">Card</SelectItem>
+                          <SelectItem value="UPI">UPI</SelectItem>
+                          <SelectItem value="Other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-slate-700">Payment Status</Label>
+                  <Controller
+                    name="paymentStatus"
+                    control={control}
+                    render={({ field }) => (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <SelectTrigger className="h-11 border-slate-300"><SelectValue placeholder="Select Status" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Paid">Paid</SelectItem>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                          <SelectItem value="Partial">Partial</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    )}
+                  />
+                </div>
+                <div className="md:col-span-3 pt-2">
+                  <div className="flex items-center space-x-2">
+                    <Controller
+                      name="needsLoan"
+                      control={control}
+                      render={({ field }) => (
+                        <Checkbox checked={field.value} onCheckedChange={field.onChange} id="needsLoan" />
+                      )}
+                    />
+                    <Label htmlFor="needsLoan" className="font-medium cursor-pointer">Student Needs Edu Loan Support</Label>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
 
-          <div className="col-span-full space-y-2 pt-4">
-            <Label htmlFor="permanentAddress">Permanent Address</Label>
-            <Input {...register('permanentAddress')} />
-            {errors.permanentAddress && <p className="text-sm text-red-500">{errors.permanentAddress.message}</p>}
-          </div>
-        </CardContent>
-      </Card>
+            <div className="border-t border-slate-100 pt-2"></div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Study Preferences</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {fields.map((field, index) => (
-            <div key={field.id} className="flex items-end gap-4 p-4 border border-gray-100 rounded-md bg-gray-50">
-              <div className="flex-1 space-y-2">
-                <Label>Course Name</Label>
-                <Input {...register(`preferences.${index}.courseName`)} placeholder="e.g. MBBS" />
+            {/* Documents */}
+            <div>
+              <h3 className="text-lg font-medium text-slate-900 mb-4">Documents</h3>
+              <div className="space-y-6">
+                <DocumentUpload
+                  registrationId={initialData?.id || undefined}
+                  studentName={watch('studentName')}
+                  initialDocuments={prefilledDocs.length > 0 ? prefilledDocs : (initialData?.documents || [])}
+                  onDocumentsChange={(docs) => setValue('documents', docs)}
+                  readOnly={false}
+                />
+                <div className="border-t border-slate-100 pt-6">
+                  <DocumentTakeover
+                    control={control}
+                    register={register}
+                    setValue={setValue}
+                  />
+                </div>
               </div>
-              <div className="flex-1 space-y-2">
-                <Label>Location</Label>
-                <Input {...register(`preferences.${index}.location`)} placeholder="e.g. Bangalore, Delhi (comma separated)" />
-              </div>
-              <div className="w-24 space-y-2">
-                <Label>Priority</Label>
-                <Input type="number" {...register(`preferences.${index}.priority`)} />
-              </div>
-              <Button type="button" variant="ghost" size="icon" onClick={() => remove(index)} className="mb-0.5 text-red-500 hover:text-red-600 hover:bg-red-50">
-                <Trash2 size={18} />
+            </div>
+
+            {/* Submit Action */}
+            <div className="flex justify-end pt-4 border-t border-slate-100">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="bg-teal-600 hover:bg-teal-700 text-white min-w-[200px] h-11 text-base shadow-sm"
+              >
+                {isLoading ? (
+                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {isEdit ? 'Updating...' : 'Creating...'}</>
+                ) : (
+                  isEdit ? 'Update Registration' : 'Create Registration'
+                )}
               </Button>
             </div>
-          ))}
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => append({ courseName: '', location: '', priority: fields.length + 1 })}
-            className="text-teal-600 border-teal-200 hover:bg-teal-50 hover:text-teal-700"
-          >
-            <Plus size={16} className="mr-2" /> Add Preference
-          </Button>
-          {errors.preferences && <p className="text-sm text-red-500">{errors.preferences.message}</p>}
-        </CardContent>
-      </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Registration Details</CardTitle>
-        </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="space-y-2">
-            <Label>Registration Fee</Label>
-            <Input type="number" {...register('registrationFee')} />
-            {errors.registrationFee && <p className="text-sm text-red-500">{errors.registrationFee.message}</p>}
-          </div>
-          <div className="space-y-2">
-            <Label>Payment Method</Label>
-            <Controller
-              name="paymentMethod"
-              control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Cash">Cash</SelectItem>
-                    <SelectItem value="Card">Card</SelectItem>
-                    <SelectItem value="UPI">UPI</SelectItem>
-                    <SelectItem value="Other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Payment Status</Label>
-            <Controller
-              name="paymentStatus"
-              control={control}
-              render={({ field }) => (
-                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Paid">Paid</SelectItem>
-                    <SelectItem value="Pending">Pending</SelectItem>
-                    <SelectItem value="Partial">Partial</SelectItem>
-                  </SelectContent>
-                </Select>
-              )}
-            />
-          </div>
-          <div className="flex items-center space-x-2 pt-8">
-            <Controller
-              name="needsLoan"
-              control={control}
-              render={({ field }) => (
-                <Checkbox checked={field.value} onCheckedChange={field.onChange} id="needsLoan" />
-              )}
-            />
-            <Label htmlFor="needsLoan">Needs Loan</Label>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Documents</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <DocumentUpload
-            registrationId={initialData?.id || undefined}
-            studentName={watch('studentName')}
-            initialDocuments={prefilledDocs.length > 0 ? prefilledDocs : (initialData?.documents || [])}
-            onDocumentsChange={(docs) => setValue('documents', docs)}
-            readOnly={false}
-          />
-
-          <div className="border-t pt-6">
-            <DocumentTakeover
-              control={control}
-              register={register}
-              setValue={setValue}
-            />
-          </div>
-
-        </CardContent>
-      </Card>
-
-      <Button
-        type="submit"
-        disabled={isLoading}
-        className="bg-teal-600 hover:bg-teal-700 text-white min-w-[150px]"
-      >
-        {isLoading ? (isEdit ? 'Updating...' : 'Creating...') : (isEdit ? 'Update Registration' : 'Create Registration')}
-      </Button>
-    </form >
+          </CardContent>
+        </Card>
+      </form>
+    </div>
   );
 }

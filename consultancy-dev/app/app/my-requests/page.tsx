@@ -62,10 +62,6 @@ export default function MyRequestsPage() {
 
     return (
         <div className="space-y-6 p-6">
-            <div>
-                <h1 className="text-2xl font-bold text-slate-900 font-heading">My Requests</h1>
-                <p className="text-slate-500 mt-1">Track status of your approval requests</p>
-            </div>
 
             {/* Filters */}
             <Card className="p-4 border-slate-200 bg-white">

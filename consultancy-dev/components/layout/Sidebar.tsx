@@ -48,6 +48,7 @@ const NAV_ITEMS = [
   { label: 'Dashboard', href: '/app/dashboard', icon: LayoutDashboard, roles: ['ALL'] },
   { label: 'My Tasks', href: '/app/tasks', icon: CheckSquare, roles: ['ALL'] },
   { label: 'Students', href: '/app/students', icon: Users, roles: ['ALL'] },
+  { label: 'My Students', href: '/app/my-students', icon: ArrowRightLeft, roles: ['ALL'] },
   { label: 'Follow-ups', href: '/app/follow-ups', icon: Bell, roles: ['ALL'] },
   { label: 'Enquiries', href: '/app/enquiries', icon: MessageSquare, roles: ['ALL'] },
   { label: 'Registrations', href: '/app/registrations', icon: UserPlus, roles: ['ALL'] },
@@ -65,12 +66,12 @@ const NAV_ITEMS = [
 ];
 
 const ADMIN_ITEMS = [
+  { label: 'User Management', href: '/app/users', icon: Users, roles: ['COMPANY_ADMIN', 'DEV_ADMIN'] },
   { label: 'Counselors', href: '/app/counselors', icon: Users, roles: ['COMPANY_ADMIN', 'DEV_ADMIN'] },
   // { label: 'Lead Sources', href: '/app/lead-sources', icon: TrendingUp, roles: ['COMPANY_ADMIN', 'DEV_ADMIN'] },
   // { label: 'Earnings Stats', href: '/app/earnings', icon: BarChart3, roles: ['COMPANY_ADMIN', 'DEV_ADMIN'] },
   { label: 'Settings', href: '/app/settings', icon: Settings, roles: ['COMPANY_ADMIN', 'DEV_ADMIN'] },
   { label: 'Approval Requests', href: '/app/approval-requests', icon: CheckSquare, roles: ['COMPANY_ADMIN', 'DEV_ADMIN'] },
-  { label: 'User Management', href: '/app/users', icon: Users, roles: ['COMPANY_ADMIN', 'DEV_ADMIN'] },
 ];
 
 const DEV_ITEMS = [

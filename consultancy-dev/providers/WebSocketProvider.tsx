@@ -103,6 +103,62 @@ export function WebSocketProvider({ children }: { children: React.ReactNode }) {
                 queryClient.invalidateQueries({ queryKey: ['users'] });
                 break;
 
+            // NEW: Chat
+            case 'chat_conversation':
+            case 'chat_message':
+            case 'group_chat':
+                queryClient.invalidateQueries({ queryKey: ['chat-conversations'] });
+                queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+                queryClient.invalidateQueries({ queryKey: ['group-chats'] });
+                break;
+
+            // NEW: Physical Transfers
+            case 'physical_transfer':
+            case 'transfer_timeline':
+                queryClient.invalidateQueries({ queryKey: ['physical-doc-transfers'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard-doc-transfers'] });
+                queryClient.invalidateQueries({ queryKey: ['student-documents-all'] }); // Update main document list (e.g. holder info)
+                break;
+
+            // NEW: Digital Transfers
+            case 'digital_transfer':
+                queryClient.invalidateQueries({ queryKey: ['document-transfers'] });
+                break;
+
+            // NEW: Remarks
+            case 'student_remark':
+                queryClient.invalidateQueries({ queryKey: ['student-remarks'] });
+                break;
+
+            // NEW: Appointments
+            case 'appointment':
+                queryClient.invalidateQueries({ queryKey: ['appointments'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard-stats'] });
+                break;
+
+            // NEW: Earnings
+            case 'earning':
+                queryClient.invalidateQueries({ queryKey: ['earnings'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard-revenue'] });
+                break;
+
+            // NEW: Approvals & Signups
+            case 'approval_request':
+            case 'signup_request':
+                queryClient.invalidateQueries({ queryKey: ['approvals'] });
+                queryClient.invalidateQueries({ queryKey: ['signup-requests'] });
+                break;
+
+            // NEW: Company settings
+            case 'company':
+                queryClient.invalidateQueries({ queryKey: ['companies'] });
+                break;
+
+            // NEW: Templates
+            case 'template':
+                queryClient.invalidateQueries({ queryKey: ['templates'] });
+                break;
+
             default:
                 console.warn(`Unknown entity type: ${entity}`);
         }

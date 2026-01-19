@@ -66,6 +66,21 @@ class CompanyViewSet(viewsets.ModelViewSet):
     queryset = Company.objects.all()
     serializer_class = CompanySerializer
     
+    def get_queryset(self):
+        user = self.request.user
+        if not user.is_authenticated:
+            return Company.objects.none()
+            
+        if getattr(user, 'role', None) == 'DEV_ADMIN':
+            return Company.objects.all()
+            
+        # Company Admin and Employees see only their company
+        company_id = getattr(user, 'company_id', None)
+        if company_id:
+            return Company.objects.filter(company_id=company_id)
+            
+        return Company.objects.none()
+    
     @action(detail=False, methods=['get'])
     def current(self, request):
         company_id = request.user.company_id
@@ -79,6 +94,49 @@ class CompanyViewSet(viewsets.ModelViewSet):
             
         serializer = self.get_serializer(company)
         return Response(serializer.data)
+
+
+# ... (Keeping UserViewSet and others as they are, skipping to Chat ViewSets)
+
+# New ViewSets
+class AgentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
+    queryset = Agent.objects.all()
+    serializer_class = AgentSerializer
+
+class ChatConversationViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
+    queryset = ChatConversation.objects.all()
+    serializer_class = ChatConversationSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(company_id=self.request.user.company_id)
+    
+    @action(detail=True, methods=['get'])
+    def messages(self, request, pk=None):
+        """Get all messages for a conversation"""
+        conversation = self.get_object() # This already uses CompanyIsolationMixin via get_queryset
+        messages = conversation.messages.all().order_by('timestamp')
+        serializer = ChatMessageSerializer(messages, many=True)
+        return Response(serializer.data)
+
+class ChatMessageViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
+    queryset = ChatMessage.objects.all()
+    serializer_class = ChatMessageSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(
+            sender=self.request.user,
+            company_id=self.request.user.company_id
+        )
+
+class GroupChatViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
+    queryset = GroupChat.objects.all()
+    serializer_class = GroupChatSerializer
+    
+    def perform_create(self, serializer):
+        serializer.save(
+            created_by=self.request.user, 
+            company_id=self.request.user.company_id
+        )
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -112,8 +170,26 @@ class UserViewSet(viewsets.ModelViewSet):
     def company_users(self, request):
         """Get all users in the same company as the current user"""
         company_id = request.user.company_id
-        users = User.objects.filter(company_id=company_id).values('id', 'username', 'email', 'role')
-        return Response(users)
+        
+        # Debug logging
+        import sys
+        print(f"DEBUG: company_users request by {request.user.username} (Role: {request.user.role}, CompanyID: '{company_id}')", file=sys.stderr)
+        
+        if not company_id:
+            # If no company ID, safeguarded to return empty (or handle DEV_ADMIN differently if needed)
+            # This prevents filter(company_id=None) matching all users with no company.
+            if request.user.role == 'DEV_ADMIN':
+                 # DEV_ADMIN sees users with no company (system users) or all? 
+                 # Returning users with company_id=None (system users)
+                 users = User.objects.filter(company_id=company_id)
+            else:
+                 users = User.objects.none()
+        else:
+            users = User.objects.filter(company_id=str(company_id))
+
+        print(f"DEBUG: returning {users.count()} users", file=sys.stderr)
+        serializer = self.get_serializer(users, many=True)
+        return Response(serializer.data)
     
     @action(detail=False, methods=['get'])
     def counselors_analytics(self, request):
@@ -683,6 +759,56 @@ class PhysicalDocumentTransferViewSet(viewsets.ModelViewSet):
         return Response(PhysicalDocumentTransferSerializer(transfer).data)
 
     @action(detail=True, methods=['post'])
+    def confirm_receipt(self, request, pk=None):
+        """Receiver confirms physical receipt of documents with optional message"""
+        transfer = self.get_object()
+        
+        # Only receiver can confirm receipt
+        if request.user != transfer.receiver:
+            return Response({'error': 'Only the receiver can confirm receipt'}, status=403)
+        
+        # Only allow confirmation for transfers that are in transit/delivery stages
+        allowed_statuses = ['Pending', 'Dispatched', 'In Transit', 'Out for Delivery', 'Accepted']
+        if transfer.status not in allowed_statuses:
+            return Response({'error': f'Cannot confirm receipt for status: {transfer.status}'}, status=400)
+        
+        message = request.data.get('message', '')
+        
+        # Update transfer status to Delivered (confirmed)
+        transfer.status = 'Delivered'
+        transfer.accepted_at = timezone.now()
+        transfer.save()
+        
+        # Update documents holder to receiver
+        for doc in transfer.documents.all():
+            doc.current_holder = request.user
+            doc.save()
+        
+        # Create timeline entry
+        TransferTimeline.objects.create(
+            transfer=transfer,
+            status='Delivered',
+            note=f'Receipt confirmed by {request.user.username}. {message}'.strip(),
+            location='',
+            updated_by=request.user,
+            company_id=transfer.company_id
+        )
+        
+        # Notify sender
+        Notification.objects.create(
+            user=transfer.sender,
+            title='Documents Received',
+            message=f'{request.user.username} has confirmed receipt of the physical documents.' + (f' Message: {message}' if message else ''),
+            type='success',
+            company_id=transfer.company_id
+        )
+        
+        return Response({
+            'status': 'confirmed',
+            'message': 'Receipt confirmed successfully'
+        })
+
+    @action(detail=True, methods=['post'])
     def accept(self, request, pk=None):
         transfer = self.get_object()
         if transfer.status != 'Pending':
@@ -1058,37 +1184,13 @@ class FollowUpCommentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
             return Response({'error': 'You can only edit your own comments'}, status=403)
         return super().update(request, *args, **kwargs)
     
+
     def destroy(self, request, *args, **kwargs):
         comment = self.get_object()
         # Only the comment owner or admin can delete
         if comment.user != request.user and request.user.role not in ['DEV_ADMIN', 'COMPANY_ADMIN']:
             return Response({'error': 'You can only delete your own comments'}, status=403)
         return super().destroy(request, *args, **kwargs)
-
-# New ViewSets
-class AgentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
-    queryset = Agent.objects.all()
-    serializer_class = AgentSerializer
-
-class ChatConversationViewSet(viewsets.ModelViewSet):
-    queryset = ChatConversation.objects.all()
-    serializer_class = ChatConversationSerializer
-    
-    @action(detail=True, methods=['get'])
-    def messages(self, request, pk=None):
-        """Get all messages for a conversation"""
-        conversation = self.get_object()
-        messages = conversation.messages.all().order_by('timestamp')
-        serializer = ChatMessageSerializer(messages, many=True)
-        return Response(serializer.data)
-
-class ChatMessageViewSet(viewsets.ModelViewSet):
-    queryset = ChatMessage.objects.all()
-    serializer_class = ChatMessageSerializer
-
-class GroupChatViewSet(viewsets.ModelViewSet):
-    queryset = GroupChat.objects.all()
-    serializer_class = GroupChatSerializer
 
 class SignupRequestViewSet(viewsets.ModelViewSet):
     queryset = SignupRequest.objects.all()
@@ -1231,6 +1333,12 @@ class ApprovalRequestViewSet(viewsets.ModelViewSet):
         else:
             count = ApprovalRequest.objects.filter(requested_by=user, status='PENDING').count()
         return Response({'count': count})
+
+    @action(detail=False, methods=['get'])
+    def my_requests(self, request):
+        requests = ApprovalRequest.objects.filter(requested_by=request.user)
+        serializer = self.get_serializer(requests, many=True)
+        return Response(serializer.data)
     
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):

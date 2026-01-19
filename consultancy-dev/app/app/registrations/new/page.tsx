@@ -76,7 +76,7 @@ export default function NewRegistrationPage() {
   };
 
   return (
-    <div className="max-w-3xl mx-auto py-6 space-y-6">
+    <div className="max-w-4xl mx-auto py-6 space-y-6">
       <div>
         <BackButton />
         <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">New Registration</h1>

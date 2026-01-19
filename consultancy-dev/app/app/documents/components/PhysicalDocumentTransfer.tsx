@@ -26,13 +26,13 @@ export function PhysicalDocumentTransfer() {
     const [message, setMessage] = useState('');
     const [messageModalOpen, setMessageModalOpen] = useState(false);
 
-    // Fetch users for receiver dropdown
-    const { data: users } = useQuery({
-        queryKey: ['users'],
-        queryFn: apiClient.users.list,
+    // Fetch company users for receiver dropdown (backend already filters by company)
+    const { data: companyUsers } = useQuery({
+        queryKey: ['company-users-raw'],
+        queryFn: apiClient.getCompanyUsers,
     });
 
-    const filteredUsers = users?.filter((u: any) => u.id !== currentUser?.id) || [];
+    const filteredUsers = companyUsers?.filter((u: any) => u.id !== currentUser?.id) || [];
 
     // Fetch physical documents
     const { data: documents } = useQuery({
@@ -101,6 +101,47 @@ export function PhysicalDocumentTransfer() {
         }
     });
 
+    // Status Update Mutation (for sender)
+    const updateStatusMutation = useMutation({
+        mutationFn: (data: { id: string; status: string; note?: string }) =>
+            apiClient.physicalTransfers.updateStatus(data.id, { status: data.status, note: data.note }),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['physical-transfers'] });
+            toast.success('Status updated successfully');
+            setStatusModalOpen(false);
+            setSelectedTransfer(null);
+            setStatusNote('');
+        },
+        onError: () => {
+            toast.error('Failed to update status');
+        }
+    });
+
+    // Confirm Receipt Mutation (for receiver)
+    const confirmReceiptMutation = useMutation({
+        mutationFn: (data: { id: string; message: string }) =>
+            apiClient.physicalTransfers.confirmReceipt(data.id, data.message),
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['physical-transfers'] });
+            queryClient.invalidateQueries({ queryKey: ['student-documents-all'] });
+            toast.success('Receipt confirmed successfully');
+            setConfirmModalOpen(false);
+            setSelectedTransfer(null);
+            setConfirmMessage('');
+        },
+        onError: () => {
+            toast.error('Failed to confirm receipt');
+        }
+    });
+
+    // State for modals
+    const [statusModalOpen, setStatusModalOpen] = useState(false);
+    const [confirmModalOpen, setConfirmModalOpen] = useState(false);
+    const [selectedTransfer, setSelectedTransfer] = useState<any | null>(null);
+    const [selectedStatus, setSelectedStatus] = useState('');
+    const [statusNote, setStatusNote] = useState('');
+    const [confirmMessage, setConfirmMessage] = useState('');
+
     const handleAction = () => {
         if (selectedDocs.length === 0) return;
 
@@ -142,7 +183,8 @@ export function PhysicalDocumentTransfer() {
         student: `${t.sender_name} → ${t.receiver_name}`,
         date: new Date(t.created_at),
         status: t.status,
-        sender: t.sender, // To check permissions
+        sender: t.sender,
+        receiver: t.receiver,
         message: t.message
     })) || [];
 
@@ -201,15 +243,20 @@ export function PhysicalDocumentTransfer() {
                                     <SelectTrigger className="h-9 text-sm border-slate-200">
                                         <SelectValue placeholder="Select an employee..." />
                                     </SelectTrigger>
-                                    <SelectContent>
-                                        {filteredUsers.map((u: any) => (
-                                            <SelectItem key={u.id} value={u.id.toString()}>
-                                                <div className="flex items-center gap-2">
-                                                    <User size={14} className="text-slate-400" />
-                                                    {u.first_name} {u.last_name} ({u.username})
-                                                </div>
-                                            </SelectItem>
-                                        ))}
+                                    <SelectContent className="z-50">
+                                        {filteredUsers.map((u: any) => {
+                                            const displayName = (u.first_name || u.last_name)
+                                                ? `${u.first_name || ''} ${u.last_name || ''} (${u.username})`
+                                                : u.username;
+                                            return (
+                                                <SelectItem key={u.id} value={u.id.toString()}>
+                                                    <div className="flex items-center gap-2">
+                                                        <User size={14} className="text-slate-400" />
+                                                        {displayName}
+                                                    </div>
+                                                </SelectItem>
+                                            );
+                                        })}
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -350,28 +397,66 @@ export function PhysicalDocumentTransfer() {
                                             </div>
                                             <Badge className={`border-none rounded px-1.5 py-0 text-[10px] font-medium ${item.type === 'return'
                                                 ? 'bg-green-100 text-green-700'
-                                                : item.status === 'Accepted'
-                                                    ? 'bg-green-100 text-green-700'
-                                                    : item.status === 'Rejected'
-                                                        ? 'bg-red-100 text-red-700'
-                                                        : 'bg-amber-100 text-amber-700'
+                                                : item.status === 'Delivered'
+                                                    ? 'bg-emerald-100 text-emerald-700'
+                                                    : item.status === 'Accepted'
+                                                        ? 'bg-green-100 text-green-700'
+                                                        : item.status === 'Rejected'
+                                                            ? 'bg-red-100 text-red-700'
+                                                            : item.status === 'Cancelled'
+                                                                ? 'bg-slate-100 text-slate-600'
+                                                                : 'bg-amber-100 text-amber-700'
                                                 }`}>
-                                                {item.type === 'return' ? 'Returned' : item.status}
+                                                {item.type === 'return' ? 'Returned' : item.status === 'Delivered' ? 'Verified' : item.status}
                                             </Badge>
                                         </div>
-                                        {item.type === 'transfer' && item.status === 'Pending' && (currentUser?.id.toString() === item.sender.toString() || (currentUser?.role && ['DEV_ADMIN', 'COMPANY_ADMIN'].includes(currentUser.role))) && (
-                                            <div className="pt-2">
-                                                <Button
-                                                    size="sm"
-                                                    variant="ghost"
-                                                    className="w-full text-slate-500 hover:text-red-600 hover:bg-red-50 font-medium h-7 text-xs"
-                                                    onClick={() => cancelTransferMutation.mutate(item.originalId)}
-                                                    disabled={cancelTransferMutation.isPending}
-                                                >
-                                                    Cancel Request
-                                                </Button>
-                                            </div>
-                                        )}
+                                        {/* Sender Actions - Update Status */}
+                                        {item.type === 'transfer' &&
+                                            !['Delivered', 'Rejected', 'Cancelled', 'Returned'].includes(item.status) &&
+                                            currentUser?.id.toString() === item.sender.toString() && (
+                                                <div className="pt-2 flex gap-1.5">
+                                                    <Button
+                                                        size="sm"
+                                                        variant="outline"
+                                                        className="flex-1 text-blue-600 border-blue-200 hover:bg-blue-50 font-medium h-7 text-xs"
+                                                        onClick={() => {
+                                                            setSelectedTransfer(item);
+                                                            setStatusModalOpen(true);
+                                                        }}
+                                                    >
+                                                        Update Status
+                                                    </Button>
+                                                    {item.status === 'Pending' && (
+                                                        <Button
+                                                            size="sm"
+                                                            variant="ghost"
+                                                            className="text-slate-500 hover:text-red-600 hover:bg-red-50 font-medium h-7 text-xs px-2"
+                                                            onClick={() => cancelTransferMutation.mutate(item.originalId)}
+                                                            disabled={cancelTransferMutation.isPending}
+                                                        >
+                                                            Cancel
+                                                        </Button>
+                                                    )}
+                                                </div>
+                                            )}
+
+                                        {/* Receiver Actions - Confirm Receipt */}
+                                        {item.type === 'transfer' &&
+                                            !['Delivered', 'Rejected', 'Cancelled', 'Returned'].includes(item.status) &&
+                                            currentUser?.id.toString() === item.receiver?.toString() && (
+                                                <div className="pt-2">
+                                                    <Button
+                                                        size="sm"
+                                                        className="w-full bg-green-600 hover:bg-green-700 text-white font-medium h-7 text-xs"
+                                                        onClick={() => {
+                                                            setSelectedTransfer(item);
+                                                            setConfirmModalOpen(true);
+                                                        }}
+                                                    >
+                                                        Confirm Receipt
+                                                    </Button>
+                                                </div>
+                                            )}
                                     </CardContent>
                                 </Card>
                             ))}
@@ -403,6 +488,107 @@ export function PhysicalDocumentTransfer() {
                         <Button variant="outline" onClick={() => setMessageModalOpen(false)}>Cancel</Button>
                         <Button onClick={handleConfirmTransfer} disabled={createTransferMutation.isPending} className="bg-orange-600 hover:bg-orange-700">
                             {createTransferMutation.isPending ? 'Sending...' : 'Send Transfer'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Status Update Modal (for Sender) */}
+            <Dialog open={statusModalOpen} onOpenChange={setStatusModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Update Delivery Status</DialogTitle>
+                        <DialogDescription>
+                            Update the status of this document transfer.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2 space-y-4">
+                        <div>
+                            <Label className="mb-2 block text-xs">New Status</Label>
+                            <Select onValueChange={setSelectedStatus} value={selectedStatus}>
+                                <SelectTrigger className="h-9 text-sm border-slate-200">
+                                    <SelectValue placeholder="Select status..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Dispatched">Dispatched</SelectItem>
+                                    <SelectItem value="In Transit">In Transit</SelectItem>
+                                    <SelectItem value="Out for Delivery">Out for Delivery</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        <div>
+                            <Label className="mb-2 block text-xs">Note (Optional)</Label>
+                            <Textarea
+                                placeholder="Add a note about this status update..."
+                                value={statusNote}
+                                onChange={(e) => setStatusNote(e.target.value)}
+                                className="min-h-[80px]"
+                            />
+                        </div>
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => {
+                            setStatusModalOpen(false);
+                            setSelectedTransfer(null);
+                            setSelectedStatus('');
+                            setStatusNote('');
+                        }}>Cancel</Button>
+                        <Button
+                            onClick={() => {
+                                if (selectedTransfer && selectedStatus) {
+                                    updateStatusMutation.mutate({
+                                        id: selectedTransfer.originalId,
+                                        status: selectedStatus,
+                                        note: statusNote
+                                    });
+                                }
+                            }}
+                            disabled={!selectedStatus || updateStatusMutation.isPending}
+                            className="bg-blue-600 hover:bg-blue-700"
+                        >
+                            {updateStatusMutation.isPending ? 'Updating...' : 'Update Status'}
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            {/* Confirm Receipt Modal (for Receiver) */}
+            <Dialog open={confirmModalOpen} onOpenChange={setConfirmModalOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Confirm Receipt</DialogTitle>
+                        <DialogDescription>
+                            Confirm that you have received the physical documents.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-2">
+                        <Label className="mb-2 block text-xs">Confirmation Message (Optional)</Label>
+                        <Textarea
+                            placeholder="Add any notes about the received documents..."
+                            value={confirmMessage}
+                            onChange={(e) => setConfirmMessage(e.target.value)}
+                            className="min-h-[100px]"
+                        />
+                    </div>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={() => {
+                            setConfirmModalOpen(false);
+                            setSelectedTransfer(null);
+                            setConfirmMessage('');
+                        }}>Cancel</Button>
+                        <Button
+                            onClick={() => {
+                                if (selectedTransfer) {
+                                    confirmReceiptMutation.mutate({
+                                        id: selectedTransfer.originalId,
+                                        message: confirmMessage
+                                    });
+                                }
+                            }}
+                            disabled={confirmReceiptMutation.isPending}
+                            className="bg-green-600 hover:bg-green-700"
+                        >
+                            {confirmReceiptMutation.isPending ? 'Confirming...' : 'Confirm Receipt'}
                         </Button>
                     </DialogFooter>
                 </DialogContent>

@@ -28,13 +28,13 @@ export function DocumentTransfer() {
     const [message, setMessage] = useState('');
     const [messageModalOpen, setMessageModalOpen] = useState(false);
 
-    // Fetch users for receiver dropdown
-    const { data: users } = useQuery({
-        queryKey: ['users'],
-        queryFn: apiClient.users.list,
+    // Fetch company users for receiver dropdown (backend already filters by company)
+    const { data: companyUsers } = useQuery({
+        queryKey: ['company-users'],
+        queryFn: apiClient.getCompanyUsers,
     });
 
-    const filteredUsers = users?.filter((u: any) => u.id !== currentUser?.id) || [];
+    const filteredUsers = companyUsers?.filter((u: any) => u.id !== currentUser?.id) || [];
 
     // Fetch documents
     const { data: documents } = useQuery({

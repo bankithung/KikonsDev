@@ -1272,7 +1272,10 @@ export const apiClient = {
         receivedAt: d.received_at,
         returnedAt: d.returned_at,
         remarks: d.remarks,
-        createdBy: d.created_by
+        createdBy: d.created_by,
+        created_by_name: d.created_by_name,
+        current_holder: d.current_holder,
+        current_holder_name: d.current_holder_name
       }));
     },
     create: async (data: any): Promise<StudentDocument> => {
@@ -1395,6 +1398,10 @@ export const apiClient = {
     reject: async (id: number, note: string) => {
       const res = await api.post(`approval-requests/${id}/reject/`, { review_note: note });
       return res.data;
+    },
+    myRequests: async () => {
+      const res = await api.get('approval-requests/my_requests/');
+      return res.data;
     }
   },
 
@@ -1466,6 +1473,10 @@ export const apiClient = {
       const res = await api.post(`physical-transfers/${id}/update_status/`, data);
       return res.data;
     },
+    confirmReceipt: async (id: string | number, message?: string) => {
+      const res = await api.post(`physical-transfers/${id}/confirm_receipt/`, { message: message || '' });
+      return res.data;
+    },
   },
 
   refunds: {
@@ -1492,6 +1503,68 @@ export const apiClient = {
     },
     approve: async (id: number) => {
       const res = await api.post(`refunds/${id}/approve/`);
+      return res.data;
+    },
+  },
+
+
+
+  universities: {
+    list: async () => {
+      const res = await api.get('universities/');
+      return res.data.map((u: any) => ({
+        id: u.id,
+        name: u.name,
+        country: u.country,
+        city: u.city,
+        ranking: u.ranking,
+        programs: u.programs || [],
+        tuitionFee: {
+          min: parseFloat(u.tuition_fee_min || 0),
+          max: parseFloat(u.tuition_fee_max || 0)
+        },
+        admissionDeadline: u.admission_deadline || '',
+        requirements: u.requirements || [],
+        rating: parseFloat(u.rating || 0),
+        company_id: u.company_id
+      }));
+    },
+    create: async (data: any) => {
+      const payload = {
+        name: data.name,
+        country: data.country,
+        city: data.city || '',
+        ranking: parseInt(data.ranking) || 0,
+        programs: data.programs || [],
+        tuition_fee_min: parseFloat(data.tuitionFee?.min || data.tuitionMin || 0),
+        tuition_fee_max: parseFloat(data.tuitionFee?.max || data.tuitionMax || 0),
+        admission_deadline: data.admissionDeadline || data.deadline || '',
+        requirements: data.requirements || [],
+        rating: parseFloat(data.rating || 0),
+        company_id: data.company_id || ''
+      };
+      const res = await api.post('universities/', payload);
+      return res.data;
+    },
+    update: async (id: string, data: any) => {
+      const payload = {
+        name: data.name,
+        country: data.country,
+        city: data.city || '',
+        ranking: parseInt(data.ranking) || 0,
+        programs: data.programs || [],
+        tuition_fee_min: parseFloat(data.tuitionFee?.min || data.tuitionMin || 0),
+        tuition_fee_max: parseFloat(data.tuitionFee?.max || data.tuitionMax || 0),
+        admission_deadline: data.admissionDeadline || data.deadline || '',
+        requirements: data.requirements || [],
+        rating: parseFloat(data.rating || 0),
+        company_id: data.company_id || ''
+      };
+      const res = await api.put(`universities/${id}/`, payload);
+      return res.data;
+    },
+    delete: async (id: string) => {
+      const res = await api.delete(`universities/${id}/`);
       return res.data;
     },
   },

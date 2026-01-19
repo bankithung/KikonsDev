@@ -12,25 +12,19 @@ export default function EnrollmentsPage() {
 
   return (
     <div className="space-y-2">
-      {/* Header - Compact */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-slate-900 font-heading">Enrollments</h1>
-          <p className="text-xs text-slate-500">Manage course enrollments and fee structures</p>
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => setIsFilterOpen(!isFilterOpen)}
-          >
-            <Filter className="mr-1 h-3 w-3" /> Filters
-          </Button>
-          <Button onClick={() => router.push('/app/enrollments/new')} size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700">
-            <GraduationCap className="mr-1 h-3 w-3" /> New Enrollment
-          </Button>
-        </div>
+      {/* Action Buttons */}
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 text-xs"
+          onClick={() => setIsFilterOpen(!isFilterOpen)}
+        >
+          <Filter className="mr-1 h-3 w-3" /> Filters
+        </Button>
+        <Button onClick={() => router.push('/app/enrollments/new')} size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700">
+          <GraduationCap className="mr-1 h-3 w-3" /> New Enrollment
+        </Button>
       </div>
 
       <EnrollmentList isFilterOpen={isFilterOpen} />

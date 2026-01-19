@@ -117,32 +117,25 @@ export default function AppointmentsPage() {
 
   return (
     <>
-      {/* Header */}
-      <div className="sticky top-0 z-10 border-b border-slate-200 flex flex-col sm:flex-row items-center justify-between px-6 py-3 gap-4 -mx-4 sm:-mx-6 lg:-mx-8">
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">Appointments</h1>
-          <p className="text-sm text-slate-500 mt-0.5">{appointments.length} appointment{appointments.length !== 1 ? 's' : ''}</p>
+      {/* Header Action Buttons */}
+      <div className="sticky top-0 z-10 border-b border-slate-200 flex items-center justify-end px-6 py-3 gap-3 -mx-4 sm:-mx-6 lg:-mx-8">
+        <div className="flex bg-slate-50 p-1 rounded-lg border border-slate-200">
+          <button
+            onClick={() => setView('calendar')}
+            className={`px-4 py-2 rounded-md text-xs font-medium transition-all ${view === 'calendar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            Calendar
+          </button>
+          <button
+            onClick={() => setView('list')}
+            className={`px-4 py-2 rounded-md text-xs font-medium transition-all ${view === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
+          >
+            List
+          </button>
         </div>
-
-        <div className="flex items-center gap-3">
-          <div className="flex bg-slate-50 p-1 rounded-lg border border-slate-200">
-            <button
-              onClick={() => setView('calendar')}
-              className={`px-4 py-2 rounded-md text-xs font-medium transition-all ${view === 'calendar' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              Calendar
-            </button>
-            <button
-              onClick={() => setView('list')}
-              className={`px-4 py-2 rounded-md text-xs font-medium transition-all ${view === 'list' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-600 hover:text-slate-900'}`}
-            >
-              List
-            </button>
-          </div>
-          <Button onClick={() => setIsCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium px-4 h-10 shadow-sm">
-            + New Appointment
-          </Button>
-        </div>
+        <Button onClick={() => setIsCreateOpen(true)} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium px-4 h-10 shadow-sm">
+          + New Appointment
+        </Button>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 mt-2">
