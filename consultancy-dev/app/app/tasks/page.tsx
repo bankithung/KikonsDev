@@ -640,42 +640,75 @@ export default function TasksPage() {
     }
 
     return (
-        <div className="space-y-4">
-            {/* Header Actions */}
-            <div className="flex items-center justify-end gap-2">
+        <div className="space-y-3">
+            {/* Search Bar Row */}
+            <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                    <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                    <Input
+                        placeholder="Search tasks by title or description..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="pl-9 h-9 w-full text-sm bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20"
+                    />
+                </div>
 
-                <div className="flex items-center gap-2">
-                    {/* Search */}
-                    <div className="relative">
-                        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                        <Input
-                            placeholder="Search tasks..."
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-8 h-8 w-40 text-xs"
-                        />
-                    </div>
+                {/* Priority Filter */}
+                <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+                    <SelectTrigger className="h-9 w-32 text-xs border-slate-200 bg-white shrink-0">
+                        <SelectValue placeholder="All Priority" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Priority</SelectItem>
+                        <SelectItem value="High">
+                            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-red-500" /> High</span>
+                        </SelectItem>
+                        <SelectItem value="Medium">
+                            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-500" /> Medium</span>
+                        </SelectItem>
+                        <SelectItem value="Low">
+                            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-400" /> Low</span>
+                        </SelectItem>
+                    </SelectContent>
+                </Select>
 
-                    {/* Priority Filter */}
-                    <Select value={priorityFilter} onValueChange={setPriorityFilter}>
-                        <SelectTrigger className="h-8 w-28 text-xs">
-                            <SelectValue placeholder="Priority" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Priority</SelectItem>
-                            <SelectItem value="High">High</SelectItem>
-                            <SelectItem value="Medium">Medium</SelectItem>
-                            <SelectItem value="Low">Low</SelectItem>
-                        </SelectContent>
-                    </Select>
-
-                    {/* New Task Button */}
+                {/* Clear Button - only when filters are active */}
+                {(searchQuery || priorityFilter !== 'all') && (
                     <Button
-                        className="h-8 text-xs bg-teal-600 hover:bg-teal-700 shadow-sm"
-                        onClick={() => setIsCreateOpen(true)}
+                        variant="outline"
+                        size="sm"
+                        className="h-9 text-xs border-slate-200 text-slate-600 hover:bg-slate-100 shrink-0"
+                        onClick={() => { setSearchQuery(''); setPriorityFilter('all'); }}
                     >
-                        <Plus className="mr-1 h-3.5 w-3.5" /> New Task
+                        Clear
                     </Button>
+                )}
+
+                <Button
+                    className="h-9 text-xs bg-teal-600 hover:bg-teal-700 shadow-sm shrink-0"
+                    onClick={() => setIsCreateOpen(true)}
+                >
+                    <Plus className="mr-1.5 h-3.5 w-3.5" /> New Task
+                </Button>
+            </div>
+
+            {/* Stats Cards - Same as Students Page */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="bg-white border border-slate-200 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-slate-500 uppercase">Total Tasks</span>
+                    <span className="text-lg font-bold text-slate-900">{totalTasks}</span>
+                </div>
+                <div className="bg-emerald-50 border border-emerald-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-emerald-600 uppercase">Completed</span>
+                    <span className="text-lg font-bold text-emerald-700">{completedTasks}</span>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-blue-600 uppercase">In Progress</span>
+                    <span className="text-lg font-bold text-blue-700">{inProgressTasks}</span>
+                </div>
+                <div className="bg-slate-50 border border-slate-200 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-slate-600 uppercase">Todo</span>
+                    <span className="text-lg font-bold text-slate-700">{tasksByColumn['Todo'].length}</span>
                 </div>
             </div>
 

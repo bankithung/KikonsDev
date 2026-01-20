@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
@@ -9,7 +9,7 @@ import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Enrollment } from '@/lib/types';
 import { format } from 'date-fns';
-import { Eye, Edit, Trash2, FileText, Search, GraduationCap, X, UserCircle, Phone, Mail, CreditCard, Filter } from 'lucide-react';
+import { Eye, Edit, Trash2, FileText, Search, GraduationCap, X, UserCircle, Phone, Mail, CreditCard, Filter, Loader2 } from 'lucide-react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { useAuthStore } from '@/store/authStore';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
@@ -17,25 +17,29 @@ import { RequestActionModal } from '@/components/ui/RequestActionModal';
 import { toast } from '@/store/toastStore';
 import { useRouter } from 'next/navigation';
 import { ExistingDocumentsList } from '@/components/common/ExistingDocumentsList';
-import { getAvatarColor, getInitials } from '@/lib/utils';
+import { DocumentUpload } from '@/components/common/DocumentUpload';
+import { INDIAN_STATES, SCHOOL_BOARDS, GENDERS, getAvatarColor, getInitials } from '@/lib/utils';
+import { Plus } from 'lucide-react';
 
 interface EnrollmentListProps {
-  isFilterOpen?: boolean;
+  searchTerm?: string;
 }
 
-export function EnrollmentList({ isFilterOpen = false }: EnrollmentListProps) {
+export function EnrollmentList({ searchTerm = '' }: EnrollmentListProps) {
   const router = useRouter();
   const { user } = useAuthStore();
   const queryClient = useQueryClient();
-  const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [viewEnroll, setViewEnroll] = useState<Enrollment | null>(null);
   const [actionEnroll, setActionEnroll] = useState<Enrollment | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
   const [showRequest, setShowRequest] = useState(false);
+  const [editEnroll, setEditEnroll] = useState<Enrollment | null>(null);
   const [filterPaymentType, setFilterPaymentType] = useState<string>('all');
   const [filterProgram, setFilterProgram] = useState<string>('all');
-  const [filterLoan, setFilterLoan] = useState<string>('all');
+  const [filterGender, setFilterGender] = useState<string>('all');
+  const [filterState, setFilterState] = useState<string>('all');
+  const [filterBoard, setFilterBoard] = useState<string>('all');
 
   const { data: enrollments, isLoading } = useQuery({
     queryKey: ['enrollments'],
@@ -44,14 +48,20 @@ export function EnrollmentList({ isFilterOpen = false }: EnrollmentListProps) {
 
   // Get unique programs for filter dropdown
   const uniquePrograms = Array.from(new Set(enrollments?.map(e => e.programName) || []));
+  const uniqueStates = INDIAN_STATES;
+  const uniqueBoards = SCHOOL_BOARDS;
 
   // Clear all filters
   const clearAllFilters = () => {
     setFilterStatus('all');
     setFilterPaymentType('all');
     setFilterProgram('all');
-    setFilterLoan('all');
-    setSearchTerm('');
+    setFilterGender('all');
+    setFilterState('all');
+    setFilterBoard('all');
+    setFilterGender('all');
+    setFilterState('all');
+    setFilterBoard('all');
   };
 
   const deleteMutation = useMutation({
@@ -67,6 +77,26 @@ export function EnrollmentList({ isFilterOpen = false }: EnrollmentListProps) {
     onError: (error) => {
       console.error("Failed to delete enrollment", error);
       toast.error('Failed to delete enrollment');
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: Partial<Enrollment> }) => {
+      await apiClient.enrollments.update(id, data);
+    },
+    onError: (error) => {
+      console.error("Failed to update enrollment", error);
+      toast.error('Failed to update enrollment');
+    }
+  });
+
+  const updateRegistrationMutation = useMutation({
+    mutationFn: async ({ id, data }: { id: string; data: any }) => {
+      await apiClient.registrations.update(id, data);
+    },
+    onError: (error) => {
+      console.error("Failed to update registration", error);
+      toast.error('Failed to update registration details');
     }
   });
 
@@ -119,94 +149,111 @@ export function EnrollmentList({ isFilterOpen = false }: EnrollmentListProps) {
     const matchesStatus = filterStatus === 'all' || enr.status === filterStatus;
     const matchesPaymentType = filterPaymentType === 'all' || enr.paymentType === filterPaymentType;
     const matchesProgram = filterProgram === 'all' || enr.programName === filterProgram;
-    const matchesLoan = filterLoan === 'all' ||
-      (filterLoan === 'yes' && enr.loanRequired) ||
-      (filterLoan === 'no' && !enr.loanRequired);
-    return matchesSearch && matchesStatus && matchesPaymentType && matchesProgram && matchesLoan;
-  });
+    const matchesGender = filterGender === 'all' || enr.studentGender === filterGender;
+    const matchesState = filterState === 'all' || enr.studentFamilyState === filterState || enr.studentSchoolState === filterState;
+    const matchesBoard = filterBoard === 'all' || enr.studentSchoolBoard === filterBoard;
+
+    return matchesSearch && matchesStatus && matchesPaymentType && matchesProgram && matchesGender && matchesState && matchesBoard;
+  })?.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime());
+
+  const activeEnroll = viewEnroll || editEnroll;
 
   // Fetch registration details for the selected enrollment
   const { data: registrationData } = useQuery({
-    queryKey: ['registration', viewEnroll?.studentId],
-    queryFn: () => apiClient.registrations.get(viewEnroll!.studentId),
-    enabled: !!viewEnroll?.studentId,
+    queryKey: ['registration', activeEnroll?.studentId],
+    queryFn: () => apiClient.registrations.get(activeEnroll!.studentId),
+    enabled: !!activeEnroll?.studentId,
   });
 
   if (isLoading) return <div className="flex items-center justify-center p-8"><div className="animate-pulse text-slate-500">Loading enrollments...</div></div>;
 
   return (
     <div className="space-y-2">
-      {/* Search Bar - Compact */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <Input
-          placeholder="Search by name or enrollment number..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 h-9 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500 text-sm"
-        />
-      </div>
+      {/* Filters Panel - Always Visible */}
+      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="Active">Active</SelectItem>
+              <SelectItem value="Completed">Completed</SelectItem>
+              <SelectItem value="Dropped">Dropped</SelectItem>
+            </SelectContent>
+          </Select>
 
-      {/* Collapsible Filters Panel */}
-      {isFilterOpen && (
-        <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Active">Active</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-                <SelectItem value="Dropped">Dropped</SelectItem>
-              </SelectContent>
-            </Select>
+          <Select value={filterPaymentType} onValueChange={setFilterPaymentType}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Payment" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Payment</SelectItem>
+              <SelectItem value="Full">Full Payment</SelectItem>
+              <SelectItem value="One-time">One-time</SelectItem>
+              <SelectItem value="Installment">Installment</SelectItem>
+              <SelectItem value="Partial">Partial</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <Select value={filterPaymentType} onValueChange={setFilterPaymentType}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Payment" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Payment</SelectItem>
-                <SelectItem value="One-time">One-time</SelectItem>
-                <SelectItem value="Installment">Installment</SelectItem>
-              </SelectContent>
-            </Select>
+          <Select value={filterProgram} onValueChange={setFilterProgram}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Program" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">All Programs</SelectItem>
+              {uniquePrograms.map((program) => (
+                <SelectItem key={program} value={program}>{program}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={filterProgram} onValueChange={setFilterProgram}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Program" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                <SelectItem value="all">All Programs</SelectItem>
-                {uniquePrograms.map((program) => (
-                  <SelectItem key={program} value={program}>{program}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={filterGender} onValueChange={setFilterGender}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Genders</SelectItem>
+              {GENDERS.map((gender) => (
+                <SelectItem key={gender} value={gender}>{gender}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={filterLoan} onValueChange={setFilterLoan}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Loan" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All</SelectItem>
-                <SelectItem value="yes">Loan Required</SelectItem>
-                <SelectItem value="no">No Loan</SelectItem>
-              </SelectContent>
-            </Select>
+          <Select value={filterState} onValueChange={setFilterState}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="State" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">All States</SelectItem>
+              {uniqueStates.map((state) => (
+                <SelectItem key={String(state)} value={String(state)}>{String(state)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Button
-              size="sm"
-              className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
-              onClick={clearAllFilters}
-            >
-              Clear
-            </Button>
-          </div>
+          <Select value={filterBoard} onValueChange={setFilterBoard}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Board" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">All Boards</SelectItem>
+              {uniqueBoards.map((board) => (
+                <SelectItem key={String(board)} value={String(board)}>{String(board)}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            size="sm"
+            className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
+            onClick={clearAllFilters}
+          >
+            Clear
+          </Button>
         </div>
-      )}
+      </div>
 
       {/* Table - Compact */}
       <Card className="border-slate-200">
@@ -273,6 +320,14 @@ export function EnrollmentList({ isFilterOpen = false }: EnrollmentListProps) {
                         <Button
                           variant="ghost"
                           size="sm"
+                          className="h-8 w-8 p-0 hover:bg-teal-50 hover:text-teal-600"
+                          onClick={() => setEditEnroll(enr)}
+                        >
+                          <Edit size={16} />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="h-8 w-8 p-0 hover:bg-red-50 hover:text-red-600"
                           onClick={() => handleDeleteClick(enr)}
                         >
@@ -306,6 +361,40 @@ export function EnrollmentList({ isFilterOpen = false }: EnrollmentListProps) {
                 registrationData={registrationData}
                 onClose={() => setViewEnroll(null)}
                 router={router}
+                isEditMode={false}
+              />
+            )}
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root>
+
+      {/* Edit Modal */}
+      <Dialog.Root open={!!editEnroll} onOpenChange={() => setEditEnroll(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
+          <Dialog.Content className="fixed left-[50%] top-[50%] h-[85vh] w-[90vw] max-w-[900px] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white shadow-xl focus:outline-none z-50 border border-slate-200 overflow-hidden flex flex-col">
+            {editEnroll && (
+              <EnrollmentViewModal
+                enrollment={editEnroll}
+                registrationData={registrationData}
+                onClose={() => setEditEnroll(null)}
+                router={router}
+                isEditMode={true}
+                onSave={async (data) => {
+                  try {
+                    await Promise.all([
+                      updateMutation.mutateAsync({ id: editEnroll.id, data: data.enrollment }),
+                      data.registration && updateRegistrationMutation.mutateAsync({ id: editEnroll.studentId, data: data.registration })
+                    ]);
+                    queryClient.invalidateQueries({ queryKey: ['enrollments'] });
+                    queryClient.invalidateQueries({ queryKey: ['registration'] });
+                    setEditEnroll(null);
+                    toast.success('Enrollment and details updated successfully');
+                  } catch (error) {
+                    console.error("Update failed", error);
+                  }
+                }}
+                isLoading={updateMutation.isPending || updateRegistrationMutation.isPending}
               />
             )}
           </Dialog.Content>
@@ -353,18 +442,57 @@ const ENROLL_MODAL_TABS = [
   { id: 'student', label: 'Student Profile', icon: UserCircle },
   { id: 'program', label: 'Program Details', icon: GraduationCap },
   { id: 'financials', label: 'Financials', icon: CreditCard },
-  { id: 'documents', label: 'Documents', icon: FileText },
+  { id: 'digital-docs', label: 'Digital Docs', icon: FileText },
+  { id: 'physical-docs', label: 'Physical Docs', icon: FileText },
 ];
 
-// Field display component for the modal
-function ModalField({ label, value, icon: Icon }: { label: string; value: any; icon?: any }) {
+// Field display/edit component for the modal
+function ModalField({
+  label,
+  value,
+  icon: Icon,
+  isEditable = false,
+  onChange,
+  type = "text",
+  options = []
+}: {
+  label: string;
+  value: any;
+  icon?: any;
+  isEditable?: boolean;
+  onChange?: (val: any) => void;
+  type?: "text" | "number" | "select" | "date";
+  options?: string[];
+}) {
   return (
     <div className="space-y-1">
       <p className="text-xs text-slate-500 font-medium flex items-center gap-1">
         {Icon && <Icon size={12} className="text-slate-400" />}
         {label}
       </p>
-      <p className="text-sm text-slate-900 font-medium bg-white px-3 py-2 rounded border border-slate-200">{value}</p>
+      {isEditable && onChange ? (
+        type === 'select' ? (
+          <Select value={value?.toString()} onValueChange={onChange}>
+            <SelectTrigger className="h-9 w-full bg-white border-slate-200">
+              <SelectValue placeholder={label} />
+            </SelectTrigger>
+            <SelectContent>
+              {options.map(opt => (
+                <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        ) : (
+          <Input
+            type={type}
+            value={value || ''}
+            onChange={(e) => onChange(type === 'number' ? Number(e.target.value) : e.target.value)}
+            className="h-9 bg-white border-slate-200"
+          />
+        )
+      ) : (
+        <p className="text-sm text-slate-900 font-medium bg-white px-3 py-2 rounded border border-slate-200">{value}</p>
+      )}
     </div>
   );
 }
@@ -374,14 +502,40 @@ function EnrollmentViewModal({
   enrollment,
   registrationData,
   onClose,
-  router
+  router,
+  isEditMode = false,
+  onSave,
+  isLoading = false
 }: {
   enrollment: Enrollment;
   registrationData: any;
   onClose: () => void;
   router: any;
+  isEditMode?: boolean;
+  onSave?: (data: any) => void;
+  isLoading?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState('student');
+  const [formData, setFormData] = useState<Enrollment>(enrollment);
+  const [regFormData, setRegFormData] = useState<any>(registrationData || {});
+
+  useEffect(() => {
+    setFormData(enrollment);
+  }, [enrollment]);
+
+  useEffect(() => {
+    if (registrationData) {
+      setRegFormData(registrationData);
+    }
+  }, [registrationData]);
+
+  const handleFieldChange = (field: keyof Enrollment, value: any) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleRegFieldChange = (field: string, value: any) => {
+    setRegFormData((prev: any) => ({ ...prev, [field]: value }));
+  };
 
   const renderTabContent = () => {
     switch (activeTab) {
@@ -411,8 +565,20 @@ function EnrollmentViewModal({
             <div>
               <h4 className="text-sm font-bold text-slate-700 mb-3">Contact Information</h4>
               <div className="grid grid-cols-2 gap-4">
-                <ModalField label="Mobile" value={registrationData?.mobile || '-'} icon={Phone} />
-                <ModalField label="Email" value={registrationData?.email || '-'} icon={Mail} />
+                <ModalField
+                  label="Mobile"
+                  value={regFormData?.mobile}
+                  icon={Phone}
+                  isEditable={isEditMode}
+                  onChange={(val) => handleRegFieldChange('mobile', val)}
+                />
+                <ModalField
+                  label="Email"
+                  value={regFormData?.email}
+                  icon={Mail}
+                  isEditable={isEditMode}
+                  onChange={(val) => handleRegFieldChange('email', val)}
+                />
               </div>
             </div>
 
@@ -420,7 +586,15 @@ function EnrollmentViewModal({
             <div>
               <h4 className="text-sm font-bold text-slate-700 mb-3">Address</h4>
               <div className="bg-slate-50 rounded-lg p-4">
-                <p className="text-sm text-slate-700">{registrationData?.permanentAddress || '-'}</p>
+                {isEditMode ? (
+                  <Input
+                    value={regFormData?.permanentAddress || ''}
+                    onChange={(e) => handleRegFieldChange('permanentAddress', e.target.value)}
+                    className="bg-white border-slate-200"
+                  />
+                ) : (
+                  <p className="text-sm text-slate-700">{regFormData?.permanentAddress || '-'}</p>
+                )}
               </div>
             </div>
 
@@ -428,8 +602,18 @@ function EnrollmentViewModal({
             <div>
               <h4 className="text-sm font-bold text-slate-700 mb-3">Parents Information</h4>
               <div className="grid grid-cols-2 gap-4">
-                <ModalField label="Father's Name" value={registrationData?.fatherName || '-'} />
-                <ModalField label="Mother's Name" value={registrationData?.motherName || '-'} />
+                <ModalField
+                  label="Father's Name"
+                  value={regFormData?.fatherName}
+                  isEditable={isEditMode}
+                  onChange={(val) => handleRegFieldChange('fatherName', val)}
+                />
+                <ModalField
+                  label="Mother's Name"
+                  value={regFormData?.motherName}
+                  isEditable={isEditMode}
+                  onChange={(val) => handleRegFieldChange('motherName', val)}
+                />
               </div>
             </div>
           </div>
@@ -449,10 +633,33 @@ function EnrollmentViewModal({
               <h4 className="text-sm font-bold text-slate-700 mb-3">Enrollment Information</h4>
               <div className="bg-slate-50 rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <ModalField label="Enrollment No" value={enrollment.enrollmentNo} />
-                  <ModalField label="Start Date" value={enrollment.startDate ? format(new Date(enrollment.startDate), 'dd MMM yyyy') : 'N/A'} />
-                  <ModalField label="Duration" value={`${enrollment.durationMonths} Months`} />
-                  <ModalField label="Status" value={enrollment.status} />
+                  <ModalField
+                    label="Enrollment No"
+                    value={formData.enrollmentNo}
+                    isEditable={false} // Usually primary key/unique id not editable
+                  />
+                  <ModalField
+                    label="Start Date"
+                    value={formData.startDate ? format(new Date(formData.startDate), 'yyyy-MM-dd') : ''}
+                    isEditable={isEditMode}
+                    onChange={(val) => handleFieldChange('startDate', val)}
+                    type="date"
+                  />
+                  <ModalField
+                    label="Duration (Months)"
+                    value={formData.durationMonths}
+                    isEditable={isEditMode}
+                    onChange={(val) => handleFieldChange('durationMonths', val)}
+                    type="number"
+                  />
+                  <ModalField
+                    label="Status"
+                    value={formData.status}
+                    isEditable={isEditMode}
+                    onChange={(val) => handleFieldChange('status', val)}
+                    type="select"
+                    options={['Active', 'Completed', 'Dropped']}
+                  />
                 </div>
               </div>
             </div>
@@ -461,7 +668,7 @@ function EnrollmentViewModal({
             <div>
               <h4 className="text-sm font-bold text-slate-700 mb-3">Created By</h4>
               <div className="bg-slate-50 rounded-lg p-4">
-                <ModalField label="Added By" value={enrollment.created_by_name || '-'} icon={UserCircle} />
+                <ModalField label="Added By" value={formData.created_by_name || '-'} icon={UserCircle} />
               </div>
             </div>
           </div>
@@ -481,8 +688,27 @@ function EnrollmentViewModal({
               <h4 className="text-sm font-bold text-slate-700 mb-3">Fee Breakdown</h4>
               <div className="bg-slate-50 rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <ModalField label="Service Charge" value={`₹${enrollment.serviceCharge?.toLocaleString() || '0'}`} />
-                  <ModalField label="School Fees" value={`₹${enrollment.schoolFees?.toLocaleString() || '0'}`} />
+                  <ModalField
+                    label="Total Fees"
+                    value={formData.totalFees}
+                    isEditable={isEditMode}
+                    onChange={(val) => handleFieldChange('totalFees', val)}
+                    type="number"
+                  />
+                  <ModalField
+                    label="Service Charge"
+                    value={formData.serviceCharge}
+                    isEditable={isEditMode}
+                    onChange={(val) => handleFieldChange('serviceCharge', val)}
+                    type="number"
+                  />
+                  <ModalField
+                    label="School Fees"
+                    value={formData.schoolFees}
+                    isEditable={isEditMode}
+                    onChange={(val) => handleFieldChange('schoolFees', val)}
+                    type="number"
+                  />
                 </div>
               </div>
             </div>
@@ -492,9 +718,16 @@ function EnrollmentViewModal({
               <h4 className="text-sm font-bold text-slate-700 mb-3">Payment Information</h4>
               <div className="bg-slate-50 rounded-lg p-4">
                 <div className="grid grid-cols-2 gap-4">
-                  <ModalField label="Payment Type" value={enrollment.paymentType} />
-                  {enrollment.paymentType === 'Installment' && (
-                    <ModalField label="No. of Installments" value={enrollment.installments?.length || 0} />
+                  <ModalField
+                    label="Payment Type"
+                    value={formData.paymentType}
+                    isEditable={isEditMode}
+                    onChange={(val) => handleFieldChange('paymentType', val)}
+                    type="select"
+                    options={['Full', 'Installment', 'One-time']}
+                  />
+                  {formData.paymentType === 'Installment' && (
+                    <ModalField label="No. of Installments" value={formData.installments?.length || 0} />
                   )}
                 </div>
               </div>
@@ -516,12 +749,142 @@ function EnrollmentViewModal({
           </div>
         );
 
-      case 'documents':
+      case 'digital-docs':
         return (
           <div className="space-y-6">
             <div>
-              <h4 className="text-sm font-bold text-slate-700 mb-3">Student Documents</h4>
-              <ExistingDocumentsList studentId={enrollment.studentId} />
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="text-sm font-bold text-slate-700">Student Documents</h4>
+              </div>
+
+              {isEditMode ? (
+                <DocumentUpload
+                  registrationId={enrollment.studentId}
+                  studentName={enrollment.studentName}
+                  initialDocuments={regFormData?.documents || []}
+                  onDocumentsChange={(docs) => {
+                    handleRegFieldChange('documents', docs);
+                  }}
+                  readOnly={false}
+                />
+              ) : (
+                <ExistingDocumentsList studentId={enrollment.studentId} />
+              )}
+            </div>
+          </div>
+        );
+
+      case 'physical-docs':
+        return (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-bold text-slate-700">Physical Documents Served</h4>
+              {isEditMode && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs text-teal-600 border-teal-200 hover:bg-teal-50"
+                  onClick={() => {
+                    const currentDocs = regFormData.student_documents || [];
+                    handleRegFieldChange('student_documents', [...currentDocs, { name: '', document_number: '', remarks: '', status: 'Held' }]);
+                  }}
+                >
+                  <Plus size={14} className="mr-1" /> Add Document
+                </Button>
+              )}
+            </div>
+
+            <div className="bg-slate-50 rounded-lg p-4 space-y-3">
+              {regFormData?.student_documents?.length > 0 ? (
+                regFormData.student_documents.map((doc: any, idx: number) => (
+                  <div key={idx} className="bg-white p-3 rounded border border-slate-200 shadow-sm relative group">
+                    {isEditMode ? (
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase text-slate-500 font-semibold">Document Name</label>
+                          <Input
+                            value={doc.name || ''}
+                            onChange={(e) => {
+                              const updated = [...regFormData.student_documents];
+                              updated[idx] = { ...updated[idx], name: e.target.value };
+                              handleRegFieldChange('student_documents', updated);
+                            }}
+                            placeholder="e.g. 10th Marksheet"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase text-slate-500 font-semibold">Document No</label>
+                          <Input
+                            value={doc.document_number || ''}
+                            onChange={(e) => {
+                              const updated = [...regFormData.student_documents];
+                              updated[idx] = { ...updated[idx], document_number: e.target.value };
+                              handleRegFieldChange('student_documents', updated);
+                            }}
+                            placeholder="Doc Number"
+                            className="h-8 text-xs"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-[10px] uppercase text-slate-500 font-semibold">Remarks</label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={doc.remarks || ''}
+                              onChange={(e) => {
+                                const updated = [...regFormData.student_documents];
+                                updated[idx] = { ...updated[idx], remarks: e.target.value };
+                                handleRegFieldChange('student_documents', updated);
+                              }}
+                              placeholder="Condition/Status"
+                              className="h-8 text-xs"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 w-8 p-0 text-slate-400 hover:text-red-600"
+                              onClick={() => {
+                                const updated = regFormData.student_documents.filter((_: any, i: number) => i !== idx);
+                                handleRegFieldChange('student_documents', updated);
+                              }}
+                            >
+                              <X size={14} />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      // Read-only View
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <p className="text-[10px] uppercase text-slate-500 font-semibold">Document Name</p>
+                          <p className="text-sm font-medium text-slate-900">{doc.name}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase text-slate-500 font-semibold">Document No</p>
+                          <p className="text-sm text-slate-600 font-mono">{doc.document_number || '-'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[10px] uppercase text-slate-500 font-semibold">Remarks</p>
+                          <div className="flex items-center justify-between">
+                            <p className="text-sm text-slate-600">{doc.remarks || '-'}</p>
+                            <span className={`text-[10px] px-2 py-0.5 rounded-full ${doc.status === 'Returned' ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {doc.status}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-slate-500">
+                  <FileText className="mx-auto h-8 w-8 text-slate-300 mb-2" />
+                  <p>No physical documents recorded</p>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -535,7 +898,9 @@ function EnrollmentViewModal({
     <>
       {/* Header */}
       <div className="flex items-center justify-between p-4 border-b border-slate-200">
-        <Dialog.Title className="text-lg font-bold text-slate-900">Enrollment Details</Dialog.Title>
+        <Dialog.Title className="text-lg font-bold text-slate-900">
+          {isEditMode ? 'Edit Enrollment' : 'Enrollment Details'}
+        </Dialog.Title>
         <Dialog.Close asChild>
           <button className="p-1 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-600">
             <X size={20} />
@@ -572,17 +937,27 @@ function EnrollmentViewModal({
       {/* Footer */}
       <div className="flex justify-end gap-3 p-4 border-t border-slate-200 bg-slate-50">
         <Button variant="outline" className="h-10 px-6 border-slate-300 hover:bg-slate-100" onClick={onClose}>
-          Close
+          {isEditMode ? 'Cancel' : 'Close'}
         </Button>
-        <Button
-          className="h-10 px-6 bg-purple-600 hover:bg-purple-700"
-          onClick={() => {
-            router.push(`/app/student-profile/enrollment/${enrollment.id}`);
-            onClose();
-          }}
-        >
-          <Edit size={16} className="mr-2" /> View Full Profile
-        </Button>
+        {isEditMode ? (
+          <Button
+            className="h-10 px-6 bg-teal-600 hover:bg-teal-700"
+            onClick={() => onSave && onSave({ enrollment: formData, registration: regFormData })}
+            disabled={isLoading}
+          >
+            {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Changes'}
+          </Button>
+        ) : (
+          <Button
+            className="h-10 px-6 bg-purple-600 hover:bg-purple-700"
+            onClick={() => {
+              router.push(`/app/student-profile/enrollment/${enrollment.id}`);
+              onClose();
+            }}
+          >
+            <Edit size={16} className="mr-2" /> View Full Profile
+          </Button>
+        )}
       </div>
     </>
   );

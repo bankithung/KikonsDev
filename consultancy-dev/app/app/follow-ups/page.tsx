@@ -279,21 +279,60 @@ export default function FollowUpsPage() {
 
   return (
     <div className="h-[calc(100vh-100px)] flex flex-col gap-4">
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-2 shrink-0">
+      {/* Search, Filters & Add Button Row */}
+      <div className="shrink-0 flex flex-wrap items-center gap-2">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 text-xs bg-white border-slate-200"
+          />
+        </div>
+
+        {/* Status Filter */}
+        <Select value={filterStatus} onValueChange={setFilterStatus}>
+          <SelectTrigger className="h-9 w-28 text-xs bg-white">
+            <SelectValue placeholder="Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="Pending">Pending</SelectItem>
+            <SelectItem value="Completed">Completed</SelectItem>
+            <SelectItem value="Missed">Missed</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Priority Filter */}
+        <Select value={filterPriority} onValueChange={setFilterPriority}>
+          <SelectTrigger className="h-9 w-28 text-xs bg-white">
+            <SelectValue placeholder="Priority" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Priority</SelectItem>
+            <SelectItem value="High">High</SelectItem>
+            <SelectItem value="Medium">Medium</SelectItem>
+          </SelectContent>
+        </Select>
+
+        {/* Close Details Button (when visible) */}
         {selectedFollowUp && (
           <Button
             variant="ghost"
             size="sm"
-            className="h-8 text-xs text-slate-500 hidden md:flex"
+            className="h-9 text-xs text-slate-500 hidden md:flex"
             onClick={() => setSelectedFollowUpId(null)}
           >
             Close Details
           </Button>
         )}
+
+        {/* Add Follow-up Button */}
         <Button
           onClick={() => setIsCreateOpen(true)}
-          className="h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
+          className="h-9 text-xs bg-emerald-600 hover:bg-emerald-700 text-white"
         >
           <Plus className="mr-1 h-3 w-3" /> Add Follow-up
         </Button>
@@ -325,40 +364,6 @@ export default function FollowUpsPage() {
       <div className="flex-1 flex gap-4 min-h-0 overflow-hidden">
         {/* Left Side: List */}
         <div className={`flex flex-col gap-2 transition-all duration-300 ${selectedFollowUpId ? 'w-full lg:w-7/12 xl:w-2/3 hidden md:flex' : 'w-full'}`}>
-
-          {/* Filters */}
-          <div className="shrink-0 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2">
-            <div className="relative sm:col-span-1 lg:col-span-2">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-              <Input
-                placeholder="Search..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-9 h-9 text-xs bg-white border-slate-200"
-              />
-            </div>
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="Pending">Pending</SelectItem>
-                <SelectItem value="Completed">Completed</SelectItem>
-                <SelectItem value="Missed">Missed</SelectItem>
-              </SelectContent>
-            </Select>
-            <Select value={filterPriority} onValueChange={setFilterPriority}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Priority" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Priority</SelectItem>
-                <SelectItem value="High">High</SelectItem>
-                <SelectItem value="Medium">Medium</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
 
           {/* List */}
           <ScrollArea className="flex-1 pr-2">
@@ -432,47 +437,52 @@ export default function FollowUpsPage() {
         </div>
 
         {/* Right Side: Details & Comments */}
-        {selectedFollowUp ? (
-          <div className={`flex flex-col border border-slate-200 rounded-xl bg-white overflow-hidden transition-all duration-300 shadow-sm ${selectedFollowUpId ? 'w-full lg:w-5/12 xl:w-1/3 flex' : 'hidden w-0'}`}>
-            {/* Panel Header */}
-            <div className="p-5 border-b border-slate-100 bg-white shrink-0 relative">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex gap-3">
-                  <div className={`w-12 h-12 rounded-full flex items-center justify-center text-lg font-bold border-2 shrink-0 ${getAvatarColor(selectedFollowUp.studentName).bg} ${getAvatarColor(selectedFollowUp.studentName).text} border-white shadow-sm`}>
+        {
+          selectedFollowUp ? (
+            <div className={`flex flex-col border border-slate-200 rounded-xl bg-white overflow-hidden transition-all duration-300 shadow-sm group ${selectedFollowUpId ? 'w-full lg:w-5/12 xl:w-1/3 flex' : 'hidden w-0'}`}>
+              {/* Compact Panel Header */}
+              <div className="px-4 py-3 border-b border-slate-100 bg-white shrink-0">
+                <div className="flex items-center gap-3">
+                  {/* Smaller Avatar */}
+                  <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold shrink-0 ${getAvatarColor(selectedFollowUp.studentName).bg} ${getAvatarColor(selectedFollowUp.studentName).text}`}>
                     {getInitials(selectedFollowUp.studentName)}
                   </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-slate-900 leading-tight">{selectedFollowUp.studentName}</h2>
-                    <div className="flex items-center gap-2 mt-1.5 text-xs text-slate-500 font-medium">
-                      <span className="flex items-center gap-1"><CalendarDays size={12} /> {format(new Date(selectedFollowUp.scheduledFor), 'MMM d, yyyy')}</span>
-                      <span className="text-slate-300">•</span>
-                      <span className="flex items-center gap-1"><Clock3 size={12} /> {format(new Date(selectedFollowUp.scheduledFor), 'p')}</span>
+
+                  {/* Name & Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-sm font-bold text-slate-900 truncate">{selectedFollowUp.studentName}</h2>
+                      <Badge className={`px-1.5 py-0 h-4 text-[9px] font-bold uppercase shrink-0 ${selectedFollowUp.status === 'Completed' ? 'bg-emerald-100 text-emerald-700' :
+                        selectedFollowUp.status === 'Overdue' ? 'bg-rose-100 text-rose-700' : 'bg-amber-100 text-amber-700'
+                        }`}>
+                        {selectedFollowUp.status}
+                      </Badge>
                     </div>
+                    <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-500">
+                      <CalendarDays size={10} />
+                      <span>{format(new Date(selectedFollowUp.scheduledFor), 'MMM d, yyyy')}</span>
+                      <span className="text-slate-300">•</span>
+                      <Clock3 size={10} />
+                      <span>{format(new Date(selectedFollowUp.scheduledFor), 'p')}</span>
+                    </div>
+                  </div>
+
+                  {/* Action Icons */}
+                  <div className="flex gap-0.5 shrink-0">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-emerald-600" title="View Full Profile" onClick={() => router.push(`/app/follow-ups/${selectedFollowUp.id}`)}>
+                      <Eye size={14} />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-slate-400 hover:text-rose-600 md:hidden" onClick={() => setSelectedFollowUpId(null)}>
+                      <X size={14} />
+                    </Button>
                   </div>
                 </div>
 
-                <div className="flex gap-1">
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-emerald-600 rounded-full" title="View Full Profile" onClick={() => router.push(`/app/follow-ups/${selectedFollowUp.id}`)}>
-                    <Eye size={18} />
-                  </Button>
-                  <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-rose-600 md:hidden rounded-full" onClick={() => setSelectedFollowUpId(null)}>
-                    <X size={18} />
-                  </Button>
-                </div>
-              </div>
-
-              {/* Status Bar */}
-              <div className="flex items-center gap-3">
-                <Badge className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase ${selectedFollowUp.status === 'Completed' ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-100' :
-                  selectedFollowUp.status === 'Overdue' ? 'bg-rose-100 text-rose-700 hover:bg-rose-100' :
-                    'bg-amber-100 text-amber-700 hover:bg-amber-100'
-                  }`}>
-                  {selectedFollowUp.status}
-                </Badge>
-
-                {selectedFollowUp.admission_possibility !== undefined && (
-                  <div className="flex-1 flex items-center gap-2 max-w-[140px]">
-                    <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                {/* Compact Progress Bar */}
+                {selectedFollowUp.admission_possibility !== undefined && selectedFollowUp.admission_possibility > 0 && (
+                  <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-50">
+                    <span className="text-[9px] text-slate-400 uppercase font-medium">Admission</span>
+                    <div className="flex-1 h-1 bg-slate-100 rounded-full overflow-hidden">
                       <div
                         className={`h-full rounded-full transition-all duration-500 ${selectedFollowUp.admission_possibility >= 75 ? 'bg-emerald-500' :
                           selectedFollowUp.admission_possibility >= 40 ? 'bg-amber-500' : 'bg-rose-500'
@@ -480,147 +490,146 @@ export default function FollowUpsPage() {
                         style={{ width: `${selectedFollowUp.admission_possibility}%` }}
                       />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-600 shrink-0">{selectedFollowUp.admission_possibility}%</span>
+                    <span className="text-[9px] font-bold text-slate-600">{selectedFollowUp.admission_possibility}%</span>
                   </div>
                 )}
               </div>
-            </div>
 
-            {/* Details Summary */}
-            <div className="bg-slate-50/50 p-5 border-b border-slate-100 shrink-0">
-              <div className="mb-4">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-1.5"><FileText size={12} /> Notes</h3>
-                <div className="bg-white p-3.5 rounded-lg border border-slate-200 shadow-sm text-sm text-slate-700 leading-relaxed">
-                  {selectedFollowUp.notes || <span className="text-slate-400 italic">No notes related to this follow-up.</span>}
+              {/* Compact Notes & Actions */}
+              <div className="px-4 py-3 border-b border-slate-100 shrink-0 bg-slate-50/30">
+                {/* Inline Notes */}
+                <div className="text-xs text-slate-600 bg-white rounded-md border border-slate-100 px-3 py-2 mb-3 leading-relaxed">
+                  {selectedFollowUp.notes || <span className="text-slate-400 italic">No notes added</span>}
+                </div>
+
+                {/* Compact Action Buttons */}
+                <div className="flex gap-2">
+                  {selectedFollowUp.status !== 'Completed' && (
+                    <Button
+                      size="sm"
+                      className="flex-1 h-8 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-medium"
+                      onClick={() => setIsCompleteModalOpen(true)}
+                    >
+                      <CheckCircle2 className="mr-1.5 h-3.5 w-3.5" /> Complete
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1 h-8 text-xs bg-white border-slate-200 text-slate-600 hover:bg-slate-50 font-medium"
+                    onClick={() => {
+                      setRescheduleData({ id: selectedFollowUp.id, date: selectedFollowUp.scheduledFor.split('T')[0], time: selectedFollowUp.scheduledFor.split('T')[1].slice(0, 5) });
+                      setIsRescheduleOpen(true);
+                    }}
+                  >
+                    <Clock className="mr-1.5 h-3.5 w-3.5" /> Reschedule
+                  </Button>
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                {selectedFollowUp.status !== 'Completed' && (
-                  <Button
-                    className="flex-1 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm shadow-emerald-200"
-                    onClick={() => setIsCompleteModalOpen(true)}
-                  >
-                    <CheckCircle2 className="mr-2 h-4 w-4" /> Mark Complete
-                  </Button>
-                )}
-                <Button
-                  variant="outline"
-                  className="flex-1 bg-white border-slate-200 text-slate-700 hover:bg-slate-50 hover:text-slate-900 font-medium"
-                  onClick={() => {
-                    setRescheduleData({ id: selectedFollowUp.id, date: selectedFollowUp.scheduledFor.split('T')[0], time: selectedFollowUp.scheduledFor.split('T')[1].slice(0, 5) });
-                    setIsRescheduleOpen(true);
-                  }}
-                >
-                  <Clock className="mr-2 h-4 w-4" /> Reschedule
-                </Button>
-              </div>
-            </div>
+              {/* Compact Activity Log */}
+              <div className="flex-1 flex flex-col min-h-0">
+                <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                  <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1.5">
+                    <MessageCircle size={10} /> Activity
+                  </h3>
+                  <span className="px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[9px] font-bold">{commentsTree.length}</span>
+                </div>
 
-            {/* Comments Section */}
-            <div className="flex-1 flex flex-col min-h-0 bg-white">
-              <div className="px-5 py-3 border-b border-slate-100 bg-slate-50/30 flex items-center justify-between">
-                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                  <MessageCircle size={12} /> Activity Log
-                </h3>
-                <span className="px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 text-[10px] font-bold">{commentsTree.length}</span>
-              </div>
-
-              <ScrollArea className="flex-1 p-5">
-                {isDetailsLoading ? (
-                  <div className="flex justify-center p-8"><div className="h-6 w-6 border-2 border-slate-200 border-t-emerald-500 rounded-full animate-spin"></div></div>
-                ) : commentsTree.length > 0 ? (
-                  <div className="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-0 before:w-px before:bg-slate-100">
-                    {commentsTree.map((comment) => (
-                      <div key={comment.id} className="group relative z-10">
-                        <div className="flex gap-4">
-                          <Avatar className="h-10 w-10 border-2 border-white shadow-sm shrink-0 bg-white">
-                            {/* Use custom avatar logic or fallback */}
-                            <AvatarFallback className="bg-gradient-to-br from-slate-100 to-slate-200 text-slate-600 text-xs font-bold">{comment.author[0]}</AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-xs font-bold text-slate-900">{comment.author}</span>
-                              <span className="text-[10px] text-slate-400 font-medium">{formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true })}</span>
+                <ScrollArea className="flex-1 px-4 py-3">
+                  {isDetailsLoading ? (
+                    <div className="flex justify-center py-6"><div className="h-5 w-5 border-2 border-slate-200 border-t-emerald-500 rounded-full animate-spin"></div></div>
+                  ) : commentsTree.length > 0 ? (
+                    <div className="space-y-3">
+                      {commentsTree.map((comment) => (
+                        <div key={comment.id} className="group relative">
+                          <div className="flex gap-2.5">
+                            {/* Smaller Activity Avatar */}
+                            <div className="w-7 h-7 rounded-full bg-gradient-to-br from-slate-100 to-slate-200 flex items-center justify-center text-[10px] font-bold text-slate-600 shrink-0">
+                              {comment.author[0]}
                             </div>
+                            <div className="flex-1 min-w-0">
+                              {/* Author & Time Inline */}
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-[11px] font-semibold text-slate-800">{comment.author}</span>
+                                <span className="text-[9px] text-slate-400">{formatDistanceToNow(new Date(comment.timestamp), { addSuffix: true })}</span>
+                              </div>
 
-                            <div className="bg-slate-50 p-3 rounded-tr-xl rounded-br-xl rounded-bl-xl border border-slate-100 text-sm text-slate-700 mb-1.5">
-                              {comment.text}
-                            </div>
+                              {/* Compact Comment Bubble */}
+                              <div className="bg-slate-50 px-2.5 py-2 rounded-lg text-xs text-slate-700 border border-slate-100 leading-relaxed">
+                                {comment.text}
+                              </div>
 
-                            <div className="flex items-center gap-4 text-[10px] font-semibold pl-1">
-                              <button onClick={() => setReplyingTo(comment.id)} className="text-slate-500 hover:text-emerald-600 transition-colors">Reply</button>
-                              {(user?.id === comment.user_id || user?.role === 'DEV_ADMIN') && (
-                                <button onClick={() => handleDeleteComment(comment.id)} className="text-slate-400 hover:text-rose-600 opacity-0 group-hover:opacity-100 transition-all">Delete</button>
-                              )}
-                            </div>
+                              {/* Compact Actions */}
+                              <div className="flex items-center gap-3 mt-1 text-[9px] font-medium">
+                                <button onClick={() => setReplyingTo(comment.id)} className="text-slate-400 hover:text-emerald-600 transition-colors">Reply</button>
+                                {(user?.id === comment.user_id || user?.role === 'DEV_ADMIN') && (
+                                  <button onClick={() => handleDeleteComment(comment.id)} className="text-slate-300 hover:text-rose-500 opacity-0 group-hover:opacity-100 transition-all">Delete</button>
+                                )}
+                              </div>
 
-                            {/* Replies */}
-                            {comment.replies && comment.replies.length > 0 && (
-                              <div className="mt-3 space-y-3 pl-4 border-l-2 border-slate-100">
-                                {comment.replies.map((reply) => (
-                                  <div key={reply.id} className="group/reply">
-                                    <div className="flex items-start gap-2.5">
-                                      <Avatar className="h-6 w-6 mt-0.5">
-                                        <AvatarFallback className="text-[9px] bg-slate-100 text-slate-500">{reply.author[0]}</AvatarFallback>
-                                      </Avatar>
+                              {/* Compact Replies */}
+                              {comment.replies && comment.replies.length > 0 && (
+                                <div className="mt-2 space-y-2 pl-3 border-l border-slate-100">
+                                  {comment.replies.map((reply) => (
+                                    <div key={reply.id} className="group/reply flex gap-2">
+                                      <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[8px] font-bold text-slate-500 shrink-0 mt-0.5">
+                                        {reply.author[0]}
+                                      </div>
                                       <div className="flex-1">
-                                        <div className="bg-slate-50 p-2 rounded-lg text-xs text-slate-600 border border-slate-100/50">
-                                          <span className="font-bold text-slate-800 mr-1">{reply.author}</span>
+                                        <div className="bg-white px-2 py-1.5 rounded text-[11px] text-slate-600 border border-slate-100/80">
+                                          <span className="font-semibold text-slate-700 mr-1">{reply.author}</span>
                                           {reply.text}
                                         </div>
-                                        <div className="flex items-center gap-2 pl-1 mt-0.5">
-                                          <span className="text-[9px] text-slate-400">{formatDistanceToNow(new Date(reply.timestamp))}</span>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          <span className="text-[8px] text-slate-400">{formatDistanceToNow(new Date(reply.timestamp))}</span>
                                           {(user?.id === reply.user_id || user?.role === 'DEV_ADMIN') && (
-                                            <button onClick={() => handleDeleteComment(reply.id)} className="text-[9px] text-slate-300 hover:text-rose-500 opacity-0 group-hover/reply:opacity-100 transition-all">Delete</button>
+                                            <button onClick={() => handleDeleteComment(reply.id)} className="text-[8px] text-slate-300 hover:text-rose-500 opacity-0 group-hover/reply:opacity-100 transition-all">Delete</button>
                                           )}
                                         </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))}
-                              </div>
-                            )}
+                                  ))}
+                                </div>
+                              )}
 
-                            {/* Reply Input */}
-                            {replyingTo === comment.id && (
-                              <div className="mt-3 pl-2 flex gap-2 animate-in fade-in slide-in-from-top-1">
-                                <Input
-                                  autoFocus
-                                  className="h-8 text-xs border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"
-                                  placeholder="Write a reply..."
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleReply(comment.id, e.currentTarget.value)
-                                  }}
-                                />
-                                <Button size="icon" className="h-8 w-8 shrink-0" variant="ghost" onClick={() => setReplyingTo(null)}><X size={14} /></Button>
-                              </div>
-                            )}
+                              {/* Reply Input */}
+                              {replyingTo === comment.id && (
+                                <div className="mt-2 flex gap-1.5 animate-in fade-in slide-in-from-top-1">
+                                  <Input
+                                    autoFocus
+                                    className="h-7 text-[11px] border-slate-200 focus:border-emerald-500 focus:ring-emerald-500"
+                                    placeholder="Write a reply..."
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter') handleReply(comment.id, e.currentTarget.value)
+                                    }}
+                                  />
+                                  <Button size="icon" className="h-7 w-7 shrink-0" variant="ghost" onClick={() => setReplyingTo(null)}><X size={12} /></Button>
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-300 text-center p-8">
-                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                      <MessageSquare size={24} className="text-slate-200" />
+                      ))}
                     </div>
-                    <p className="text-sm font-medium text-slate-400">No activity yet</p>
-                    <p className="text-xs text-slate-400/80">Be the first to leave a note or comment.</p>
-                  </div>
-                )}
-              </ScrollArea>
+                  ) : (
+                    <div className="flex flex-col items-center justify-center text-center py-8">
+                      <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center mb-2">
+                        <MessageSquare size={16} className="text-slate-300" />
+                      </div>
+                      <p className="text-[11px] font-medium text-slate-400">No activity yet</p>
+                    </div>
+                  )}
+                </ScrollArea>
 
-              {/* Comment Input */}
-              <div className="p-4 bg-white border-t border-slate-100 shrink-0">
-                <div className="relative flex items-center gap-2">
-                  <div className="relative flex-1">
+                {/* Compact Comment Input */}
+                <div className="px-3 py-2.5 bg-white border-t border-slate-100 shrink-0">
+                  <div className="relative flex items-center">
                     <Input
                       value={newComment}
                       onChange={(e) => setNewComment(e.target.value)}
-                      placeholder="Type your note here..."
-                      className="pl-4 pr-12 h-11 text-sm bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500 transition-all rounded-full shadow-sm"
+                      placeholder="Add a note..."
+                      className="pl-3 pr-10 h-9 text-xs bg-slate-50 border-slate-200 focus:bg-white focus:border-emerald-500 focus:ring-emerald-500 transition-all rounded-full"
                       onKeyDown={(e) => {
                         if (e.key === 'Enter' && !e.shiftKey) {
                           e.preventDefault();
@@ -630,26 +639,26 @@ export default function FollowUpsPage() {
                     />
                     <Button
                       size="icon"
-                      className="h-8 w-8 bg-emerald-600 hover:bg-emerald-700 text-white shrink-0 absolute right-1.5 top-1.5 rounded-full shadow-sm transition-all hover:scale-105 active:scale-95"
+                      className="h-6 w-6 bg-emerald-600 hover:bg-emerald-700 text-white absolute right-1.5 rounded-full transition-all hover:scale-105 active:scale-95"
                       onClick={handleAddComment}
                       disabled={!newComment.trim() || addCommentMutation.isPending}
                     >
-                      <Send size={14} className={newComment.trim() ? 'ml-0.5' : ''} />
+                      <Send size={11} />
                     </Button>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-        ) : (
-          /* Placeholder for Empty Right Side */
-          <div className="hidden lg:flex lg:w-5/12 xl:w-1/3 border border-slate-200 border-dashed rounded-xl bg-slate-50/50 items-center justify-center text-slate-400 flex-col gap-3">
-            <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
-              <User size={32} className="text-slate-300" />
+          ) : (
+            /* Placeholder for Empty Right Side */
+            <div className="hidden lg:flex lg:w-5/12 xl:w-1/3 border border-slate-200 border-dashed rounded-xl bg-slate-50/50 items-center justify-center text-slate-400 flex-col gap-3">
+              <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center">
+                <User size={32} className="text-slate-300" />
+              </div>
+              <p className="text-sm font-medium">Select a follow-up to view details</p>
             </div>
-            <p className="text-sm font-medium">Select a follow-up to view details</p>
-          </div>
-        )}
+          )
+        }
       </div>
 
       {/* Modals remain the same */}
@@ -791,7 +800,7 @@ export default function FollowUpsPage() {
             </div>
           </form>
         </DialogContent>
-      </Dialog>
+      </Dialog >
 
       <Dialog open={isRescheduleOpen} onOpenChange={setIsRescheduleOpen}>
         <DialogContent className="sm:max-w-[400px] p-6 rounded-xl">
@@ -833,6 +842,6 @@ export default function FollowUpsPage() {
         variant="destructive"
         confirmLabel="Delete"
       />
-    </div>
+    </div >
   );
 }

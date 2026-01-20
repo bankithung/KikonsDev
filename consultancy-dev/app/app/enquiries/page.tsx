@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Filter, Search, Eye, Edit, Trash2, X, Phone, Mail, GraduationCap, Users } from 'lucide-react';
+import { Plus, Search, Eye, Edit, Trash2, X, Phone, Mail, GraduationCap, Users, Filter } from 'lucide-react';
 import { Enquiry } from '@/lib/types';
 import { format } from 'date-fns';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -26,7 +26,7 @@ export default function EnquiriesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('all');
   const [filterStream, setFilterStream] = useState<string>('all');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  // Filters are always visible - no toggle needed
   const [viewEnquiry, setViewEnquiry] = useState<Enquiry | null>(null);
   const [actionEnquiry, setActionEnquiry] = useState<Enquiry | null>(null);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -121,143 +121,131 @@ export default function EnquiriesPage() {
     const matchesLocation = filterLocation === 'all' || enq.preferredLocations?.includes(filterLocation);
 
     return matchesSearch && matchesStatus && matchesStream && matchesGender && matchesState && matchesCourse && matchesBoard && matchesLocation;
-  });
+  })?.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   if (isLoading) return <div className="flex items-center justify-center min-h-screen"><div className="animate-pulse text-slate-500">Loading enquiries...</div></div>;
 
   return (
     <div className="space-y-2">
-      {/* Action Buttons */}
-      <div className="flex justify-end gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-8 text-xs"
-          onClick={() => setIsFilterOpen(!isFilterOpen)}
-        >
-          <Filter className="mr-1 h-3 w-3" /> Filters
-        </Button>
-        <Button onClick={() => router.push('/app/enquiries/new')} size="sm" className="h-8 text-xs bg-teal-600 hover:bg-teal-700">
+      {/* Search & New Button Row */}
+      <div className="flex items-center gap-2">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search by name, mobile, or email..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-9 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500 text-sm"
+          />
+        </div>
+        <Button onClick={() => router.push('/app/enquiries/new')} size="sm" className="h-9 text-xs bg-teal-600 hover:bg-teal-700 shrink-0">
           <Plus className="mr-1 h-3 w-3" /> New Enquiry
         </Button>
       </div>
 
-      {/* Filters Panel - Compact Design */}
-      {isFilterOpen && (
-        <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
-            <Select value={filterStatus} onValueChange={setFilterStatus}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="New">New</SelectItem>
-                <SelectItem value="Converted">Converted</SelectItem>
-                <SelectItem value="Closed">Closed</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* Filters Panel - Always Visible, Original Card Style */}
+      <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
+          <Select value={filterStatus} onValueChange={setFilterStatus}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Status</SelectItem>
+              <SelectItem value="New">New</SelectItem>
+              <SelectItem value="Converted">Converted</SelectItem>
+              <SelectItem value="Closed">Closed</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <Select value={filterStream} onValueChange={setFilterStream}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Stream" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Streams</SelectItem>
-                <SelectItem value="Science">Science</SelectItem>
-                <SelectItem value="Commerce">Commerce</SelectItem>
-                <SelectItem value="Arts">Arts</SelectItem>
-              </SelectContent>
-            </Select>
+          <Select value={filterStream} onValueChange={setFilterStream}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Stream" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Streams</SelectItem>
+              <SelectItem value="Science">Science</SelectItem>
+              <SelectItem value="Commerce">Commerce</SelectItem>
+              <SelectItem value="Arts">Arts</SelectItem>
+            </SelectContent>
+          </Select>
 
-            <Select value={filterGender} onValueChange={setFilterGender}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Gender" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Genders</SelectItem>
-                {GENDERS.map((gender) => (
-                  <SelectItem key={gender} value={gender}>{gender}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={filterGender} onValueChange={setFilterGender}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Gender" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Genders</SelectItem>
+              {GENDERS.map((gender) => (
+                <SelectItem key={gender} value={gender}>{gender}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={filterState} onValueChange={setFilterState}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="State" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                <SelectItem value="all">All States</SelectItem>
-                {INDIAN_STATES.map((state) => (
-                  <SelectItem key={state} value={state}>{state}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={filterState} onValueChange={setFilterState}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="State" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">All States</SelectItem>
+              {INDIAN_STATES.map((state) => (
+                <SelectItem key={state} value={state}>{state}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={filterCourse} onValueChange={setFilterCourse}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Course" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                <SelectItem value="all">All Courses</SelectItem>
-                {COURSES.map((course) => (
-                  <SelectItem key={course} value={course}>{course}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={filterCourse} onValueChange={setFilterCourse}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Course" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">All Courses</SelectItem>
+              {COURSES.map((course) => (
+                <SelectItem key={course} value={course}>{course}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={filterBoard} onValueChange={setFilterBoard}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Board" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                <SelectItem value="all">All Boards</SelectItem>
-                {SCHOOL_BOARDS.map((board) => (
-                  <SelectItem key={board} value={board}>{board}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={filterBoard} onValueChange={setFilterBoard}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Board" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">All Boards</SelectItem>
+              {SCHOOL_BOARDS.map((board) => (
+                <SelectItem key={board} value={board}>{board}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Select value={filterLocation} onValueChange={setFilterLocation}>
-              <SelectTrigger className="h-9 text-xs bg-white">
-                <SelectValue placeholder="Location" />
-              </SelectTrigger>
-              <SelectContent className="max-h-60">
-                <SelectItem value="all">All Locations</SelectItem>
-                {PREFERRED_LOCATIONS.map((loc) => (
-                  <SelectItem key={loc} value={loc}>{loc}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <Select value={filterLocation} onValueChange={setFilterLocation}>
+            <SelectTrigger className="h-9 text-xs bg-white">
+              <SelectValue placeholder="Location" />
+            </SelectTrigger>
+            <SelectContent className="max-h-60">
+              <SelectItem value="all">All Locations</SelectItem>
+              {PREFERRED_LOCATIONS.map((loc) => (
+                <SelectItem key={loc} value={loc}>{loc}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-            <Button
-              size="sm"
-              className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
-              onClick={() => {
-                setFilterStatus('all');
-                setFilterStream('all');
-                setFilterGender('all');
-                setFilterState('all');
-                setFilterCourse('all');
-                setFilterBoard('all');
-                setFilterLocation('all');
-              }}
-            >
-              Clear
-            </Button>
-          </div>
+          <Button
+            size="sm"
+            className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
+            onClick={() => {
+              setFilterStatus('all');
+              setFilterStream('all');
+              setFilterGender('all');
+              setFilterState('all');
+              setFilterCourse('all');
+              setFilterBoard('all');
+              setFilterLocation('all');
+            }}
+          >
+            Clear
+          </Button>
         </div>
-      )}
-
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <Input
-          placeholder="Search by name, mobile, or email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10 h-9 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500 text-sm"
-        />
       </div>
 
       {/* Table */}

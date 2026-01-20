@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent } from '@/components/ui/card';
-import { Trash2, Plus, Loader2 } from 'lucide-react';
+import { Trash2, Plus, Loader2, ArrowLeft } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { apiClient } from '@/lib/apiClient';
+import { useRouter } from 'next/navigation';
 import { DocumentUpload } from '@/components/common/DocumentUpload';
 import { DocumentTakeover } from '@/components/common/DocumentTakeover';
 import { INDIAN_STATES } from '@/lib/utils';
@@ -260,7 +261,16 @@ export function RegistrationForm({ onSubmit, isLoading, enquiryId, initialData, 
 
             {/* Student Info */}
             <div>
-              <h3 className="text-lg font-medium text-slate-900 mb-4">Personal Information</h3>
+              <div className="flex items-center gap-3 mb-4">
+                <button
+                  type="button"
+                  onClick={() => window.history.back()}
+                  className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-500 hover:text-slate-700 transition-colors"
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <h3 className="text-lg font-medium text-slate-900">Personal Information</h3>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
                   <Label className="text-sm font-medium text-slate-700">Student Name</Label>

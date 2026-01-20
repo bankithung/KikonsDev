@@ -586,6 +586,9 @@ export const apiClient = {
         maths_marks: data.mathsMarks,
         previous_neet_marks: data.previousNeetMarks,
         present_neet_marks: data.presentNeetMarks,
+
+        // Physical Documents (Document Takeover)
+        student_documents: data.student_documents,
       };
       const res = await api.patch(`registrations/${id}/`, payload);
       return mapRegistration(res.data);
@@ -602,13 +605,17 @@ export const apiClient = {
     },
     create: async (data: any): Promise<Enrollment> => {
       const payload = {
-        ...data,
-        enrollment_no: `ENR-${Date.now()}`,
-        student_name: data.studentName,
-        program_name: data.programName,
-        start_date: data.startDate,
-        duration_months: data.durationMonths,
-        total_fees: data.totalFees,
+        studentId: data.student || data.studentId,
+        programName: data.programName,
+        programDuration: data.durationMonths || data.programDuration,
+        startDate: data.startDate,
+        serviceCharge: data.serviceCharge || 0,
+        schoolFees: data.schoolFees || 0,
+        hostelFees: data.hostelFees || 0,
+        university: data.university || '',
+        paymentType: data.paymentType || 'Full',
+        installmentsCount: data.installmentsCount,
+        installmentAmount: data.installmentAmount,
       };
       const res = await api.post('enrollments/', payload);
       return mapEnrollment(res.data);
@@ -640,6 +647,13 @@ export const apiClient = {
     delete: async (id: string): Promise<void> => {
       await api.delete(`enrollments/${id}/`);
     }
+  },
+
+  universities: {
+    list: async (): Promise<any[]> => {
+      const res = await api.get('universities/');
+      return res.data;
+    },
   },
 
   documents: {

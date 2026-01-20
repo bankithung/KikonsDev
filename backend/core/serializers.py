@@ -139,6 +139,10 @@ class EnrollmentSerializer(serializers.ModelSerializer):
     # Read-only fields
     enrollmentNo = serializers.CharField(source='enrollment_no', read_only=True)
     studentName = serializers.CharField(source='student.student_name', read_only=True)
+    studentGender = serializers.CharField(source='student.gender', read_only=True)
+    studentFamilyState = serializers.CharField(source='student.family_state', read_only=True)
+    studentSchoolState = serializers.CharField(source='student.school_state', read_only=True)
+    studentSchoolBoard = serializers.CharField(source='student.school_board', read_only=True)
     installments = InstallmentSerializer(many=True, read_only=True)
     
     class Meta:
@@ -148,7 +152,7 @@ class EnrollmentSerializer(serializers.ModelSerializer):
             'programDuration', 'startDate', 'serviceCharge', 'schoolFees', 
             'hostelFees', 'total_fees', 'status', 'company_id',
             'university', 'country', 'paymentType', 'installmentsCount', 'installmentAmount',
-            'created_by_name', 'installments'
+            'created_by_name', 'installments', 'studentGender', 'studentFamilyState', 'studentSchoolState', 'studentSchoolBoard'
         ]
         extra_kwargs = {
             'total_fees': {'read_only': True},

@@ -422,30 +422,6 @@ export default function PaymentsPage() {
   return (
     <div className="space-y-3 max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-2">
 
-      {/* Header Action Buttons */}
-      <div className="flex items-center justify-end gap-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-8 text-xs font-medium border-slate-200 bg-white hover:bg-slate-50">
-              <Download className="mr-2 h-3.5 w-3.5 text-slate-500" /> Export Report
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-[160px] bg-white shadow-lg border border-slate-200">
-            <DropdownMenuLabel className="text-xs font-bold text-slate-500">Export Format</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={exportToCSV} className="text-xs font-medium cursor-pointer">
-              <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /> Export as CSV
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={exportToPDF} className="text-xs font-medium cursor-pointer">
-              <FileText className="mr-2 h-4 w-4 text-red-600" /> Export as PDF
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-        <Button onClick={() => setIsPaymentModalOpen(true)} size="sm" className="h-8 text-xs font-semibold bg-teal-600 hover:bg-teal-700 shadow-sm shadow-teal-200 text-white">
-          <Plus className="mr-2 h-3.5 w-3.5" /> Record Payment
-        </Button>
-      </div>
-
       {/* Stats Overview */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card className="border-slate-200 shadow-sm bg-white overflow-hidden group hover:shadow-md transition-all duration-200">
@@ -511,31 +487,32 @@ export default function PaymentsPage() {
 
       {/* Main Content Areas */}
       <Tabs defaultValue="transactions" className="w-full" onValueChange={setActiveTab}>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
-          <TabsList className="bg-slate-100 p-1 rounded-lg border border-slate-200 w-fit">
-            <TabsTrigger value="transactions" className="rounded-md text-xs font-medium data-[state=active]:bg-white data-[state=active]:text-teal-700 data-[state=active]:shadow-sm px-4 py-1.5 transition-all">
-              All Transactions
-            </TabsTrigger>
-            <TabsTrigger value="refunds" className="rounded-md text-xs font-medium data-[state=active]:bg-white data-[state=active]:text-teal-700 data-[state=active]:shadow-sm px-4 py-1.5 transition-all">
-              Refunds History
-            </TabsTrigger>
-          </TabsList>
+        {/* Consolidated Header Row - Fully Responsive */}
+        <div className="flex flex-wrap items-center justify-between gap-3 mb-2">
+          {/* Left: Tabs + Search + Filters */}
+          <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+            <TabsList className="bg-slate-100 p-1 rounded-lg border border-slate-200 shrink-0">
+              <TabsTrigger value="transactions" className="rounded-md text-xs font-medium data-[state=active]:bg-white data-[state=active]:text-teal-700 data-[state=active]:shadow-sm px-4 py-1.5 transition-all">
+                All Transactions
+              </TabsTrigger>
+              <TabsTrigger value="refunds" className="rounded-md text-xs font-medium data-[state=active]:bg-white data-[state=active]:text-teal-700 data-[state=active]:shadow-sm px-4 py-1.5 transition-all">
+                Refunds History
+              </TabsTrigger>
+            </TabsList>
 
-          {/* Compact Filters & Search */}
-          <div className="flex items-center gap-2">
-            <div className="relative">
+            <div className="relative flex-1 min-w-[200px] max-w-[350px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
               <Input
                 placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 h-9 w-[180px] bg-white border-slate-200 text-xs focus:ring-teal-500/20 focus:border-teal-500"
+                className="pl-9 h-9 w-full bg-white border-slate-200 text-xs focus:ring-teal-500/20 focus:border-teal-500"
               />
             </div>
 
             <Popover open={isFilterOpen} onOpenChange={setIsFilterOpen}>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 px-3 border-slate-200 bg-white text-slate-600 hover:text-slate-900", (filterStatus !== 'all' || filterMethod !== 'all' || dateRange) && "border-teal-500 bg-teal-50 text-teal-700")}>
+                <Button variant="outline" size="sm" className={cn("h-9 px-3 border-slate-200 bg-white text-slate-600 hover:text-slate-900 shrink-0", (filterStatus !== 'all' || filterMethod !== 'all' || dateRange) && "border-teal-500 bg-teal-50 text-teal-700")}>
                   <Filter className="h-4 w-4 mr-2" />
                   Filters
                   {(filterStatus !== 'all' || filterMethod !== 'all' || dateRange) && (
@@ -545,33 +522,34 @@ export default function PaymentsPage() {
                   )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent align="end" className="w-[320px] p-0 shadow-xl border-slate-100 bg-white rounded-xl">
-                <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-t-xl">
-                  <h4 className="font-semibold text-sm text-slate-900 flex items-center gap-2">
-                    <Filter size={14} className="text-slate-500" /> Filter Payments
+              <PopoverContent align="end" className="w-[700px] p-0 shadow-xl border-slate-100 bg-white rounded-xl">
+                <div className="px-4 py-2.5 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between rounded-t-xl">
+                  <h4 className="font-semibold text-xs text-slate-900 flex items-center gap-2">
+                    <Filter size={12} className="text-slate-500" /> Filter Payments
                   </h4>
                   {(filterStatus !== 'all' || filterMethod !== 'all' || dateRange) && (
                     <button
                       onClick={() => { setFilterStatus('all'); setFilterMethod('all'); setDateRange(undefined); setFilterType('all'); }}
-                      className="text-[10px] uppercase font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 px-2 py-1 rounded transition-colors"
+                      className="text-[10px] uppercase font-bold text-rose-500 hover:text-rose-600 hover:bg-rose-50 px-2 py-0.5 rounded transition-colors"
                     >
                       Reset All
                     </button>
                   )}
                 </div>
 
-                <div className="p-4 space-y-6 max-h-[400px] overflow-y-auto">
+                {/* Horizontal Grid Layout - Compact */}
+                <div className="px-4 py-3 grid grid-cols-3 gap-4">
 
                   {/* Status Filter */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Transaction Status</Label>
-                    <RadioGroup value={filterStatus} onValueChange={setFilterStatus} className="grid grid-cols-3 gap-2">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Transaction Status</Label>
+                    <RadioGroup value={filterStatus} onValueChange={setFilterStatus} className="grid grid-cols-1 gap-1.5">
                       {['all', 'Success', 'Pending'].map((status) => (
                         <div key={status}>
                           <RadioGroupItem value={status} id={`status-${status}`} className="peer sr-only" />
                           <Label
                             htmlFor={`status-${status}`}
-                            className="flex flex-col items-center justify-center rounded-md border-2 border-slate-100 bg-white p-2 hover:bg-slate-50 hover:text-slate-900 peer-data-[state=checked]:border-teal-500 peer-data-[state=checked]:bg-teal-50 peer-data-[state=checked]:text-teal-700 cursor-pointer transition-all"
+                            className="flex items-center justify-center rounded-md border-2 border-slate-100 bg-white px-3 py-1.5 hover:bg-slate-50 hover:text-slate-900 peer-data-[state=checked]:border-teal-500 peer-data-[state=checked]:bg-teal-50 peer-data-[state=checked]:text-teal-700 cursor-pointer transition-all"
                           >
                             <span className="text-xs font-semibold capitalize">{status}</span>
                           </Label>
@@ -580,17 +558,15 @@ export default function PaymentsPage() {
                     </RadioGroup>
                   </div>
 
-                  <div className="h-px bg-slate-100"></div>
-
                   {/* Method Filter */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Payment Method</Label>
-                    <RadioGroup value={filterMethod} onValueChange={setFilterMethod} className="grid grid-cols-2 gap-2">
-                      <div className="col-span-2">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Payment Method</Label>
+                    <RadioGroup value={filterMethod} onValueChange={setFilterMethod} className="grid grid-cols-1 gap-1.5">
+                      <div>
                         <RadioGroupItem value="all" id="method-all" className="peer sr-only" />
                         <Label
                           htmlFor="method-all"
-                          className="flex items-center justify-center rounded-md border-2 border-slate-100 bg-white p-2 hover:bg-slate-50 peer-data-[state=checked]:border-teal-500 peer-data-[state=checked]:bg-teal-50 peer-data-[state=checked]:text-teal-700 cursor-pointer transition-all"
+                          className="flex items-center justify-center rounded-md border-2 border-slate-100 bg-white px-3 py-2 hover:bg-slate-50 peer-data-[state=checked]:border-teal-500 peer-data-[state=checked]:bg-teal-50 peer-data-[state=checked]:text-teal-700 cursor-pointer transition-all"
                         >
                           <span className="text-xs font-semibold">All Methods</span>
                         </Label>
@@ -600,50 +576,74 @@ export default function PaymentsPage() {
                           <RadioGroupItem value={method} id={`method-${method}`} className="peer sr-only" />
                           <Label
                             htmlFor={`method-${method}`}
-                            className="flex flex-col items-center justify-center rounded-md border-2 border-slate-100 bg-white p-2 hover:bg-slate-50 hover:text-slate-900 peer-data-[state=checked]:border-teal-500 peer-data-[state=checked]:bg-teal-50 peer-data-[state=checked]:text-teal-700 cursor-pointer transition-all text-center h-full"
+                            className="flex items-center justify-center rounded-md border-2 border-slate-100 bg-white px-3 py-2 hover:bg-slate-50 hover:text-slate-900 peer-data-[state=checked]:border-teal-500 peer-data-[state=checked]:bg-teal-50 peer-data-[state=checked]:text-teal-700 cursor-pointer transition-all text-center"
                           >
-                            <span className="text-[10px] font-semibold">{method}</span>
+                            <span className="text-xs font-semibold">{method}</span>
                           </Label>
                         </div>
                       ))}
                     </RadioGroup>
                   </div>
 
-                  <div className="h-px bg-slate-100"></div>
-
                   {/* Date Range */}
-                  <div className="space-y-3">
-                    <Label className="text-xs font-bold text-slate-500 uppercase tracking-wider">Date Range</Label>
-                    <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Date Range</Label>
+                    <div className="space-y-2">
                       <div className="space-y-1">
                         <span className="text-[10px] text-slate-400 font-semibold uppercase">From</span>
                         <Input
                           type="date"
-                          className="h-9 text-xs"
+                          className="h-8 text-xs"
                           value={dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : ''}
                           onChange={(e) => setDateRange(prev => ({ from: e.target.value ? new Date(e.target.value) : undefined, to: prev?.to }))}
                         />
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-1.5">
                         <span className="text-[10px] text-slate-400 font-semibold uppercase">To</span>
                         <Input
                           type="date"
-                          className="h-9 text-xs"
+                          className="h-8 text-xs"
                           value={dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : ''}
                           onChange={(e) => setDateRange(prev => ({ from: prev?.from, to: e.target.value ? new Date(e.target.value) : undefined }))}
                         />
                       </div>
                     </div>
                   </div>
+
                 </div>
 
-                <div className="p-4 bg-slate-50 border-t border-slate-100 rounded-b-xl flex justify-end">
-                  <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white w-full shadow-sm shadow-teal-200" onClick={() => setIsFilterOpen(false)}>
+                <div className="px-4 py-2.5 bg-slate-50 border-t border-slate-100 rounded-b-xl flex justify-end">
+                  <Button size="sm" className="h-8 bg-teal-600 hover:bg-teal-700 text-white px-6 shadow-sm shadow-teal-200 text-xs" onClick={() => setIsFilterOpen(false)}>
                     Apply Filters
                   </Button>
                 </div>
               </PopoverContent>
             </Popover>
+          </div>
+
+          {/* Right: Action Buttons */}
+          <div className="flex items-center gap-2 shrink-0">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="h-9 text-xs font-medium border-slate-200 bg-white hover:bg-slate-50">
+                  <Download className="mr-2 h-3.5 w-3.5 text-slate-500" /> Export Report
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-[160px] bg-white shadow-lg border border-slate-200">
+                <DropdownMenuLabel className="text-xs font-bold text-slate-500">Export Format</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={exportToCSV} className="text-xs font-medium cursor-pointer">
+                  <FileSpreadsheet className="mr-2 h-4 w-4 text-green-600" /> Export as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={exportToPDF} className="text-xs font-medium cursor-pointer">
+                  <FileText className="mr-2 h-4 w-4 text-red-600" /> Export as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            <Button onClick={() => setIsPaymentModalOpen(true)} size="sm" className="h-9 text-xs font-semibold bg-teal-600 hover:bg-teal-700 shadow-sm shadow-teal-200 text-white">
+              <Plus className="mr-2 h-3.5 w-3.5" /> Record Payment
+            </Button>
           </div>
         </div>
 

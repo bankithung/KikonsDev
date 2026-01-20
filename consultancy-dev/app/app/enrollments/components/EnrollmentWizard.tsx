@@ -1,647 +1,858 @@
 'use client';
 
-import { useState } from 'react';
-import { useForm, Controller, useWatch } from 'react-hook-form';
+import { useState, useEffect } from 'react';
+import { useForm, useFieldArray, Controller } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import { useQuery } from '@tanstack/react-query';
+import { apiClient } from '@/lib/apiClient';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Card } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { apiClient } from '@/lib/apiClient';
-import { useToast } from '@/hooks/use-toast';
-import { Check, CalendarIcon, Loader2, Save } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { ArrowLeft, ArrowRight, Check, Loader2, User, GraduationCap, Wallet, CreditCard, FileText, Plus, Trash2, Save, AlertTriangle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { DocumentTakeover } from '@/components/common/DocumentTakeover';
 import { DocumentUpload } from '@/components/common/DocumentUpload';
-import * as Dialog from '@radix-ui/react-dialog';
-import { ExistingDocumentsList } from '@/components/common/ExistingDocumentsList';
+import { toast } from '@/store/toastStore';
+
+const DRAFT_KEY = 'enrollment_wizard_draft';
+
+const COMMON_DOCUMENTS = [
+    "Class 10 Marksheet", "Class 10 Passing Certificate", "Class 12 Marksheet",
+    "Class 12 Passing Certificate", "Admit Card", "Migration Certificate",
+    "Transfer Certificate (TC)", "Character Certificate", "Aadhaar Card",
+    "PAN Card", "Passport", "NEET Score Card", "Gap Certificate",
+    "Domicile Certificate", "Caste Certificate", "Income Certificate", "Passport Size Photos"
+];
 
 const enrollmentSchema = z.object({
-  studentId: z.string().min(1, "Student is required"),
-  studentName: z.string(),
-
-  programName: z.string().min(1, "Program Name is required"),
-  university: z.string().min(1, "University is required"),
-  programDuration: z.coerce.number().min(1, "Duration is required"),
-  startDate: z.string().min(1, "Start Date is required"),
-
-  serviceCharge: z.coerce.number().min(0).default(0),
-  schoolFees: z.coerce.number().min(0).default(0),
-  hostelFees: z.coerce.number().min(0).default(0),
-
-  paymentType: z.enum(['Full', 'Installment']),
-  installmentsCount: z.coerce.number().optional(),
-  installmentAmount: z.coerce.number().optional(),
-
-  student_documents: z.array(z.object({
-    name: z.string(),
-    document_number: z.string().optional(),
-    remarks: z.string().optional()
-  })).optional(),
-  documentTakeoverEnabled: z.boolean().default(false),
-
-  loanRequired: z.boolean().default(false),
-  loanAmount: z.coerce.number().optional(),
-  documents: z.array(z.any()).optional(),
+    studentId: z.string().min(1, "Please select a student"),
+    studentName: z.string().optional(),
+    university: z.string().min(1, "University is required"),
+    programName: z.string().min(1, "Program name is required"),
+    programDuration: z.coerce.number().min(1, "Duration is required"),
+    startDate: z.string().min(1, "Start date is required"),
+    serviceCharge: z.coerce.number().min(0),
+    schoolFees: z.coerce.number().min(0),
+    hostelFees: z.coerce.number().min(0),
+    paymentType: z.enum(['Full', 'Partial', 'Installment', 'Advance', 'One-time']).optional(),
+    installmentsCount: z.coerce.number().optional(),
+    installmentAmount: z.coerce.number().optional(),
+    // Payment Method Fields
+    paymentMethod: z.enum(['Cash', 'Card', 'UPI', 'Bank Transfer', 'Cheque']).optional(),
+    paymentDate: z.string().optional(),
+    paymentReference: z.string().optional(),
+    cardLast4: z.string().optional(),
+    cardNetwork: z.string().optional(),
+    upiId: z.string().optional(),
+    bankName: z.string().optional(),
+    chequeNumber: z.string().optional(),
+    documents: z.array(z.any()).optional(),
+    documentTakeoverEnabled: z.boolean().default(false),
+    student_documents: z.array(z.object({
+        name: z.string(),
+        document_number: z.string().optional(),
+        remarks: z.string().optional()
+    })).optional(),
 });
 
 type EnrollmentFormValues = z.infer<typeof enrollmentSchema>;
 
 interface EnrollmentWizardProps {
-  onSubmit: (data: EnrollmentFormValues) => void;
-  isLoading: boolean;
+    onSubmit: (data: any) => void;
+    isLoading: boolean;
 }
 
+const STEPS = [
+    { id: 1, name: 'Student', icon: User },
+    { id: 2, name: 'Program', icon: GraduationCap },
+    { id: 3, name: 'Fees', icon: Wallet },
+    { id: 4, name: 'Documents', icon: FileText },
+    { id: 5, name: 'Payment', icon: CreditCard },
+];
+
 export function EnrollmentWizard({ onSubmit, isLoading }: EnrollmentWizardProps) {
-  const [isUploading, setIsUploading] = useState(false);
-  const [isAddUniOpen, setIsAddUniOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'basic' | 'programs' | 'requirements'>('basic');
-  const [newUni, setNewUni] = useState({
-    name: '',
-    country: '',
-    city: '',
-    ranking: '',
-    rating: '',
-    programs: '', // comma separated strings
-    tuitionMin: '',
-    tuitionMax: '',
-    deadline: '',
-    requirements: '' // comma separated strings
-  });
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
+    const [currentStep, setCurrentStep] = useState(1);
+    const [selectedStudentName, setSelectedStudentName] = useState<string>('');
+    const [isDirty, setIsDirty] = useState(false);
+    const [showLeaveModal, setShowLeaveModal] = useState(false);
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    watch,
-    setValue,
-    trigger,
-    formState: { errors },
-  } = useForm<EnrollmentFormValues>({
-    // @ts-ignore
-    resolver: zodResolver(enrollmentSchema),
-    defaultValues: {
-      serviceCharge: 0,
-      schoolFees: 0,
-      hostelFees: 0,
-      paymentType: 'Full',
-      loanRequired: false,
-      loanAmount: 0,
-      documents: [],
-      university: '',
-      student_documents: [],
-      documentTakeoverEnabled: false,
-    },
-  });
+    // Fetch registrations (students available for enrollment)
+    const { data: registrations } = useQuery({
+        queryKey: ['registrations'],
+        queryFn: apiClient.registrations.list,
+    });
 
-  const { data: registrations } = useQuery({
-    queryKey: ['registrations-list-select'],
-    queryFn: apiClient.registrations.list,
-  });
+    // Fetch existing enrollments to filter out already-enrolled students
+    const { data: enrollments } = useQuery({
+        queryKey: ['enrollments'],
+        queryFn: apiClient.enrollments.list,
+    });
 
-  const { data: enrollments } = useQuery({
-    queryKey: ['enrollments-list-check'],
-    queryFn: apiClient.enrollments.list,
-  });
+    // Fetch universities for the account
+    const { data: universities } = useQuery({
+        queryKey: ['universities'],
+        queryFn: apiClient.universities.list,
+    });
 
-  const { data: universities } = useQuery({
-    queryKey: ['universities-select'],
-    queryFn: apiClient.universities.list,
-  });
+    // Filter: only show registered students who are NOT already enrolled
+    const enrolledStudentIds = new Set(enrollments?.map(e => e.studentId) || []);
+    const availableStudents = registrations?.filter(r => !enrolledStudentIds.has(r.id)) || [];
 
-  const createUniMutation = useMutation({
-    mutationFn: async (data: any) => {
-      // transform if needed, similar to universities page
-      const formatted = {
-        company_id: '', // Handled by backend/session? Or needs manual if stored in newUni? 
-        // newUni doesn't store company_id. Backend uses session/user.
-        name: data.name,
-        country: data.country,
-        city: data.city,
-        programs: data.programs.split(',').map((s: string) => s.trim()).filter((s: string) => s),
-        requirements: data.requirements.split(',').map((s: string) => s.trim()).filter((s: string) => s),
-        tuitionFee: { min: Number(data.tuitionMin), max: Number(data.tuitionMax) },
-        ranking: Number(data.ranking) || 0,
-        rating: Number(data.rating) || 0,
-        admissionDeadline: data.deadline // Map deadline to admissionDeadline?
-        // Note: apiClient.universities.create expects snake_case or specific struct?
-        // The universities/page.tsx calls apiClient.universities.create(formatted).
-        // Let's assume apiClient handles camel->snake mapping or formatted is close enough.
-        // Wait, universities/page.tsx line 79 passes `formatted`.
-        // `apiClient.ts` create uses `toSnakeCase(data)`.
-        // So `admissionDeadline` in `formatted` -> `admission_deadline` in payload.
-        // My `newUni` (and `data` arg here) uses `deadline`.
-        // So I should map `deadline` to `admissionDeadline`.
-      };
-      return apiClient.universities.create(formatted);
-    },
-    onSuccess: (data: any) => {
-      queryClient.invalidateQueries({ queryKey: ['universities-select'] });
-      setIsAddUniOpen(false);
-      setActiveTab('basic');
-      setValue('university', data.name);
-      setNewUni({
-        name: '', country: '', city: '', ranking: '', rating: '',
-        programs: '', tuitionMin: '', tuitionMax: '', deadline: '', requirements: ''
-      });
-      toast({ title: "University Added", description: "Successfully added new university.", variant: "default" });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Failed to add university",
-        description: error.response?.data ? JSON.stringify(error.response.data) : (error.message || 'Unknown error'),
-        variant: "destructive"
-      });
-    }
-  });
-
-  const handleCreateUni = () => {
-    if (!newUni.name || !newUni.country) {
-      toast({ title: 'Validation Error', description: 'Name and Country are required', variant: "destructive" });
-      return;
-    }
-    createUniMutation.mutate(newUni);
-  };
-
-  // Filter out already enrolled
-  const enrolledStudentIds = new Set(enrollments?.map((e: any) => e.studentId || e.student));
-  const availableRegistrations = registrations?.filter(reg => !enrolledStudentIds.has(reg.id));
-
-  const serviceCharge = watch('serviceCharge');
-  const schoolFees = watch('schoolFees');
-  const hostelFees = watch('hostelFees');
-  const totalFees = (Number(serviceCharge) || 0) + (Number(schoolFees) || 0) + (Number(hostelFees) || 0);
-
-  // ... (rest of logic same) ...
-  const paymentType = watch('paymentType');
-  const studentId = watch('studentId');
-  const documents = watch('documents');
-  const loanRequired = watch('loanRequired');
-
-  const handleInstallmentCountChange = (e: React.ChangeEvent<HTMLInputElement>) => setValue('installmentsCount', Number(e.target.value));
-  const handleInstallmentAmountChange = (e: React.ChangeEvent<HTMLInputElement>) => setValue('installmentAmount', Number(e.target.value));
-
-  const onFormSubmit = async (data: EnrollmentFormValues) => {
-    if (data.documents && data.documents.length > 0) {
-      // ... upload logic ...
-      const pendingDocs = data.documents.filter((doc: any) => doc.file instanceof File);
-      if (pendingDocs.length > 0) {
-        setIsUploading(true);
+    // Load draft from localStorage
+    const loadDraft = () => {
         try {
-          for (const doc of pendingDocs) {
-            const formData = new FormData();
-            formData.append('file', doc.file as File);
-            formData.append('file_name', doc.file_name);
-            formData.append('description', doc.description || '');
-            formData.append('registration', data.studentId);
-            formData.append('type', doc.type || 'General');
-            await apiClient.documents.create(formData);
-          }
-        } catch (error) {
-          setIsUploading(false); return;
+            const draft = localStorage.getItem(DRAFT_KEY);
+            if (draft) {
+                const parsed = JSON.parse(draft);
+                return parsed;
+            }
+        } catch (e) {
+            console.error('Failed to load draft:', e);
         }
-        setIsUploading(false);
-      }
-    }
-    onSubmit(data);
-  };
+        return null;
+    };
 
-  return (
-    <div className="space-y-6">
-      <form onSubmit={handleSubmit(onFormSubmit)}>
-        <Card className="bg-white border-none shadow-sm rounded-xl">
-          <CardContent className="p-6 md:p-8 space-y-8">
-            {/* ... Form Content (Student, Fees, Payment) -> Same as before ... */}
-            {/* Only showing summarized form here, but I will write FULL content in file */}
+    const savedDraft = loadDraft();
 
-            {/* 1. Student & University */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2 md:col-span-2">
-                <Label className="text-sm font-medium text-slate-700">Select Student</Label>
-                <Controller
-                  name="studentId"
-                  control={control}
-                  render={({ field }) => {
-                    const selectedStudent = registrations?.find(r => String(r.id) === String(field.value));
-                    return (
-                      <Select
-                        onValueChange={(val: string) => {
-                          field.onChange(val);
-                          const student = registrations?.find(r => String(r.id) === val);
-                          if (student) setValue('studentName', student.studentName);
-                        }}
-                        value={field.value}
-                      >
-                        <SelectTrigger className="w-full h-11 bg-white border-slate-300">
-                          <SelectValue placeholder="Search or Select Student...">
-                            {selectedStudent ? `${selectedStudent.studentName} (${selectedStudent.registrationNo})` : "Search or Select Student..."}
-                          </SelectValue>
-                        </SelectTrigger>
-                        <SelectContent>
-                          {availableRegistrations?.map((reg) => (
-                            <SelectItem key={reg.id} value={String(reg.id)}>
-                              {reg.studentName} ({reg.registrationNo})
-                            </SelectItem>
-                          ))}
-                          {availableRegistrations?.length === 0 && <div className="p-2 text-sm text-gray-500 text-center">No available students</div>}
-                        </SelectContent>
-                      </Select>
-                    );
-                  }}
-                />
-                {errors.studentId && <p className="text-sm text-red-500">{errors.studentId.message}</p>}
-              </div>
+    const { register, handleSubmit, control, watch, setValue, reset, formState: { errors } } = useForm<EnrollmentFormValues>({
+        resolver: zodResolver(enrollmentSchema) as any,
+        defaultValues: savedDraft || {
+            studentId: '', university: '', programName: '', programDuration: 12, startDate: '',
+            serviceCharge: 0, schoolFees: 0, hostelFees: 0,
+            installmentsCount: 1, installmentAmount: 0, documents: [],
+            documentTakeoverEnabled: false, student_documents: [],
+        }
+    });
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">University</Label>
-                <Controller
-                  control={control}
-                  name="university"
-                  render={({ field }) => (
-                    <Select
-                      value={field.value}
-                      onValueChange={(val: string) => {
-                        if (val === 'ADD_NEW') setIsAddUniOpen(true);
-                        else field.onChange(val);
-                      }}
-                    >
-                      <SelectTrigger className="w-full h-11 border-slate-300">
-                        <SelectValue placeholder="Select University" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {universities?.map((uni: any) => (
-                          <SelectItem key={uni.id} value={uni.name}>{uni.name}</SelectItem>
-                        ))}
-                        <SelectItem value="ADD_NEW" className="text-teal-600 font-medium cursor-pointer">+ Add New University</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-                {errors.university && <p className="text-sm text-red-500">{errors.university.message}</p>}
-              </div>
+    const { fields, append, remove, replace } = useFieldArray({ control, name: 'student_documents' });
+    const watchedValues = watch();
+    const totalFees = (Number(watchedValues.serviceCharge) || 0) + (Number(watchedValues.schoolFees) || 0) + (Number(watchedValues.hostelFees) || 0);
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Program Name</Label>
-                <Input {...register('programName')} className="h-11 border-slate-300" placeholder="e.g. MBBS Abroad" />
-                {errors.programName && <p className="text-sm text-red-500">{errors.programName.message}</p>}
-              </div>
+    // Set selectedStudentName from draft if exists
+    useEffect(() => {
+        if (savedDraft?.studentId && availableStudents.length > 0) {
+            const student = availableStudents.find(s => String(s.id) === String(savedDraft.studentId));
+            if (student) {
+                setSelectedStudentName(student.studentName);
+            }
+        }
+    }, [availableStudents, savedDraft?.studentId]);
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Duration (Months)</Label>
-                <Input type="number" {...register('programDuration')} className="h-11 border-slate-300" />
-                {errors.programDuration && <p className="text-sm text-red-500">{errors.programDuration.message}</p>}
-              </div>
+    // Watch for form changes to set dirty state
+    useEffect(() => {
+        const hasData = watchedValues.studentId || watchedValues.university || watchedValues.programName;
+        setIsDirty(!!hasData);
+    }, [watchedValues]);
 
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Start Date</Label>
-                <Input type="date" {...register('startDate')} className="h-11 border-slate-300" />
-                {errors.startDate && <p className="text-sm text-red-500">{errors.startDate.message}</p>}
-              </div>
-            </div>
+    // Warn before leaving if form has data
+    useEffect(() => {
+        const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+            if (isDirty) {
+                e.preventDefault();
+                e.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return e.returnValue;
+            }
+        };
+        window.addEventListener('beforeunload', handleBeforeUnload);
+        return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }, [isDirty]);
 
-            <div className="border-t border-slate-100 pt-6"></div>
+    // Handle student selection - USE String() for comparison
+    const handleStudentSelect = (studentId: string) => {
+        const student = availableStudents.find(s => String(s.id) === studentId);
+        if (student) {
+            setSelectedStudentName(student.studentName);
+            setValue('studentId', studentId);
+            setValue('studentName', student.studentName);
 
-            {/* 2. Fees */}
-            <h3 className="text-lg font-medium text-slate-800">Fee Structure</h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Service Charge</Label>
-                <Input type="number" {...register('serviceCharge')} className="h-11 border-slate-300" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">School Fees</Label>
-                <Input type="number" {...register('schoolFees')} className="h-11 border-slate-300" />
-              </div>
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Hostel Fees</Label>
-                <Input type="number" {...register('hostelFees')} className="h-11 border-slate-300" />
-              </div>
-            </div>
-            <div className="flex justify-between items-center bg-slate-50 p-4 rounded-lg border border-slate-100 mt-2">
-              <span className="text-slate-600 font-medium">Total Fees Calculated</span>
-              <span className="text-xl font-bold text-teal-600">₹{totalFees.toLocaleString()}</span>
-            </div>
+            // Populate physical documents
+            if (student.student_documents && student.student_documents.length > 0) {
+                replace(student.student_documents);
+                setValue('documentTakeoverEnabled', true);
+            } else {
+                replace([]);
+                setValue('documentTakeoverEnabled', false);
+            }
+        }
+    };
 
-            <div className="border-t border-slate-100 pt-6"></div>
+    // Save draft to localStorage
+    const saveDraft = () => {
+        try {
+            localStorage.setItem(DRAFT_KEY, JSON.stringify(watchedValues));
+            toast.success('Draft Saved!', 'You can continue later.');
+        } catch (e) {
+            console.error('Failed to save draft:', e);
+            toast.error('Save Failed', 'Unable to save draft. Please try again.');
+        }
+    };
 
-            {/* 3. Payment & Loan */}
-            <h3 className="text-lg font-medium text-slate-800">Payment & Loan</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Payment Type</Label>
-                <Controller
-                  name="paymentType"
-                  control={control}
-                  render={({ field }) => (
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <SelectTrigger className="w-full h-11 border-slate-300">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="Full">Full Payment</SelectItem>
-                        <SelectItem value="Installment">Installment</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  )}
-                />
-              </div>
+    // Clear draft
+    const clearDraft = () => {
+        localStorage.removeItem(DRAFT_KEY);
+    };
 
-              {paymentType === 'Installment' && (
-                <div className="grid grid-cols-2 gap-4 md:col-span-2 bg-blue-50 p-4 rounded-lg border border-blue-100">
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">No. of Installments</Label>
-                    <Input type="number" {...register('installmentsCount')} onChange={handleInstallmentCountChange} className="h-10 bg-white" />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-sm font-medium text-slate-700">Amount / Installment</Label>
-                    <Input type="number" {...register('installmentAmount')} onChange={handleInstallmentAmountChange} className="h-10 bg-white" />
-                  </div>
-                </div>
-              )}
+    const getCompletionPercentage = () => {
+        let filled = 0;
+        if (watchedValues.studentId) filled++;
+        if (watchedValues.university) filled++;
+        if (watchedValues.programName) filled++;
+        if (watchedValues.startDate) filled++;
+        if (totalFees > 0) filled++;
+        if (watchedValues.documents?.length || fields.length > 0) filled++;
+        return Math.round((filled / 6) * 100);
+    };
 
-              <div className="flex items-center space-x-2 md:col-span-2 pt-2">
-                <Controller
-                  name="loanRequired"
-                  control={control}
-                  render={({ field }) => (
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} id="loanRequired" />
-                  )}
-                />
-                <Label htmlFor="loanRequired" className="font-medium cursor-pointer">Student Requires Loan</Label>
-              </div>
+    const canProceed = () => {
+        switch (currentStep) {
+            case 1: return !!watchedValues.studentId;
+            case 2: return !!watchedValues.university && !!watchedValues.programName && !!watchedValues.startDate;
+            case 3: return true; // Fees are optional
+            case 4: return true; // Documents are optional
+            case 5: return !!watchedValues.paymentMethod; // Payment method is required
+            default: return false;
+        }
+    };
 
-              {loanRequired && (
-                <div className="space-y-2 md:col-span-2 pl-6">
-                  <Label className="text-sm font-medium text-slate-700">Loan Amount Required</Label>
-                  <Input type="number" {...register('loanAmount')} className="h-11 border-slate-300" />
-                </div>
-              )}
-            </div>
+    const handleFormSubmit = (data: EnrollmentFormValues) => {
+        const payload = {
+            student: data.studentId,
+            studentName: data.studentName,
+            university: data.university,
+            programName: data.programName,
+            startDate: data.startDate,
+            durationMonths: data.programDuration,
+            serviceCharge: data.serviceCharge,
+            schoolFees: data.schoolFees,
+            hostelFees: data.hostelFees,
+            totalFees: totalFees,
+            paymentType: data.paymentType,
+            installmentsCount: data.installmentsCount,
+            installmentAmount: data.installmentAmount,
+            // Payment Method Details
+            paymentMethod: data.paymentMethod,
+            paymentDate: data.paymentDate,
+            paymentReference: data.paymentReference,
+            cardLast4: data.cardLast4,
+            cardNetwork: data.cardNetwork,
+            upiId: data.upiId,
+            bankName: data.bankName,
+            chequeNumber: data.chequeNumber,
+            documents: data.documents,
+            student_documents: data.student_documents,
+        };
+        clearDraft(); // Clear draft on successful submit
+        onSubmit(payload);
+    };
 
-            <div className="border-t border-slate-100 pt-6"></div>
+    const handleBack = () => {
+        if (isDirty) {
+            setShowLeaveModal(true);
+        } else {
+            window.history.back();
+        }
+    };
 
-            {/* 4. Documents */}
-            <h3 className="text-lg font-medium text-slate-800">Documents</h3>
-            <DocumentUpload
-              registrationId={studentId}
-              initialDocuments={documents}
-              onDocumentsChange={(docs: any[]) => setValue('documents', docs)}
-            />
+    const handleLeaveWithoutSaving = () => {
+        setShowLeaveModal(false);
+        clearDraft();
+        window.history.back();
+    };
 
-            <div className="pt-4">
-              <DocumentTakeover control={control} register={register} setValue={setValue} />
-            </div>
+    const handleSaveAndLeave = () => {
+        saveDraft();
+        setShowLeaveModal(false);
+        window.history.back();
+    };
 
-            {studentId && (
-              <div className="mt-4">
-                <ExistingDocumentsList studentId={studentId} />
-              </div>
-            )}
-
-            {/* Submit Action */}
-            <div className="flex justify-end pt-6 border-t border-slate-100">
-              <Button
-                type="submit"
-                disabled={isLoading || isUploading}
-                className="bg-teal-600 hover:bg-teal-700 text-white min-w-[200px] h-11 text-base shadow-sm"
-              >
-                {isUploading ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</>
-                ) : isLoading ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</>
-                ) : (
-                  'Create Enrollment'
-                )}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </form>
-
-      {/* Add New University Modal (Exact Copy from UniversitiesPage) */}
-      <Dialog.Root open={isAddUniOpen} onOpenChange={(open) => {
-        setIsAddUniOpen(open);
-        if (!open) setActiveTab('basic');
-      }}>
-        <Dialog.Portal>
-          <Dialog.Overlay className="fixed inset-0 bg-black/50 z-50" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] w-[95vw] max-w-[900px] h-[85vh] translate-x-[-50%] translate-y-[-50%] rounded-xl bg-white shadow-xl z-50 border flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200 shrink-0">
-              <div>
-                <Dialog.Title className="text-xl font-bold text-slate-900">Add New University</Dialog.Title>
-                <p className="text-sm text-slate-500 mt-0.5">Fill in the details below to add a university</p>
-              </div>
-              <Dialog.Close asChild>
-                <button className="p-2 rounded-lg hover:bg-slate-100 transition-colors">
-                  <svg width="20" height="20" viewBox="0 0 15 15" fill="none"><path d="M11.7816 4.03157C12.0062 3.80702 12.0062 3.44295 11.7816 3.2184C11.5571 2.99385 11.193 2.99385 10.9685 3.2184L7.50005 6.68682L4.03164 3.2184C3.80708 2.99385 3.44301 2.99385 3.21846 3.2184C2.99391 3.44295 2.99391 3.80702 3.21846 4.03157L6.68688 7.49999L3.21846 10.9684C2.99391 11.193 2.99391 11.557 3.21846 11.7816C3.44301 12.0061 3.80708 12.0061 4.03164 11.7816L7.50005 8.31316L10.9685 11.7816C11.193 12.0061 11.5571 12.0061 11.7816 11.7816C12.0062 11.557 12.0062 11.193 11.7816 10.9684L8.31322 7.49999L11.7816 4.03157Z" fill="currentColor" fillRule="evenodd" clipRule="evenodd"></path></svg>
-                </button>
-              </Dialog.Close>
-            </div>
-
-            <div className="flex border-b border-slate-200 px-6 shrink-0">
-              <button
-                onClick={() => setActiveTab('basic')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'basic' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Basic Info
-              </button>
-              <button
-                onClick={() => setActiveTab('programs')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'programs' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Programs & Fees
-              </button>
-              <button
-                onClick={() => setActiveTab('requirements')}
-                className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors ${activeTab === 'requirements' ? 'border-teal-600 text-teal-600' : 'border-transparent text-slate-600 hover:text-slate-900'
-                  }`}
-              >
-                Requirements
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-6 py-5 bg-slate-50">
-              {activeTab === 'basic' && (
-                <div className="space-y-4 max-w-4xl">
-                  <div className="border border-slate-200 rounded-lg p-5 bg-white shadow-sm">
-                    <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                      <div className="w-1 h-5 bg-teal-600 rounded-full"></div>
-                      Primary Information
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700 flex items-center gap-1">
-                          University Name <span className="text-red-500">*</span>
-                        </Label>
-                        <Input value={newUni.name} onChange={e => setNewUni({ ...newUni, name: e.target.value })} placeholder="Enter university name" className="h-10 border-slate-300" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700 flex items-center gap-1">
-                          Country <span className="text-red-500">*</span>
-                        </Label>
-                        <Select value={newUni.country} onValueChange={(val) => setNewUni({ ...newUni, country: val })}>
-                          <SelectTrigger className="h-10 border-slate-300">
-                            <SelectValue placeholder="Select country" />
-                          </SelectTrigger>
-                          <SelectContent className="max-h-60">
-                            {/* Countries list shortened for brevity, keep primary ones */}
-                            {['Russia', 'Czech Republic', 'Poland', 'Ukraine', 'Philippines', 'China', 'Bangladesh', 'Nepal', 'Kyrgyzstan', 'Kazakhstan', 'USA', 'UK', 'Canada', 'Australia', 'Germany', 'India'].map(c => (
-                              <SelectItem key={c} value={c}>{c}</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">City</Label>
-                        <Input value={newUni.city} onChange={e => setNewUni({ ...newUni, city: e.target.value })} placeholder="Enter city name" className="h-10 border-slate-300" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">Application Deadline</Label>
-                        <Input type="date" value={newUni.deadline} onChange={e => setNewUni({ ...newUni, deadline: e.target.value })} className="h-10 border-slate-300" />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="border border-slate-200 rounded-lg p-5 bg-white shadow-sm">
-                    <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-                      <div className="w-1 h-5 bg-yellow-600 rounded-full"></div>
-                      Rankings & Rating
-                    </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">World Ranking</Label>
-                        <div className="relative">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-medium">#</span>
-                          <Input type="number" value={newUni.ranking} onChange={e => setNewUni({ ...newUni, ranking: e.target.value })} placeholder="150" className="h-10 border-slate-300 pl-8" />
+    return (
+        <>
+            <Card className="bg-white border border-slate-200 shadow-sm overflow-hidden">
+                {/* Header */}
+                <div className="bg-slate-50 border-b border-slate-200 px-6 py-4">
+                    <div className="flex items-center justify-between">
+                        <button onClick={handleBack} className="flex items-center gap-2 text-slate-500 hover:text-slate-800 text-sm font-medium">
+                            <ArrowLeft size={16} /> Back
+                        </button>
+                        <div className="flex items-center gap-4">
+                            <Button type="button" variant="outline" size="sm" onClick={saveDraft} className="h-8 text-xs border-slate-300">
+                                <Save size={14} className="mr-1" /> Save Draft
+                            </Button>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-slate-500 uppercase font-medium">Progress</span>
+                                <div className="w-28 h-2 bg-slate-200 rounded-full overflow-hidden">
+                                    <div className="h-full bg-teal-500 transition-all" style={{ width: `${getCompletionPercentage()}%` }} />
+                                </div>
+                                <span className="text-xs font-bold text-teal-600">{getCompletionPercentage()}%</span>
+                            </div>
                         </div>
-                        <p className="text-xs text-slate-500">Global ranking position</p>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-sm font-medium text-slate-700">Overall Rating</Label>
-                        <Select value={newUni.rating} onValueChange={(val) => setNewUni({ ...newUni, rating: val })}>
-                          <SelectTrigger className="h-10 border-slate-300">
-                            <SelectValue placeholder="Select rating" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="5.0">⭐⭐⭐⭐⭐ 5.0 - Excellent</SelectItem>
-                            <SelectItem value="4.8">⭐⭐⭐⭐⭐ 4.8 - Outstanding</SelectItem>
-                            <SelectItem value="4.5">⭐⭐⭐⭐ 4.5 - Very Good</SelectItem>
-                            <SelectItem value="4.3">⭐⭐⭐⭐ 4.3 - Very Good</SelectItem>
-                            <SelectItem value="4.0">⭐⭐⭐⭐ 4.0 - Good</SelectItem>
-                            <SelectItem value="3.8">⭐⭐⭐ 3.8 - Good</SelectItem>
-                            <SelectItem value="3.5">⭐⭐⭐ 3.5 - Average</SelectItem>
-                            <SelectItem value="3.0">⭐⭐⭐ 3.0 - Average</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <p className="text-xs text-slate-500">Student satisfaction rating</p>
-                      </div>
                     </div>
-                  </div>
                 </div>
-              )}
 
-              {activeTab === 'programs' && (
-                <div className="space-y-4 max-w-4xl">
-                  <div className="border border-slate-200 rounded-lg p-5 bg-white shadow-sm">
-                    <Label className="text-sm font-semibold text-slate-700 mb-3 block">Programs Offered</Label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2 max-h-64 overflow-y-auto p-3 bg-slate-50 rounded border border-slate-200">
-                      {['MBBS', 'MD', 'BDS', 'BAMS', 'BHMS', 'Engineering', 'B.Tech', 'MBA', 'BBA', 'Law', 'LLB', 'Nursing', 'Pharmacy', 'B.Sc', 'M.Sc', 'Arts', 'Commerce', 'Management'].map((program) => {
-                        const isSelected = newUni.programs.split(',').map(p => p.trim()).includes(program);
-                        return (
-                          <label key={program} className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                const currentPrograms = newUni.programs ? newUni.programs.split(',').map(p => p.trim()).filter(p => p) : [];
-                                if (e.target.checked) {
-                                  setNewUni({ ...newUni, programs: [...currentPrograms, program].join(', ') });
-                                } else {
-                                  setNewUni({ ...newUni, programs: currentPrograms.filter(p => p !== program).join(', ') });
-                                }
-                              }}
-                              className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
-                            />
-                            <span className="text-sm text-slate-700">{program}</span>
-                          </label>
-                        );
-                      })}
+                {/* Step Indicators */}
+                <div className="px-6 py-4 bg-white border-b border-slate-100">
+                    <div className="flex justify-center items-center gap-0">
+                        {STEPS.map((step, idx) => (
+                            <div key={step.id} className="flex items-center">
+                                <div className="flex flex-col items-center">
+                                    <div className={cn(
+                                        "w-10 h-10 rounded-full flex items-center justify-center text-sm font-medium transition-all",
+                                        currentStep === step.id ? "bg-teal-600 text-white"
+                                            : currentStep > step.id ? "bg-teal-100 text-teal-600"
+                                                : "bg-slate-100 text-slate-400"
+                                    )}>
+                                        {currentStep > step.id ? <Check size={18} /> : <step.icon size={18} />}
+                                    </div>
+                                    <span className={cn("text-[10px] mt-1.5 font-medium uppercase tracking-wide", currentStep === step.id ? "text-teal-600" : "text-slate-400")}>{step.name}</span>
+                                </div>
+                                {idx < STEPS.length - 1 && (
+                                    <div className={cn("w-10 h-0.5 mx-2", currentStep > step.id ? "bg-teal-500" : "bg-slate-200")} />
+                                )}
+                            </div>
+                        ))}
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">Select all programs that apply</p>
-                  </div>
-
-                  <div className="border border-slate-200 rounded-lg p-5 bg-white shadow-sm">
-                    <Label className="text-sm font-semibold text-slate-700 mb-3 block">Annual Tuition Fee (₹)</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs text-slate-500">Minimum Amount</Label>
-                        <Input type="number" value={newUni.tuitionMin} onChange={e => setNewUni({ ...newUni, tuitionMin: e.target.value })} placeholder="e.g. 500000" className="h-10 border-slate-300" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs text-slate-500">Maximum Amount</Label>
-                        <Input type="number" value={newUni.tuitionMax} onChange={e => setNewUni({ ...newUni, tuitionMax: e.target.value })} placeholder="e.g. 800000" className="h-10 border-slate-300" />
-                      </div>
-                    </div>
-                  </div>
                 </div>
-              )}
 
-              {activeTab === 'requirements' && (
-                <div className="max-w-4xl">
-                  <div className="border border-slate-200 rounded-lg p-5 bg-white shadow-sm">
-                    <Label className="text-sm font-semibold text-slate-700 mb-3 block">Eligibility Requirements</Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 p-3 bg-slate-50 rounded border border-slate-200">
-                      {['NEET Qualified', '60% in PCB', '50% in PCB', '12th Pass', 'IELTS 6.0+', 'TOEFL 80+', 'Age 17-25', 'English Proficiency', 'Medical Fitness', 'Valid Passport'].map((req) => {
-                        const isSelected = newUni.requirements.split(',').map(r => r.trim()).includes(req);
-                        return (
-                          <label key={req} className="flex items-center gap-2 cursor-pointer hover:bg-white p-2 rounded transition-colors">
-                            <input
-                              type="checkbox"
-                              checked={isSelected}
-                              onChange={(e) => {
-                                const currentReqs = newUni.requirements ? newUni.requirements.split(',').map(r => r.trim()).filter(r => r) : [];
-                                if (e.target.checked) {
-                                  setNewUni({ ...newUni, requirements: [...currentReqs, req].join(', ') });
-                                } else {
-                                  setNewUni({ ...newUni, requirements: currentReqs.filter(r => r !== req).join(', ') });
-                                }
-                              }}
-                              className="w-4 h-4 text-teal-600 border-slate-300 rounded focus:ring-teal-500"
-                            />
-                            <span className="text-sm text-slate-700">{req}</span>
-                          </label>
-                        );
-                      })}
+                {/* Form Content */}
+                <form onSubmit={handleSubmit(handleFormSubmit)}>
+                    <div className="px-6 py-6 min-h-[340px]">
+
+                        {/* Step 1: Student Selection */}
+                        {currentStep === 1 && (
+                            <div className="max-w-lg mx-auto space-y-5">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">Select Student</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Choose from registered students</p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Student</Label>
+                                    <Select value={watchedValues.studentId} onValueChange={handleStudentSelect}>
+                                        <SelectTrigger className="h-11 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500">
+                                            <span className={selectedStudentName ? "text-slate-900" : "text-slate-400"}>
+                                                {selectedStudentName || "Select a student..."}
+                                            </span>
+                                        </SelectTrigger>
+                                        <SelectContent className="max-h-60">
+                                            {availableStudents.length === 0 ? (
+                                                <div className="p-3 text-sm text-slate-400 text-center">No students available</div>
+                                            ) : (
+                                                availableStudents.map((s) => (
+                                                    <SelectItem key={s.id} value={String(s.id)}>
+                                                        <div className="flex items-center gap-3">
+                                                            <div className="w-7 h-7 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center text-xs font-bold">
+                                                                {s.studentName?.charAt(0)?.toUpperCase()}
+                                                            </div>
+                                                            <div>
+                                                                <p className="font-medium text-slate-800">{s.studentName}</p>
+                                                                <p className="text-[10px] text-slate-400">{s.mobile} • {s.email}</p>
+                                                            </div>
+                                                        </div>
+                                                    </SelectItem>
+                                                ))
+                                            )}
+                                        </SelectContent>
+                                    </Select>
+                                    {errors.studentId && <p className="text-xs text-red-500">{errors.studentId.message}</p>}
+                                </div>
+                                {selectedStudentName && (
+                                    <div className="p-4 bg-purple-50 border border-purple-100 rounded-lg">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-10 h-10 rounded-full bg-purple-100 text-purple-600 flex items-center justify-center font-bold">
+                                                {selectedStudentName.charAt(0)?.toUpperCase()}
+                                            </div>
+                                            <div>
+                                                <p className="font-semibold text-slate-800">{selectedStudentName}</p>
+                                                <p className="text-xs text-slate-500">Selected for enrollment</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* Step 2: Program Details */}
+                        {currentStep === 2 && (
+                            <div className="max-w-lg mx-auto space-y-5">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">Program Details</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Enter course and institution info</p>
+                                </div>
+                                <div className="grid grid-cols-1 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">University</Label>
+                                        <Controller
+                                            name="university"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-11 bg-white border-slate-200 focus:border-teal-500">
+                                                        <SelectValue placeholder="Select university..." />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="max-h-60">
+                                                        {universities && universities.length > 0 ? (
+                                                            universities.map((u: any) => (
+                                                                <SelectItem key={u.id} value={u.name}>{u.name} ({u.country})</SelectItem>
+                                                            ))
+                                                        ) : (
+                                                            <div className="p-3 text-sm text-slate-400 text-center">No universities found.</div>
+                                                        )}
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                        {errors.university && <p className="text-xs text-red-500">{errors.university.message}</p>}
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Program / Course</Label>
+                                        <Input {...register('programName')} placeholder="e.g. MBBS" className="h-11 bg-white border-slate-200 focus:border-teal-500" />
+                                        {errors.programName && <p className="text-xs text-red-500">{errors.programName.message}</p>}
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Duration (Months)</Label>
+                                            <Input type="number" {...register('programDuration')} placeholder="12" className="h-11 bg-white border-slate-200 focus:border-teal-500" />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Start Date</Label>
+                                            <Input type="date" {...register('startDate')} className="h-11 bg-white border-slate-200 focus:border-teal-500" />
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 3: Fee Structure */}
+                        {currentStep === 3 && (
+                            <div className="max-w-lg mx-auto space-y-5">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">Fee Structure</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Enter fee breakdown</p>
+                                </div>
+                                <div className="grid grid-cols-3 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Service Charge</Label>
+                                        <Input type="number" {...register('serviceCharge')} placeholder="0" className="h-11 bg-white border-slate-200 focus:border-teal-500" readOnly={false} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">School Fees</Label>
+                                        <Input type="number" {...register('schoolFees')} placeholder="0" className="h-11 bg-white border-slate-200 focus:border-teal-500" readOnly={false} />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Hostel Fees</Label>
+                                        <Input type="number" {...register('hostelFees')} placeholder="0" className="h-11 bg-white border-slate-200 focus:border-teal-500" readOnly={false} />
+                                    </div>
+                                </div>
+                                <div className="p-4 bg-green-50 border border-green-100 rounded-lg flex justify-between items-center">
+                                    <span className="text-sm text-green-700 font-medium">Total Fees</span>
+                                    <span className="text-2xl font-bold text-green-700">₹{totalFees.toLocaleString()}</span>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Step 4: Documents */}
+                        {currentStep === 4 && (
+                            <div className="max-w-3xl mx-auto space-y-6">
+                                {/* Header */}
+                                <div className="text-center">
+                                    <h3 className="text-xl font-semibold text-slate-800">Documents</h3>
+                                    <p className="text-sm text-slate-500 mt-1">Upload or track documents</p>
+                                </div>
+
+                                {/* Digital Uploads Section */}
+                                <Card className="overflow-hidden border-slate-200">
+                                    <div className="bg-gradient-to-r from-teal-50 to-cyan-50 px-5 py-3 border-b border-slate-200">
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center">
+                                                <FileText className="w-4 h-4 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-semibold text-slate-800">Digital Uploads</h4>
+                                                <p className="text-xs text-slate-500">Upload digital copies of documents</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="p-5">
+                                        <DocumentUpload
+                                            registrationId={watchedValues.studentId || undefined}
+                                            studentName={selectedStudentName || ''}
+                                            initialDocuments={availableStudents.find(s => String(s.id) === String(watchedValues.studentId))?.documents || []}
+                                            onDocumentsChange={(docs) => setValue('documents', docs)}
+                                            readOnly={false}
+                                        />
+                                    </div>
+                                </Card>
+
+                                {/* Physical Documents Section */}
+                                <Card className="overflow-hidden border-slate-200">
+                                    <div className="bg-gradient-to-r from-purple-50 to-pink-50 px-5 py-3 border-b border-slate-200">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <div className="w-8 h-8 rounded-lg bg-purple-600 flex items-center justify-center">
+                                                    <FileText className="w-4 h-4 text-white" />
+                                                </div>
+                                                <div>
+                                                    <h4 className="text-sm font-semibold text-slate-800">Physical Documents</h4>
+                                                    <p className="text-xs text-slate-500">Track physical document submissions</p>
+                                                </div>
+                                            </div>
+                                            <Controller
+                                                control={control}
+                                                name="documentTakeoverEnabled"
+                                                render={({ field }) => (
+                                                    <div className="flex items-center gap-2">
+                                                        <Checkbox
+                                                            id="physDocs"
+                                                            checked={field.value}
+                                                            onCheckedChange={(checked) => {
+                                                                field.onChange(checked);
+                                                                if (checked && fields.length === 0) append({ name: '', document_number: '', remarks: '' });
+                                                            }}
+                                                            className="data-[state=checked]:bg-purple-600 data-[state=checked]:border-purple-600"
+                                                        />
+                                                        <Label htmlFor="physDocs" className="text-sm font-medium text-slate-700 cursor-pointer">Enable</Label>
+                                                    </div>
+                                                )}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {watchedValues.documentTakeoverEnabled && (
+                                        <div className="p-5 space-y-3">
+                                            {fields.length === 0 ? (
+                                                <div className="text-center py-8">
+                                                    <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mx-auto mb-3">
+                                                        <FileText className="w-8 h-8 text-slate-400" />
+                                                    </div>
+                                                    <p className="text-sm text-slate-500 mb-3">No physical documents tracked yet</p>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => append({ name: '', document_number: '', remarks: '' })}
+                                                        className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                                                    >
+                                                        <Plus size={16} className="mr-2" /> Add First Document
+                                                    </Button>
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <div className="grid gap-3">
+                                                        {fields.map((field, index) => (
+                                                            <div key={field.id} className="bg-slate-50 rounded-lg p-4 border border-slate-200 hover:border-purple-300 transition-colors">
+                                                                <div className="grid grid-cols-12 gap-3 items-start">
+                                                                    <div className="col-span-4">
+                                                                        <Label className="text-xs text-slate-600 mb-1.5 block">Document Name</Label>
+                                                                        <Input
+                                                                            list={`docs-${index}`}
+                                                                            {...register(`student_documents.${index}.name`)}
+                                                                            placeholder="e.g. Class 10 Marksheet"
+                                                                            className="h-9 bg-white border-slate-300 text-sm"
+                                                                        />
+                                                                        <datalist id={`docs-${index}`}>
+                                                                            {COMMON_DOCUMENTS.map(d => <option key={d} value={d} />)}
+                                                                        </datalist>
+                                                                    </div>
+                                                                    <div className="col-span-3">
+                                                                        <Label className="text-xs text-slate-600 mb-1.5 block">Document Number</Label>
+                                                                        <Input
+                                                                            {...register(`student_documents.${index}.document_number`)}
+                                                                            placeholder="e.g. 123456"
+                                                                            className="h-9 bg-white border-slate-300 text-sm"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="col-span-4">
+                                                                        <Label className="text-xs text-slate-600 mb-1.5 block">Remarks</Label>
+                                                                        <Input
+                                                                            {...register(`student_documents.${index}.remarks`)}
+                                                                            placeholder="Optional notes"
+                                                                            className="h-9 bg-white border-slate-300 text-sm"
+                                                                        />
+                                                                    </div>
+                                                                    <div className="col-span-1 flex items-end justify-center">
+                                                                        <Button
+                                                                            type="button"
+                                                                            variant="ghost"
+                                                                            size="icon"
+                                                                            onClick={() => remove(index)}
+                                                                            className="h-9 w-9 text-slate-400 hover:text-red-600 hover:bg-red-50"
+                                                                        >
+                                                                            <Trash2 size={16} />
+                                                                        </Button>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                    <Button
+                                                        type="button"
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => append({ name: '', document_number: '', remarks: '' })}
+                                                        className="w-full text-purple-600 border-purple-200 hover:bg-purple-50 mt-2"
+                                                    >
+                                                        <Plus size={16} className="mr-2" /> Add Another Document
+                                                    </Button>
+                                                </>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {!watchedValues.documentTakeoverEnabled && (
+                                        <div className="px-5 pb-5 pt-2">
+                                            <div className="bg-slate-50 rounded-lg p-4 text-center border border-dashed border-slate-300">
+                                                <p className="text-sm text-slate-500">Enable physical document tracking to add documents</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </Card>
+                            </div>
+                        )}
+
+                        {/* Step 5: Payment */}
+                        {currentStep === 5 && (
+                            <div className="max-w-2xl mx-auto space-y-5">
+                                <div>
+                                    <h3 className="text-lg font-semibold text-slate-800">Payment Details</h3>
+                                    <p className="text-xs text-slate-500 mt-0.5">Enter payment method and transaction details</p>
+                                </div>
+
+                                {/* Payment Method */}
+                                <div className="space-y-2">
+                                    <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Payment Method *</Label>
+                                    <Controller
+                                        name="paymentMethod"
+                                        control={control}
+                                        render={({ field }) => (
+                                            <Select value={field.value} onValueChange={field.onChange}>
+                                                <SelectTrigger className="h-11 bg-white border-slate-200 focus:border-teal-500">
+                                                    <SelectValue placeholder="Select payment method" />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Cash">Cash</SelectItem>
+                                                    <SelectItem value="Card">Card</SelectItem>
+                                                    <SelectItem value="UPI">UPI</SelectItem>
+                                                    <SelectItem value="Bank Transfer">Bank Transfer</SelectItem>
+                                                    <SelectItem value="Cheque">Cheque</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+                                    />
+                                    {errors.paymentMethod && <p className="text-xs text-red-500">{errors.paymentMethod.message}</p>}
+                                </div>
+
+                                {/* Payment Date */}
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Payment Date</Label>
+                                        <Input
+                                            type="date"
+                                            {...register('paymentDate')}
+                                            className="h-11 bg-white border-slate-200 focus:border-teal-500"
+                                            defaultValue={new Date().toISOString().split('T')[0]}
+                                        />
+                                    </div>
+
+                                    {/* Payment Type */}
+                                    <div className="space-y-2">
+                                        <Label className="text-xs text-slate-600 font-medium uppercase tracking-wide">Payment Type</Label>
+                                        <Controller
+                                            name="paymentType"
+                                            control={control}
+                                            render={({ field }) => (
+                                                <Select value={field.value} onValueChange={field.onChange}>
+                                                    <SelectTrigger className="h-11 bg-white border-slate-200 focus:border-teal-500">
+                                                        <SelectValue placeholder="Select type" />
+                                                    </SelectTrigger>
+                                                    <SelectContent>
+                                                        <SelectItem value="Full">Full Payment</SelectItem>
+                                                        <SelectItem value="Partial">Partial Payment</SelectItem>
+                                                        <SelectItem value="Installment">Installment</SelectItem>
+                                                        <SelectItem value="Advance">Advance Payment</SelectItem>
+                                                        <SelectItem value="One-time">One-time Payment</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            )}
+                                        />
+                                    </div>
+                                </div>
+                                {errors.paymentMethod && <p className="text-xs text-red-500 -mt-3">{errors.paymentMethod.message}</p>}
+                                {!watchedValues.paymentMethod && (
+                                    <div className="bg-amber-50 border border-amber-200 rounded-lg p-3 flex items-start gap-2">
+                                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5" />
+                                        <p className="text-xs text-amber-700">Please select a payment method to continue</p>
+                                    </div>
+                                )}
+
+                                {/* Conditional Fields Based on Payment Method */}
+                                {watchedValues.paymentMethod === 'Card' && (
+                                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-4">
+                                        <h4 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+                                            <CreditCard size={16} /> Card Details
+                                        </h4>
+                                        <div className="grid grid-cols-3 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Reference / Receipt No.</Label>
+                                                <Input {...register('paymentReference')} placeholder="e.g. REC-001" className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Last 4 Digits</Label>
+                                                <Input {...register('cardLast4')} placeholder="XXXX" maxLength={4} className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Card Network</Label>
+                                                <Controller
+                                                    name="cardNetwork"
+                                                    control={control}
+                                                    render={({ field }) => (
+                                                        <Select value={field.value} onValueChange={field.onChange}>
+                                                            <SelectTrigger className="h-10 bg-white border-slate-200">
+                                                                <SelectValue placeholder="Select" />
+                                                            </SelectTrigger>
+                                                            <SelectContent>
+                                                                <SelectItem value="Visa">Visa</SelectItem>
+                                                                <SelectItem value="Mastercard">Mastercard</SelectItem>
+                                                                <SelectItem value="RuPay">RuPay</SelectItem>
+                                                                <SelectItem value="AmEx">AmEx</SelectItem>
+                                                            </SelectContent>
+                                                        </Select>
+                                                    )}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {watchedValues.paymentMethod === 'UPI' && (
+                                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-4">
+                                        <h4 className="text-sm font-medium text-slate-700">UPI Details</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Transaction ID</Label>
+                                                <Input {...register('paymentReference')} placeholder="e.g. 123456789012" className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">UPI ID</Label>
+                                                <Input {...register('upiId')} placeholder="e.g. user@upi" className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {watchedValues.paymentMethod === 'Bank Transfer' && (
+                                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-4">
+                                        <h4 className="text-sm font-medium text-slate-700">Bank Transfer Details</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Reference Number</Label>
+                                                <Input {...register('paymentReference')} placeholder="e.g. REF123456" className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Bank Name</Label>
+                                                <Input {...register('bankName')} placeholder="e.g. HDFC Bank" className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {watchedValues.paymentMethod === 'Cheque' && (
+                                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg space-y-4">
+                                        <h4 className="text-sm font-medium text-slate-700">Cheque Details</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Cheque Number</Label>
+                                                <Input {...register('chequeNumber')} placeholder="e.g. 123456" className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-slate-600">Bank Name</Label>
+                                                <Input {...register('bankName')} placeholder="e.g. HDFC Bank" className="h-10 bg-white border-slate-200" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {watchedValues.paymentMethod === 'Cash' && (
+                                    <div className="p-4 bg-slate-50 border border-slate-200 rounded-lg">
+                                        <div className="space-y-2">
+                                            <Label className="text-xs text-slate-600">Reference / Receipt No. (Optional)</Label>
+                                            <Input {...register('paymentReference')} placeholder="e.g. CASH-001" className="h-10 bg-white border-slate-200" />
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Installment Details */}
+                                {watchedValues.paymentType === 'Installment' && (
+                                    <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg space-y-4">
+                                        <h4 className="text-sm font-medium text-amber-800">Installment Plan</h4>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-amber-700">Number of Installments</Label>
+                                                <Input type="number" {...register('installmentsCount')} placeholder="4" className="h-10 bg-white border-amber-200" />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-amber-700">Amount per Installment</Label>
+                                                <Input type="number" {...register('installmentAmount')} placeholder="0" className="h-10 bg-white border-amber-200" />
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                     </div>
-                    <p className="text-xs text-slate-500 mt-2">Select all eligibility criteria that apply</p>
-                  </div>
-                </div>
-              )}
-            </div>
 
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200 bg-slate-50 shrink-0">
-              <div className="text-sm text-slate-600">
-                <span className="text-red-500">*</span> Required fields
-              </div>
-              <div className="flex gap-3">
-                <Button variant="outline" onClick={() => setIsAddUniOpen(false)} className="h-10">Cancel</Button>
-                <Button onClick={handleCreateUni} disabled={createUniMutation.isPending || !newUni.name || !newUni.country} className="bg-teal-600 hover:bg-teal-700 h-10 min-w-32">
-                  {createUniMutation.isPending ? 'Creating...' : 'Create University'}
-                </Button>
-              </div>
-            </div>
-          </Dialog.Content>
-        </Dialog.Portal>
-      </Dialog.Root>
+                    {/* Footer */}
+                    <div className="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                        <Button type="button" variant="outline" onClick={() => currentStep > 1 && setCurrentStep(s => s - 1)} disabled={currentStep === 1} className="h-10 px-5 border-slate-200 text-slate-600">
+                            <ArrowLeft size={16} className="mr-2" /> Previous
+                        </Button>
 
-    </div>
-  );
+                        {currentStep < 5 ? (
+                            <Button type="button" onClick={() => canProceed() && setCurrentStep(s => s + 1)} disabled={!canProceed()} className="h-10 px-6 bg-teal-600 hover:bg-teal-700 text-white">
+                                Continue <ArrowRight size={16} className="ml-2" />
+                            </Button>
+                        ) : (
+                            <Button
+                                type="submit"
+                                disabled={isLoading || !canProceed()}
+                                className="h-10 px-6 bg-teal-600 hover:bg-teal-700 text-white min-w-[140px] disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                {isLoading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Creating...</> : 'Create Enrollment'}
+                            </Button>
+                        )}
+                    </div>
+                </form>
+            </Card >
+
+            {/* Leave Confirmation Modal */}
+            < Dialog open={showLeaveModal} onOpenChange={setShowLeaveModal} >
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <div className="flex items-center gap-3 mb-2">
+                            <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center">
+                                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                            </div>
+                            <DialogTitle className="text-lg font-semibold text-slate-800">Unsaved Changes</DialogTitle>
+                        </div>
+                        <DialogDescription className="text-slate-500">
+                            You have unsaved enrollment data. Would you like to save it as a draft before leaving?
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2 mt-4">
+                        <Button variant="outline" onClick={() => setShowLeaveModal(false)} className="flex-1 border-slate-200">
+                            Cancel
+                        </Button>
+                        <Button variant="outline" onClick={handleLeaveWithoutSaving} className="flex-1 border-red-200 text-red-600 hover:bg-red-50">
+                            Discard & Leave
+                        </Button>
+                        <Button onClick={handleSaveAndLeave} className="flex-1 bg-teal-600 hover:bg-teal-700 text-white">
+                            <Save size={16} className="mr-2" /> Save Draft & Leave
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog >
+        </>
+    );
 }

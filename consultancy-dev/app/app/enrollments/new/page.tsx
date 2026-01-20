@@ -4,7 +4,6 @@ import { useRouter } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { EnrollmentWizard } from '../components/EnrollmentWizard';
-import { BackButton } from '@/components/ui/back-button';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -19,7 +18,7 @@ export default function NewEnrollmentPage() {
 
   const mutation = useMutation({
     mutationFn: apiClient.enrollments.create,
-    onSuccess: (data, variables) => {
+    onSuccess: (data: any, variables) => {
       queryClient.invalidateQueries({ queryKey: ['enrollments'] });
       // Backend returns snake_case usually
       setNewEnrollNo(data.enrollment_no || data.enrollmentNo || 'SUCCESS');
@@ -49,6 +48,46 @@ export default function NewEnrollmentPage() {
     const dateStr = new Date().toLocaleDateString();
     const enrollNo = newEnrollNo || 'PENDING';
 
+    // Payment method details
+    const renderPaymentMethodDetails = () => {
+      if (!receiptData.paymentMethod) return '';
+
+      let details = '';
+      switch (receiptData.paymentMethod) {
+        case 'Card':
+          details = `
+            ${receiptData.paymentReference ? `<div style="margin-bottom: 10px;"><span class="label">Reference:</span> ${receiptData.paymentReference}</div>` : ''}
+            ${receiptData.cardLast4 ? `<div style="margin-bottom: 10px;"><span class="label">Card (Last 4):</span> **** ${receiptData.cardLast4}</div>` : ''}
+            ${receiptData.cardNetwork ? `<div><span class="label">Network:</span> ${receiptData.cardNetwork}</div>` : ''}
+          `;
+          break;
+        case 'UPI':
+          details = `
+            ${receiptData.paymentReference ? `<div style="margin-bottom: 10px;"><span class="label">Transaction ID:</span> ${receiptData.paymentReference}</div>` : ''}
+            ${receiptData.upiId ? `<div><span class="label">UPI ID:</span> ${receiptData.upiId}</div>` : ''}
+          `;
+          break;
+        case 'Bank Transfer':
+          details = `
+            ${receiptData.paymentReference ? `<div style="margin-bottom: 10px;"><span class="label">Reference:</span> ${receiptData.paymentReference}</div>` : ''}
+            ${receiptData.bankName ? `<div><span class="label">Bank:</span> ${receiptData.bankName}</div>` : ''}
+          `;
+          break;
+        case 'Cheque':
+          details = `
+            ${receiptData.chequeNumber ? `<div style="margin-bottom: 10px;"><span class="label">Cheque No:</span> ${receiptData.chequeNumber}</div>` : ''}
+            ${receiptData.bankName ? `<div><span class="label">Bank:</span> ${receiptData.bankName}</div>` : ''}
+          `;
+          break;
+        case 'Cash':
+          details = receiptData.paymentReference
+            ? `<div><span class="label">Receipt No:</span> ${receiptData.paymentReference}</div>`
+            : '';
+          break;
+      }
+      return details;
+    };
+
     const html = `
       <!DOCTYPE html>
       <html>
@@ -72,6 +111,10 @@ export default function NewEnrollmentPage() {
           td { padding: 16px 8px; border-bottom: 1px solid #f5f5f5; }
           .amount-col { text-align: right; }
           .total-row td { border-top: 2px solid #eee; border-bottom: none; padding-top: 20px; font-weight: bold; font-size: 18px; }
+          .info-box { margin-bottom: 30px; padding: 20px; background: #f8fafc; border-radius: 8px; border-left: 4px solid #0d9488; }
+          .info-box-title { font-size: 12px; color: #666; text-transform: uppercase; margin-bottom: 12px; font-weight: 600; }
+          .info-box-content { font-size: 14px; color: #333; line-height: 1.6; }
+          .payment-badge { display: inline-block; background: #dbeafe; color: #1e40af; padding: 4px 10px; border-radius: 4px; font-size: 13px; font-weight: 600; margin-top: 5px; }
           .footer { margin-top: 60px; padding-top: 20px; border-top: 1px solid #eee; text-align: center; color: #999; font-size: 12px; }
           @media print {
             body { padding: 0; }
@@ -139,14 +182,30 @@ export default function NewEnrollmentPage() {
           </tbody>
         </table>
 
-         <div style="margin-bottom: 40px; padding: 20px; background: #f8fafc; border-radius: 8px;">
-            <div class="label">Payment Terms</div>
-            <div class="value" style="margin-top: 5px; font-size: 14px;">
-               ${receiptData.paymentType === 'Installment'
-        ? `Installment Plan: ${receiptData.installmentsCount} payments of ₹${Number(receiptData.installmentAmount).toLocaleString()} approx.`
-        : 'Full Payment Required'}
+        ${receiptData.paymentMethod ? `
+        <div class="info-box">
+          <div class="info-box-title">Payment Details</div>
+          <div class="info-box-content">
+            <div style="margin-bottom: 15px;">
+              <span class="label">Payment Method:</span> 
+              <span class="payment-badge">${receiptData.paymentMethod}</span>
             </div>
-         </div>
+            ${receiptData.paymentDate ? `<div style="margin-bottom: 15px;"><span class="label">Payment Date:</span> ${new Date(receiptData.paymentDate).toLocaleDateString()}</div>` : ''}
+            ${receiptData.paymentType ? `<div style="margin-bottom: 15px;"><span class="label">Payment Type:</span> ${receiptData.paymentType}</div>` : ''}
+            ${renderPaymentMethodDetails()}
+          </div>
+        </div>
+        ` : ''}
+
+        ${receiptData.paymentType === 'Installment' && receiptData.installmentsCount ? `
+        <div class="info-box" style="border-left-color: #f59e0b;">
+          <div class="info-box-title">Installment Plan</div>
+          <div class="info-box-content">
+            <div><span class="label">Number of Installments:</span> ${receiptData.installmentsCount}</div>
+            ${receiptData.installmentAmount ? `<div style="margin-top: 8px;"><span class="label">Amount per Installment:</span> ₹${Number(receiptData.installmentAmount).toLocaleString()}</div>` : ''}
+          </div>
+        </div>
+        ` : ''}
 
         <div class="footer">
           <p>Generated by Kikons Consultancy System<br>For questions, please contact support.</p>
@@ -164,15 +223,7 @@ export default function NewEnrollmentPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-8 px-4 space-y-6">
-      <div className="flex items-center gap-4">
-        <BackButton />
-        <div>
-          <h1 className="text-2xl font-bold text-slate-900">New Enrollment</h1>
-          <p className="text-sm text-slate-500">Create a new student enrollment entry</p>
-        </div>
-      </div>
-
+    <div className="max-w-4xl mx-auto py-6 px-4">
       <EnrollmentWizard
         onSubmit={(data) => mutation.mutate(data as any)}
         isLoading={mutation.isPending}

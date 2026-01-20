@@ -256,7 +256,7 @@ export default function SettingsPage() {
                                                 <Input
                                                     value={companyName}
                                                     onChange={(e) => setCompanyName(e.target.value)}
-                                                    className="h-9 pl-9 text-sm"
+                                                    className="h-9 pl-9 text-sm border-teal-100 focus:border-teal-400 focus:ring-teal-200"
                                                     placeholder="Enter company name"
                                                 />
                                             </div>
@@ -270,7 +270,7 @@ export default function SettingsPage() {
                                                     value={email}
                                                     onChange={(e) => setEmail(e.target.value)}
                                                     type="email"
-                                                    className="h-9 pl-9 text-sm"
+                                                    className="h-9 pl-9 text-sm border-teal-100 focus:border-teal-400 focus:ring-teal-200"
                                                     placeholder="contact@company.com"
                                                 />
                                             </div>
@@ -283,7 +283,7 @@ export default function SettingsPage() {
                                                 <Input
                                                     value={phone}
                                                     onChange={(e) => setPhone(e.target.value)}
-                                                    className="h-9 pl-9 text-sm"
+                                                    className="h-9 pl-9 text-sm border-teal-100 focus:border-teal-400 focus:ring-teal-200"
                                                     placeholder="+91 12345 67890"
                                                 />
                                             </div>
@@ -296,7 +296,7 @@ export default function SettingsPage() {
                                                 <Input
                                                     value={website}
                                                     onChange={(e) => setWebsite(e.target.value)}
-                                                    className="h-9 pl-9 text-sm"
+                                                    className="h-9 pl-9 text-sm border-teal-100 focus:border-teal-400 focus:ring-teal-200"
                                                     placeholder="https://www.company.com"
                                                 />
                                             </div>
@@ -309,7 +309,7 @@ export default function SettingsPage() {
                                                 <textarea
                                                     value={address}
                                                     onChange={(e) => setAddress(e.target.value)}
-                                                    className="w-full min-h-[80px] pl-9 py-2 pr-3 text-sm rounded-md border border-slate-200 focus:border-teal-500 focus:ring-1 focus:ring-teal-500 outline-none resize-none"
+                                                    className="w-full min-h-[80px] pl-9 py-2 pr-3 text-sm rounded-md border border-teal-100 focus:border-teal-400 focus:ring-1 focus:ring-teal-200 outline-none resize-none"
                                                     placeholder="Enter full address"
                                                 />
                                             </div>
@@ -343,8 +343,8 @@ export default function SettingsPage() {
                                                         className={cn(
                                                             "p-2 rounded-lg border text-center transition-all",
                                                             currency === c.value
-                                                                ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500'
-                                                                : 'border-slate-200 hover:border-slate-300'
+                                                                ? 'border-teal-400 bg-teal-50 ring-1 ring-teal-200'
+                                                                : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'
                                                         )}
                                                     >
                                                         <div className="text-lg">{c.flag}</div>
@@ -365,8 +365,8 @@ export default function SettingsPage() {
                                                         className={cn(
                                                             "w-full flex items-center justify-between px-3 py-2 rounded-lg border transition-all text-left",
                                                             timezone === tz.value
-                                                                ? 'border-teal-500 bg-teal-50'
-                                                                : 'border-slate-200 hover:border-slate-300'
+                                                                ? 'border-teal-400 bg-teal-50'
+                                                                : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-2">
@@ -444,8 +444,8 @@ export default function SettingsPage() {
                                                         className={cn(
                                                             "p-3 rounded-lg border text-left transition-all",
                                                             theme === t.id
-                                                                ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500'
-                                                                : 'border-slate-200 hover:border-slate-300'
+                                                                ? 'border-teal-400 bg-teal-50 ring-1 ring-teal-200'
+                                                                : 'border-slate-100 bg-slate-50/50 hover:border-slate-200'
                                                         )}
                                                     >
                                                         <div className="flex items-center gap-2 mb-1">

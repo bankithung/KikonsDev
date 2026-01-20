@@ -31,7 +31,6 @@ interface StudentRow {
 export default function StudentsPage() {
     const router = useRouter();
     const [searchTerm, setSearchTerm] = useState('');
-    const [isFilterOpen, setIsFilterOpen] = useState(false);
 
     // Filter States
     const [filterStage, setFilterStage] = useState('all');
@@ -167,16 +166,15 @@ export default function StudentsPage() {
 
     return (
         <div className="space-y-2">
-            {/* Filters Button */}
-            <div className="flex justify-end">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-xs"
-                    onClick={() => setIsFilterOpen(!isFilterOpen)}
-                >
-                    <Filter className="mr-1 h-3 w-3" /> Filters
-                </Button>
+            {/* Search Bar */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                    placeholder="Search by name, email, or mobile..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-10 h-11 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500"
+                />
             </div>
 
             {/* Compact Stats */}
@@ -199,92 +197,79 @@ export default function StudentsPage() {
                 </div>
             </div>
 
-            {/* Filters Panel - Compact Design */}
-            {isFilterOpen && (
-                <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
-                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                        <Select value={filterStage} onValueChange={setFilterStage}>
-                            <SelectTrigger className="h-9 text-xs bg-white">
-                                <SelectValue placeholder="Stage" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Stages</SelectItem>
-                                <SelectItem value="Enquiry">Enquiry</SelectItem>
-                                <SelectItem value="Registration">Registration</SelectItem>
-                                <SelectItem value="Enrollment">Enrollment</SelectItem>
-                            </SelectContent>
-                        </Select>
+            {/* Filters Panel */}
+            <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                    <Select value={filterStage} onValueChange={setFilterStage}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="Stage" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Stages</SelectItem>
+                            <SelectItem value="Enquiry">Enquiry</SelectItem>
+                            <SelectItem value="Registration">Registration</SelectItem>
+                            <SelectItem value="Enrollment">Enrollment</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                        <Select value={filterStatus} onValueChange={setFilterStatus}>
-                            <SelectTrigger className="h-9 text-xs bg-white">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                <SelectItem value="New">New</SelectItem>
-                                <SelectItem value="Converted">Converted</SelectItem>
-                                <SelectItem value="Registered">Registered</SelectItem>
-                                <SelectItem value="Pending Payment">Pending Payment</SelectItem>
-                                <SelectItem value="Active">Active</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    <Select value={filterStatus} onValueChange={setFilterStatus}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="New">New</SelectItem>
+                            <SelectItem value="Converted">Converted</SelectItem>
+                            <SelectItem value="Registered">Registered</SelectItem>
+                            <SelectItem value="Pending Payment">Pending Payment</SelectItem>
+                            <SelectItem value="Active">Active</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                        <Select value={filterGender} onValueChange={setFilterGender}>
-                            <SelectTrigger className="h-9 text-xs bg-white">
-                                <SelectValue placeholder="Gender" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Genders</SelectItem>
-                                {GENDERS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                    <Select value={filterGender} onValueChange={setFilterGender}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="Gender" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Genders</SelectItem>
+                            {GENDERS.map((g) => <SelectItem key={g} value={g}>{g}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
 
-                        <Select value={filterState} onValueChange={setFilterState}>
-                            <SelectTrigger className="h-9 text-xs bg-white">
-                                <SelectValue placeholder="State" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-60">
-                                <SelectItem value="all">All States</SelectItem>
-                                {INDIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                    <Select value={filterState} onValueChange={setFilterState}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="State" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                            <SelectItem value="all">All States</SelectItem>
+                            {INDIAN_STATES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
 
-                        <Select value={filterProgram} onValueChange={setFilterProgram}>
-                            <SelectTrigger className="h-9 text-xs bg-white">
-                                <SelectValue placeholder="Program" />
-                            </SelectTrigger>
-                            <SelectContent className="max-h-60">
-                                <SelectItem value="all">All Programs</SelectItem>
-                                {COURSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
+                    <Select value={filterProgram} onValueChange={setFilterProgram}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="Program" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                            <SelectItem value="all">All Programs</SelectItem>
+                            {COURSES.map((c) => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                        </SelectContent>
+                    </Select>
 
-                        <Button
-                            size="sm"
-                            className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
-                            onClick={() => {
-                                setFilterStage('all');
-                                setFilterStatus('all');
-                                setFilterGender('all');
-                                setFilterState('all');
-                                setFilterProgram('all');
-                            }}
-                        >
-                            Clear
-                        </Button>
-                    </div>
+                    <Button
+                        size="sm"
+                        className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
+                        onClick={() => {
+                            setFilterStage('all');
+                            setFilterStatus('all');
+                            setFilterGender('all');
+                            setFilterState('all');
+                            setFilterProgram('all');
+                        }}
+                    >
+                        Clear
+                    </Button>
                 </div>
-            )}
-
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                    placeholder="Search by name, email, or mobile..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-10 h-11 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500"
-                />
             </div>
 
             {/* Main Table */}
@@ -385,6 +370,6 @@ export default function StudentsPage() {
                     <span>Showing {filteredStudents.length} of {stats.total} records</span>
                 </div>
             </Card>
-        </div>
+        </div >
     );
 }

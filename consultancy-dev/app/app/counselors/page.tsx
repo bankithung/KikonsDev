@@ -112,175 +112,176 @@ export default function CounselorsPage() {
 
   return (
     <div className="space-y-4">
-      {/* Action Button */}
-      {isAdmin && (
-        <div className="flex justify-end">
-          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-8 text-xs" asChild>
-            <Link href="/app/users">
-              <UserPlus size={14} className="mr-1" /> Add Team Member
-            </Link>
-          </Button>
-        </div>
-      )}
-
-      {/* Stats Row - Compact */}
+      {/* Stats Row - Compact with colored borders */}
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+          <div className="h-1 w-full bg-slate-400" />
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-slate-500 font-medium uppercase">Total Team</p>
-                <p className="text-xl font-bold text-slate-900">{stats.total}</p>
+                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Total Team</p>
+                <p className="text-2xl font-bold text-slate-900">{stats.total}</p>
               </div>
-              <div className="p-2 bg-slate-100 rounded-lg">
-                <Users size={16} className="text-slate-600" />
+              <div className="p-2.5 bg-slate-100 rounded-lg">
+                <Users size={18} className="text-slate-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+          <div className="h-1 w-full bg-emerald-500" />
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-slate-500 font-medium uppercase">Active</p>
-                <p className="text-xl font-bold text-emerald-600">{stats.active}</p>
+                <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-wider">Active</p>
+                <p className="text-2xl font-bold text-emerald-600">{stats.active}</p>
               </div>
-              <div className="p-2 bg-emerald-50 rounded-lg">
-                <Activity size={16} className="text-emerald-600" />
+              <div className="p-2.5 bg-emerald-50 rounded-lg">
+                <TrendingUp size={18} className="text-emerald-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+          <div className="h-1 w-full bg-amber-500" />
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-slate-500 font-medium uppercase">Inactive</p>
-                <p className="text-xl font-bold text-slate-400">{stats.inactive}</p>
+                <p className="text-[10px] text-amber-600 font-bold uppercase tracking-wider">Inactive</p>
+                <p className="text-2xl font-bold text-amber-600">{stats.inactive}</p>
               </div>
-              <div className="p-2 bg-slate-100 rounded-lg">
-                <Clock size={16} className="text-slate-400" />
+              <div className="p-2.5 bg-amber-50 rounded-lg">
+                <Clock size={18} className="text-amber-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200">
+        <Card className="border-slate-200 overflow-hidden shadow-sm hover:shadow-md transition-all">
+          <div className="h-1 w-full bg-blue-500" />
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-slate-500 font-medium uppercase">Activity Rate</p>
-                <p className="text-xl font-bold text-blue-600">{stats.activityRate}%</p>
+                <p className="text-[10px] text-blue-600 font-bold uppercase tracking-wider">Activity Rate</p>
+                <p className="text-2xl font-bold text-blue-600">{stats.activityRate}%</p>
               </div>
-              <div className="p-2 bg-blue-50 rounded-lg">
-                <TrendingUp size={16} className="text-blue-600" />
+              <div className="p-2.5 bg-blue-50 rounded-lg">
+                <Activity size={18} className="text-blue-600" />
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 col-span-2 lg:col-span-1">
+        <Card className="border-slate-200 col-span-2 lg:col-span-1 overflow-hidden shadow-sm hover:shadow-md transition-all">
+          <div className="h-1 w-full bg-purple-500" />
           <CardContent className="p-3">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] text-slate-500 font-medium uppercase">Departments</p>
-                <p className="text-xl font-bold text-purple-600">{stats.uniqueRoles}</p>
+                <p className="text-[10px] text-purple-600 font-bold uppercase tracking-wider">Departments</p>
+                <p className="text-2xl font-bold text-purple-600">{stats.uniqueRoles}</p>
               </div>
-              <div className="p-2 bg-purple-50 rounded-lg">
-                <Briefcase size={16} className="text-purple-600" />
+              <div className="p-2.5 bg-purple-50 rounded-lg">
+                <Briefcase size={18} className="text-purple-600" />
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Filters */}
-      <Card className="border-slate-200">
-        <CardContent className="p-3">
-          <div className="flex flex-col sm:flex-row gap-3">
-            {/* Search */}
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-              <Input
-                placeholder="Search by name, email, or phone..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 h-9 text-sm"
-              />
-            </div>
+      {/* Search, Filters & Add Button - All in one row */}
+      <div className="flex flex-wrap items-center gap-2 bg-white p-3 rounded-lg shadow-sm">
+        {/* Search */}
+        <div className="relative flex-1 min-w-[180px] max-w-[400px]">
+          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Search by name, email, or phone..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-9 h-9 text-xs border-0 bg-slate-50 focus:bg-white focus:ring-1 focus:ring-teal-500"
+          />
+        </div>
 
-            {/* Role Filter */}
-            <Select value={roleFilter} onValueChange={setRoleFilter}>
-              <SelectTrigger className="h-9 w-36 text-xs">
-                <SelectValue placeholder="All Roles" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Roles</SelectItem>
-                <SelectItem value="EMPLOYEE">Employee</SelectItem>
-                <SelectItem value="COUNSELOR">Counselor</SelectItem>
-                <SelectItem value="MANAGER">Manager</SelectItem>
-                <SelectItem value="SALES">Sales</SelectItem>
-                <SelectItem value="HR">HR</SelectItem>
-                <SelectItem value="ACCOUNTS">Accounts</SelectItem>
-                <SelectItem value="OPERATIONS">Operations</SelectItem>
-                <SelectItem value="IT_SUPPORT">IT Support</SelectItem>
-                <SelectItem value="TEAM_LEADER">Team Leader</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Role Filter */}
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="h-9 w-[120px] text-xs border-0 bg-slate-50">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="EMPLOYEE">Employee</SelectItem>
+            <SelectItem value="COUNSELOR">Counselor</SelectItem>
+            <SelectItem value="MANAGER">Manager</SelectItem>
+            <SelectItem value="SALES">Sales</SelectItem>
+            <SelectItem value="HR">HR</SelectItem>
+            <SelectItem value="ACCOUNTS">Accounts</SelectItem>
+            <SelectItem value="OPERATIONS">Operations</SelectItem>
+            <SelectItem value="IT_SUPPORT">IT Support</SelectItem>
+            <SelectItem value="TEAM_LEADER">Team Leader</SelectItem>
+          </SelectContent>
+        </Select>
 
-            {/* Status Filter */}
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="h-9 w-32 text-xs">
-                <SelectValue placeholder="All Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Status</SelectItem>
-                <SelectItem value="active">Active</SelectItem>
-                <SelectItem value="inactive">Inactive</SelectItem>
-              </SelectContent>
-            </Select>
+        {/* Status Filter */}
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="h-9 w-[110px] text-xs border-0 bg-slate-50">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
+          </SelectContent>
+        </Select>
 
-            {/* View Toggle */}
-            <div className="flex border border-slate-200 rounded-lg overflow-hidden">
-              <button
-                onClick={() => setViewMode('grid')}
-                className={cn(
-                  "p-2 transition-colors",
-                  viewMode === 'grid' ? 'bg-teal-600 text-white' : 'bg-white text-slate-400 hover:text-slate-600'
-                )}
-              >
-                <LayoutGrid size={16} />
-              </button>
-              <button
-                onClick={() => setViewMode('list')}
-                className={cn(
-                  "p-2 transition-colors border-l border-slate-200",
-                  viewMode === 'list' ? 'bg-teal-600 text-white' : 'bg-white text-slate-400 hover:text-slate-600'
-                )}
-              >
-                <List size={16} />
-              </button>
-            </div>
-
-            {(searchTerm || roleFilter !== 'all' || statusFilter !== 'all') && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearchTerm('');
-                  setRoleFilter('all');
-                  setStatusFilter('all');
-                }}
-                className="h-9 text-xs"
-              >
-                Clear
-              </Button>
+        {/* View Toggle */}
+        <div className="flex bg-slate-100 p-1 rounded-lg">
+          <button
+            onClick={() => setViewMode('grid')}
+            className={cn(
+              "p-1.5 rounded transition-colors",
+              viewMode === 'grid' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
             )}
-          </div>
-        </CardContent>
-      </Card>
+          >
+            <LayoutGrid size={16} />
+          </button>
+          <button
+            onClick={() => setViewMode('list')}
+            className={cn(
+              "p-1.5 rounded transition-colors",
+              viewMode === 'list' ? 'bg-white text-teal-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'
+            )}
+          >
+            <List size={16} />
+          </button>
+        </div>
+
+        {(searchTerm || roleFilter !== 'all' || statusFilter !== 'all') && (
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => {
+              setSearchTerm('');
+              setRoleFilter('all');
+              setStatusFilter('all');
+            }}
+            className="h-9 text-xs text-slate-500 hover:text-slate-700"
+          >
+            Clear
+          </Button>
+        )}
+
+        <div className="flex-1" />
+
+        {/* Add Team Member Button */}
+        {isAdmin && (
+          <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-9 text-xs shrink-0" asChild>
+            <Link href="/app/users">
+              <UserPlus size={14} className="mr-1.5" /> Add Team Member
+            </Link>
+          </Button>
+        )}
+      </div>
 
       {/* Team Members Display */}
       {filteredMembers.length === 0 ? (

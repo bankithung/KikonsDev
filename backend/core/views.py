@@ -422,8 +422,30 @@ class RegistrationViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
                 'error': 'Employees cannot edit directly. Please submit an approval request instead.'
             }, status=403)
         
-        # Admins can edit directly
-        return super().update(request, *args, **kwargs)
+        # Perform the standard update
+        response = super().update(request, *args, **kwargs)
+        
+        # Handle student_documents update
+        instance = self.get_object()
+        student_documents = request.data.get('student_documents', None)
+        
+        if student_documents is not None:
+            # Clear existing student documents and create new ones
+            StudentDocument.objects.filter(registration=instance).delete()
+            
+            for doc in student_documents:
+                if doc.get('name'):  # Only create if name is provided
+                    StudentDocument.objects.create(
+                        registration=instance,
+                        name=doc.get('name'),
+                        document_number=doc.get('document_number', ''),
+                        status=doc.get('status', 'Held'),
+                        remarks=doc.get('remarks', ''),
+                        company_id=instance.company_id,
+                        created_by=request.user
+                    )
+        
+        return response
 
 class EnrollmentViewSet(CompanyIsolationMixin, viewsets.ModelViewSet):
     queryset = Enrollment.objects.all()

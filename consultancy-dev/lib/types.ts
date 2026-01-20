@@ -161,6 +161,10 @@ export interface Enrollment {
   enrollmentNo: string;
   studentId: string; // Links to Registration? Or just name for now mock
   studentName: string;
+  studentGender?: string;
+  studentFamilyState?: string;
+  studentSchoolState?: string;
+  studentSchoolBoard?: string;
   programName: string;
   university?: string;
   startDate: string;

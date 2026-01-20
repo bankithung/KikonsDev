@@ -180,18 +180,10 @@ export default function UniversitiesPage() {
 
   return (
     <div className="space-y-4">
-      {/* Header Actions */}
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-slate-500">{filteredUniversities.length} universities worldwide</p>
-        <Button onClick={() => setIsAddOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white h-9">
-          <Plus size={14} className="mr-1.5" />
-          Add University
-        </Button>
-      </div>
 
-      {/* Search and Filters */}
-      <div className="flex gap-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
-        <div className="relative flex-1">
+      {/* Search, Filters, and Add Button - All in one row */}
+      <div className="flex flex-wrap gap-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm items-center">
+        <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
           <Input
             placeholder="Search universities or cities..."
@@ -227,6 +219,10 @@ export default function UniversitiesPage() {
             Clear
           </Button>
         )}
+        <Button onClick={() => setIsAddOpen(true)} className="bg-teal-600 hover:bg-teal-700 text-white h-9 shrink-0">
+          <Plus size={14} className="mr-1.5" />
+          Add University
+        </Button>
       </div>
 
       {/* Table */}

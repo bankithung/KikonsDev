@@ -1,13 +1,13 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { CalendarIcon, MapPin, Briefcase, User as UserIcon, Shield, User as LucideUser, Eye, Edit, Trash2, X, UserPlus } from 'lucide-react';
+import { CalendarIcon, MapPin, Briefcase, User as UserIcon, Shield, User as LucideUser, Eye, Edit, Trash2, X, UserPlus, Search, Users, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
@@ -25,6 +25,13 @@ export default function UsersPage() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'create' | 'edit' | 'view'>('create');
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
+  // Search & Filter State
+  const [searchQuery, setSearchQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('all');
+  const [stateFilter, setStateFilter] = useState<string>('all');
+  const [genderFilter, setGenderFilter] = useState<string>('all');
+  const [religionFilter, setReligionFilter] = useState<string>('all');
 
   // Form State
   const [username, setUsername] = useState('');
@@ -52,6 +59,23 @@ export default function UsersPage() {
     queryKey: ['users'],
     queryFn: apiClient.users.list,
   });
+
+  // Filtered Users
+  const filteredUsers = useMemo(() => {
+    return users.filter((user: User) => {
+      const matchesSearch = searchQuery === '' ||
+        user.username?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.email?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.first_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.last_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        user.phone_number?.includes(searchQuery);
+      const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+      const matchesState = stateFilter === 'all' || user.assigned_state === stateFilter;
+      const matchesGender = genderFilter === 'all' || user.gender === genderFilter;
+      const matchesReligion = religionFilter === 'all' || user.religion === religionFilter;
+      return matchesSearch && matchesRole && matchesState && matchesGender && matchesReligion;
+    });
+  }, [users, searchQuery, roleFilter, stateFilter, genderFilter, religionFilter]);
 
   const createUserMutation = useMutation({
     mutationFn: apiClient.users.create,
@@ -280,9 +304,73 @@ export default function UsersPage() {
 
   return (
     <div className="space-y-4">
-      {/* Action Button */}
-      <div className="flex justify-end">
-        <Button onClick={handleOpenCreate} className="h-8 text-xs bg-teal-600 hover:bg-teal-700">
+      {/* Search, Filters & Add Button - All in one row */}
+      <div className="flex flex-wrap items-center gap-2 bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
+        <div className="relative flex-1 min-w-[180px] max-w-[300px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="Search users..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9 h-9 bg-slate-50 border-slate-200 text-xs"
+          />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[120px] h-9 bg-slate-50 border-slate-200 text-xs shrink-0">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="COMPANY_ADMIN">Admin</SelectItem>
+            <SelectItem value="MANAGER">Manager</SelectItem>
+            <SelectItem value="EMPLOYEE">Employee</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={stateFilter} onValueChange={setStateFilter}>
+          <SelectTrigger className="w-[140px] h-9 bg-slate-50 border-slate-200 text-xs shrink-0">
+            <SelectValue placeholder="All States" />
+          </SelectTrigger>
+          <SelectContent className="max-h-60">
+            <SelectItem value="all">All States</SelectItem>
+            {Object.keys(INDIAN_STATES).map((state) => (
+              <SelectItem key={state} value={state}>{state}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={genderFilter} onValueChange={setGenderFilter}>
+          <SelectTrigger className="w-[100px] h-9 bg-slate-50 border-slate-200 text-xs shrink-0">
+            <SelectValue placeholder="Gender" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Gender</SelectItem>
+            <SelectItem value="Male">Male</SelectItem>
+            <SelectItem value="Female">Female</SelectItem>
+            <SelectItem value="Other">Other</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={religionFilter} onValueChange={setReligionFilter}>
+          <SelectTrigger className="w-[120px] h-9 bg-slate-50 border-slate-200 text-xs shrink-0">
+            <SelectValue placeholder="Religion" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Religions</SelectItem>
+            {RELIGIONS.map((r) => (
+              <SelectItem key={r} value={r}>{r}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {(searchQuery || roleFilter !== 'all' || stateFilter !== 'all' || genderFilter !== 'all' || religionFilter !== 'all') && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => { setSearchQuery(''); setRoleFilter('all'); setStateFilter('all'); setGenderFilter('all'); setReligionFilter('all'); }}
+            className="h-9 px-3 text-xs shrink-0"
+          >
+            Clear
+          </Button>
+        )}
+        <div className="flex-1" />
+        <Button onClick={handleOpenCreate} className="h-9 text-xs bg-teal-600 hover:bg-teal-700 shrink-0">
           <UserPlus className="mr-2 h-3.5 w-3.5" /> Add User
         </Button>
       </div>
@@ -302,7 +390,7 @@ export default function UsersPage() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white">
-              {users.map((user: User) => (
+              {filteredUsers.map((user: User) => (
                 <tr key={user.id} className="hover:bg-slate-50/80 transition-colors group">
                   <td className="px-4 py-2.5 align-middle">
                     <div className="flex items-center gap-2.5">
@@ -352,10 +440,12 @@ export default function UsersPage() {
                   </td>
                 </tr>
               ))}
-              {users.length === 0 && (
+              {filteredUsers.length === 0 && (
                 <tr>
-                  <td colSpan={5} className="px-4 py-8 text-center text-slate-500 text-xs">
-                    No users found. Click "Add User" to create one.
+                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500 text-xs">
+                    {searchQuery || roleFilter !== 'all' || stateFilter !== 'all' || genderFilter !== 'all' || religionFilter !== 'all'
+                      ? 'No users match your search or filters.'
+                      : 'No users found. Click "Add User" to create one.'}
                   </td>
                 </tr>
               )}

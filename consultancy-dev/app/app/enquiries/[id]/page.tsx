@@ -5,7 +5,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { EnquiryForm } from '../components/EnquiryForm';
 import { Button } from '@/components/ui/button';
-import { BackButton } from '@/components/ui/back-button';
 import { ArrowRight } from 'lucide-react';
 import { useAuthStore } from '@/store/authStore';
 import { toast } from '@/store/toastStore';
@@ -74,19 +73,10 @@ export default function EnquiryDetailsPage() {
   if (!enquiry) return <div className="p-8 text-center text-slate-500">Enquiry not found</div>;
 
   return (
-    <div className="max-w-3xl mx-auto py-6 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="space-y-2">
-          <BackButton />
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">Enquiry Details</h1>
-          <p className="text-sm text-slate-600">
-            {user?.role === 'EMPLOYEE'
-              ? 'Submit changes for admin approval'
-              : 'View and update enquiry information'}
-          </p>
-        </div>
+    <div className="py-4 px-4">
+      <div className="max-w-3xl mx-auto mb-4 flex justify-end">
         <Button
-          className="bg-green-600 hover:bg-green-700 h-10 font-semibold"
+          className="bg-green-600 hover:bg-green-700 h-9 text-sm font-semibold"
           onClick={() => router.push(`/app/registrations/new?enquiryId=${id}`)}
         >
           Convert to Registration <ArrowRight className="ml-2 h-4 w-4" />

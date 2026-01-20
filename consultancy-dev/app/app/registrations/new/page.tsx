@@ -4,7 +4,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiClient } from '@/lib/apiClient';
 import { RegistrationForm } from '../components/RegistrationForm';
-import { BackButton } from '@/components/ui/back-button';
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -76,13 +75,7 @@ export default function NewRegistrationPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto py-6 space-y-6">
-      <div>
-        <BackButton />
-        <h1 className="text-2xl sm:text-3xl font-bold text-slate-900 mt-2">New Registration</h1>
-        <p className="text-sm text-slate-600 mt-1">Register a new student into the system</p>
-      </div>
-
+    <div className="max-w-4xl mx-auto py-6">
       <RegistrationForm
         onSubmit={(data) => mutation.mutate(data as any)}
         isLoading={mutation.isPending}

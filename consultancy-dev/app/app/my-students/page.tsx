@@ -30,7 +30,7 @@ import {
     ExternalLink
 } from 'lucide-react';
 import Link from 'next/link';
-import { cn } from '@/lib/utils';
+import { cn, COURSES } from '@/lib/utils';
 import { useAuthStore } from '@/store/authStore';
 import { format } from 'date-fns';
 import * as Dialog from '@radix-ui/react-dialog';
@@ -59,6 +59,7 @@ export default function MyStudentsPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [typeFilter, setTypeFilter] = useState<'all' | 'enquiry' | 'registration'>('all');
     const [statusFilter, setStatusFilter] = useState<string>('all');
+    const [courseFilter, setCourseFilter] = useState<string>('all');
     const [selectedStudents, setSelectedStudents] = useState<string[]>([]);
     const [isTransferOpen, setIsTransferOpen] = useState(false);
     const [transferTo, setTransferTo] = useState<string>('');
@@ -139,15 +140,22 @@ export default function MyStudentsPage() {
 
             const matchesType = typeFilter === 'all' || student.type === typeFilter;
             const matchesStatus = statusFilter === 'all' || student.status === statusFilter;
+            const matchesCourse = courseFilter === 'all' || student.course === courseFilter;
 
-            return matchesSearch && matchesType && matchesStatus;
+            return matchesSearch && matchesType && matchesStatus && matchesCourse;
         });
-    }, [allStudents, searchQuery, typeFilter, statusFilter]);
+    }, [allStudents, searchQuery, typeFilter, statusFilter, courseFilter]);
 
     // Get unique statuses for filter
     const uniqueStatuses = useMemo(() => {
         const statuses = new Set(allStudents.map(s => s.status));
         return Array.from(statuses);
+    }, [allStudents]);
+
+    // Get unique courses for filter
+    const uniqueCourses = useMemo(() => {
+        const courses = new Set(allStudents.map(s => s.course).filter(c => c && c !== '-'));
+        return Array.from(courses).sort();
     }, [allStudents]);
 
     // Stats
@@ -232,123 +240,108 @@ export default function MyStudentsPage() {
     }
 
     return (
-        <div className="space-y-4">
-            {/* Action Buttons */}
-            <div className="flex justify-end gap-2">
-                <Button
-                    size="sm"
-                    variant="outline"
-                    className="h-8 text-xs"
-                    disabled={selectedStudents.length === 0}
-                    onClick={() => setIsTransferOpen(true)}
-                >
-                    <ArrowRightLeft size={14} className="mr-1" /> Transfer ({selectedStudents.length})
-                </Button>
-                <Button size="sm" className="bg-teal-600 hover:bg-teal-700 h-8 text-xs" asChild>
-                    <Link href="/app/enquiries/new">
-                        <UserPlus size={14} className="mr-1" /> Add Enquiry
-                    </Link>
-                </Button>
+        <div className="space-y-2">
+            {/* Search Bar */}
+            <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                    placeholder="Search by name, email, or phone..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 h-11 bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500"
+                />
             </div>
 
-            {/* Stats Row */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <Card className="border-slate-200">
-                    <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-medium">Total Students</p>
-                                <p className="text-xl font-bold text-slate-900">{stats.total}</p>
-                            </div>
-                            <div className="p-2 bg-slate-100 rounded-lg">
-                                <Users size={16} className="text-slate-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-slate-200">
-                    <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-medium">Enquiries</p>
-                                <p className="text-xl font-bold text-blue-600">{stats.enquiries}</p>
-                            </div>
-                            <div className="p-2 bg-blue-50 rounded-lg">
-                                <MessageSquare size={16} className="text-blue-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-slate-200">
-                    <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-medium">Registrations</p>
-                                <p className="text-xl font-bold text-emerald-600">{stats.registrations}</p>
-                            </div>
-                            <div className="p-2 bg-emerald-50 rounded-lg">
-                                <GraduationCap size={16} className="text-emerald-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-                <Card className="border-slate-200">
-                    <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                            <div>
-                                <p className="text-[10px] text-slate-500 font-medium">New Leads</p>
-                                <p className="text-xl font-bold text-amber-600">{stats.newEnquiries}</p>
-                            </div>
-                            <div className="p-2 bg-amber-50 rounded-lg">
-                                <AlertCircle size={16} className="text-amber-600" />
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
+            {/* Compact Stats - Same as Students Page */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <div className="bg-white border border-slate-200 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-slate-500 uppercase">Total Students</span>
+                    <span className="text-lg font-bold text-slate-900">{stats.total}</span>
+                </div>
+                <div className="bg-blue-50 border border-blue-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-blue-600 uppercase">Enquiries</span>
+                    <span className="text-lg font-bold text-blue-700">{stats.enquiries}</span>
+                </div>
+                <div className="bg-emerald-50 border border-emerald-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-emerald-600 uppercase">Registrations</span>
+                    <span className="text-lg font-bold text-emerald-700">{stats.registrations}</span>
+                </div>
+                <div className="bg-amber-50 border border-amber-100 rounded p-2 flex items-center justify-between shadow-sm">
+                    <span className="text-xs font-medium text-amber-600 uppercase">New Leads</span>
+                    <span className="text-lg font-bold text-amber-700">{stats.newEnquiries}</span>
+                </div>
             </div>
 
-            {/* Filters */}
-            <Card className="border-slate-200">
-                <CardContent className="p-3">
-                    <div className="flex flex-col sm:flex-row gap-3">
-                        {/* Search */}
-                        <div className="relative flex-1">
-                            <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                            <Input
-                                placeholder="Search by name, email, or phone..."
-                                value={searchQuery}
-                                onChange={(e) => setSearchQuery(e.target.value)}
-                                className="pl-8 h-9 text-sm"
-                            />
-                        </div>
+            {/* Filters Panel - Same as Students Page */}
+            <div className="bg-white border border-slate-200 rounded-lg p-3 shadow-sm">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
+                    {/* Type Filter */}
+                    <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="Type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Types</SelectItem>
+                            <SelectItem value="enquiry">Enquiries</SelectItem>
+                            <SelectItem value="registration">Registrations</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                        {/* Type Filter */}
-                        <Select value={typeFilter} onValueChange={(v: any) => setTypeFilter(v)}>
-                            <SelectTrigger className="h-9 w-36 text-xs">
-                                <SelectValue placeholder="Type" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Types</SelectItem>
-                                <SelectItem value="enquiry">Enquiries</SelectItem>
-                                <SelectItem value="registration">Registrations</SelectItem>
-                            </SelectContent>
-                        </Select>
+                    {/* Status Filter */}
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="Status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Status</SelectItem>
+                            <SelectItem value="New">New</SelectItem>
+                            <SelectItem value="Converted">Converted</SelectItem>
+                            <SelectItem value="Closed">Closed</SelectItem>
+                            <SelectItem value="Paid">Paid</SelectItem>
+                            <SelectItem value="Pending">Pending</SelectItem>
+                            <SelectItem value="Partial">Partial</SelectItem>
+                        </SelectContent>
+                    </Select>
 
-                        {/* Status Filter */}
-                        <Select value={statusFilter} onValueChange={setStatusFilter}>
-                            <SelectTrigger className="h-9 w-36 text-xs">
-                                <SelectValue placeholder="Status" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                <SelectItem value="all">All Status</SelectItem>
-                                {uniqueStatuses.map(status => (
-                                    <SelectItem key={status} value={status}>{status}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                </CardContent>
-            </Card>
+                    {/* Course Filter */}
+                    <Select value={courseFilter} onValueChange={setCourseFilter}>
+                        <SelectTrigger className="h-9 text-xs bg-white">
+                            <SelectValue placeholder="Course" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60">
+                            <SelectItem value="all">All Courses</SelectItem>
+                            {COURSES.map(course => (
+                                <SelectItem key={course} value={course}>{course}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+
+                    {/* Transfer Button */}
+                    <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-9 text-xs"
+                        disabled={selectedStudents.length === 0}
+                        onClick={() => setIsTransferOpen(true)}
+                    >
+                        <ArrowRightLeft size={14} className="mr-1" /> Transfer ({selectedStudents.length})
+                    </Button>
+
+                    {/* Clear Button */}
+                    <Button
+                        size="sm"
+                        className="h-9 text-xs bg-slate-600 hover:bg-slate-700 text-white"
+                        onClick={() => {
+                            setTypeFilter('all');
+                            setStatusFilter('all');
+                            setCourseFilter('all');
+                            setSearchQuery('');
+                        }}
+                    >
+                        Clear
+                    </Button>
+                </div>
+            </div>
 
             {/* Student Table */}
             <Card className="border-slate-200 overflow-hidden">
@@ -403,7 +396,9 @@ export default function MyStudentsPage() {
                                                     onChange={() => toggleStudentSelection(student.id)}
                                                     className="w-4 h-4 rounded border-slate-300 text-teal-600 focus:ring-teal-500"
                                                 />
-                                                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center text-xs font-semibold text-slate-600 shrink-0">
+                                                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 font-bold text-xs
+                                                    ${student.type === 'enquiry' ? 'bg-blue-100 text-blue-600' : 'bg-purple-100 text-purple-600'}`}
+                                                >
                                                     {student.name.charAt(0).toUpperCase()}
                                                 </div>
                                                 <div className="min-w-0">

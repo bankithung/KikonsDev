@@ -7,11 +7,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { INDIAN_STATES, SCHOOL_BOARDS } from '@/lib/utils';
+import { INDIAN_STATES, SCHOOL_BOARDS, COURSES } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Enquiry } from '@/lib/types';
-import { User, GraduationCap, Users, BookOpen, Phone, Mail, MapPin, Check, Settings } from 'lucide-react';
+import { User, GraduationCap, Users, BookOpen, Phone, Mail, MapPin, Check, Settings, ArrowLeft } from 'lucide-react';
 import { useEffect, useMemo, useCallback } from 'react';
 
 const STANDARD_INPUT_STYLE = "h-11 bg-white border-slate-300 focus:border-teal-500 focus:ring-teal-500 rounded-md";
@@ -264,6 +264,14 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
         <div id="student-details" className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden scroll-mt-24">
           <div className="bg-slate-50/50 px-6 py-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={() => window.history.back()}
+                className="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                title="Go Back"
+              >
+                <ArrowLeft size={18} />
+              </button>
               <div className="w-10 h-10 bg-teal-100 text-teal-700 rounded-lg flex items-center justify-center">
                 <User size={20} />
               </div>
@@ -513,14 +521,8 @@ export function EnquiryForm({ initialData, onSubmit, isLoading }: EnquiryFormPro
                       <SelectTrigger className={STANDARD_INPUT_STYLE}>
                         <SelectValue placeholder="Select Course" />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="MBBS">MBBS</SelectItem>
-                        <SelectItem value="BDS">BDS</SelectItem>
-                        <SelectItem value="Engineering">Engineering</SelectItem>
-                        <SelectItem value="Pharmacy">Pharmacy</SelectItem>
-                        <SelectItem value="Nursing">Nursing</SelectItem>
-                        <SelectItem value="Physiotherapy">Physiotherapy</SelectItem>
-                        <SelectItem value="Other">Other</SelectItem>
+                      <SelectContent className="max-h-60">
+                        {COURSES.map(course => <SelectItem key={course} value={course}>{course}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   )}
