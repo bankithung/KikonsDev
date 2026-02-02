@@ -194,7 +194,7 @@ export default function AppointmentsPage() {
     const payload = {
       studentName: formData.studentName,
       studentEmail: formData.studentEmail || 'contact@example.com',
-      counselor: parseInt(formData.counselorId),
+      counselor: formData.counselorId,
       date: formData.date,
       time: formData.time,
       duration: parseInt(formData.duration),

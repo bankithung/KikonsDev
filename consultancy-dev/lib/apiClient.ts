@@ -301,7 +301,7 @@ export const apiClient = {
         ]);
 
         // Create a map of enquiry_id to registration_id
-        const enquiryToRegistration: { [key: number]: number } = {};
+        const enquiryToRegistration: { [key: string]: string } = {};
         regRes.data.forEach((reg: any) => {
           if (reg.enquiry) {
             enquiryToRegistration[reg.enquiry] = reg.id;
@@ -309,7 +309,7 @@ export const apiClient = {
         });
 
         // Create a map of registration_id to enrollment data
-        const registrationToEnrollment: { [key: number]: { id: number, enrollmentNo: string } } = {};
+        const registrationToEnrollment: { [key: string]: { id: string, enrollmentNo: string } } = {};
         enrRes.data.forEach((enr: any) => {
           if (enr.student) {
             registrationToEnrollment[enr.student] = { id: enr.id, enrollmentNo: enr.enrollmentNo || enr.enrollment_no };
@@ -760,7 +760,7 @@ export const apiClient = {
         counselorName: a.counselor_name
       }));
     },
-    get: async (id: number) => {
+    get: async (id: string) => {
       const res = await api.get(`appointments/${id}/`);
       return {
         ...res.data,
@@ -1238,7 +1238,7 @@ export const apiClient = {
       };
     },
     returnDocs: async (docIds: string[]): Promise<any> => {
-      const res = await api.post('student-documents/return_docs/', { document_ids: docIds.map(id => parseInt(id)) });
+      const res = await api.post('student-documents/return_docs/', { document_ids: docIds });
       return res.data;
     }
   },
@@ -1314,7 +1314,7 @@ export const apiClient = {
     create: async (data: {
       action: 'DELETE' | 'UPDATE';
       entity_type: string;
-      entity_id: number;
+      entity_id: string;
       entity_name: string;
       message: string;
       pending_changes?: any;
@@ -1330,11 +1330,11 @@ export const apiClient = {
       const res = await api.get('approval-requests/pending-count/');
       return res.data;
     },
-    approve: async (id: number, note?: string) => {
+    approve: async (id: string, note?: string) => {
       const res = await api.post(`approval-requests/${id}/approve/`, { review_note: note });
       return res.data;
     },
-    reject: async (id: number, note: string) => {
+    reject: async (id: string, note: string) => {
       const res = await api.post(`approval-requests/${id}/reject/`, { review_note: note });
       return res.data;
     },
@@ -1351,28 +1351,28 @@ export const apiClient = {
       const res = await api.get('document-transfers/');
       return res.data;
     },
-    get: async (id: string | number) => {
+    get: async (id: string) => {
       const res = await api.get(`document-transfers/${id}/`);
       return res.data;
     },
     create: async (data: any) => {
       const payload = {
-        receiver: parseInt(data.receiver),
-        documents: data.documents.map((id: string) => parseInt(id)),
+        receiver: data.receiver,
+        documents: data.documents,
         message: data.message || ''
       };
       const res = await api.post('document-transfers/', payload);
       return res.data;
     },
-    accept: async (id: string | number) => {
+    accept: async (id: string) => {
       const res = await api.post(`document-transfers/${id}/accept/`);
       return res.data;
     },
-    reject: async (id: string | number) => {
+    reject: async (id: string) => {
       const res = await api.post(`document-transfers/${id}/reject/`);
       return res.data;
     },
-    cancel: async (id: string | number) => {
+    cancel: async (id: string) => {
       const res = await api.post(`document-transfers/${id}/cancel/`);
       return res.data;
     }
@@ -1383,28 +1383,28 @@ export const apiClient = {
       const res = await api.get('physical-transfers/');
       return res.data;
     },
-    get: async (id: string | number) => {
+    get: async (id: string) => {
       const res = await api.get(`physical-transfers/${id}/`);
       return res.data;
     },
     create: async (data: any) => {
       const payload = {
-        receiver: parseInt(data.receiver),
-        documents: data.documents.map((id: string) => parseInt(id)),
+        receiver: data.receiver,
+        documents: data.documents,
         message: data.message || ''
       };
       const res = await api.post('physical-transfers/', payload);
       return res.data;
     },
-    accept: async (id: string | number) => {
+    accept: async (id: string) => {
       const res = await api.post(`physical-transfers/${id}/accept/`);
       return res.data;
     },
-    reject: async (id: string | number, reason?: string) => {
+    reject: async (id: string, reason?: string) => {
       const res = await api.post(`physical-transfers/${id}/reject/`, { reason: reason || '' });
       return res.data;
     },
-    cancel: async (id: string | number) => {
+    cancel: async (id: string) => {
       const res = await api.post(`physical-transfers/${id}/cancel/`);
       return res.data;
     },
@@ -1412,7 +1412,7 @@ export const apiClient = {
       const res = await api.post(`physical-transfers/${id}/update_status/`, data);
       return res.data;
     },
-    confirmReceipt: async (id: string | number, message?: string) => {
+    confirmReceipt: async (id: string, message?: string) => {
       const res = await api.post(`physical-transfers/${id}/confirm_receipt/`, { message: message || '' });
       return res.data;
     },
@@ -1440,7 +1440,7 @@ export const apiClient = {
       const res = await api.get(`refunds/?${params.toString()}`);
       return res.data;
     },
-    approve: async (id: number) => {
+    approve: async (id: string) => {
       const res = await api.post(`refunds/${id}/approve/`);
       return res.data;
     },
@@ -1525,7 +1525,7 @@ export const apiClient = {
       });
       return res.data;
     },
-    createConversation: async (participantIds: number[]) => {
+    createConversation: async (participantIds: string[]) => {
       const res = await api.post('chat/create/', {
         participant_ids: participantIds
       });

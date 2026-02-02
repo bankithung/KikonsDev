@@ -81,7 +81,7 @@ export function RegistrationList({ searchTerm = '' }: RegistrationListProps) {
       await apiClient.approvalRequests.create({
         action: 'DELETE',
         entity_type: 'registration',
-        entity_id: Number(actionReg.id),
+        entity_id: actionReg.id,
         entity_name: actionReg.studentName,
         message: data.message,
       });
@@ -104,7 +104,7 @@ export function RegistrationList({ searchTerm = '' }: RegistrationListProps) {
       await apiClient.approvalRequests.create({
         action: 'UPDATE',
         entity_type: 'registration',
-        entity_id: Number(id),
+        entity_id: id,
         entity_name: editReg.studentName,
         message: 'Request to update registration details',
         pending_changes: data,

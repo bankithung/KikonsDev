@@ -69,7 +69,7 @@ export default function EnquiriesPage() {
       await apiClient.approvalRequests.create({
         action: 'DELETE',
         entity_type: 'enquiry',
-        entity_id: Number(actionEnquiry.id),
+        entity_id: actionEnquiry.id,
         entity_name: actionEnquiry.candidateName,
         message: data.message,
       });

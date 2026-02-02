@@ -352,7 +352,7 @@ class NotificationSerializer(serializers.ModelSerializer):
 
 class FollowUpSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
-    assigned_to_id = serializers.IntegerField(write_only=True, required=False, allow_null=True)
+    assigned_to_id = serializers.UUIDField(write_only=True, required=False, allow_null=True)
     assigned_to_name = serializers.SerializerMethodField()
     assigned_to_email = serializers.SerializerMethodField()
     student_name = serializers.SerializerMethodField()

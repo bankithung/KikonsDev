@@ -1,7 +1,7 @@
 export type Role = 'DEV_ADMIN' | 'COMPANY_ADMIN' | 'MANAGER' | 'EMPLOYEE' | 'HR' | 'SALES' | 'ACCOUNTS' | 'COUNSELOR' | 'OPERATIONS' | 'IT_SUPPORT' | 'TEAM_LEADER';
 
 export interface User {
-  id: number;
+  id: string;
   username: string;
   first_name?: string;
   last_name?: string;
@@ -26,9 +26,9 @@ export interface User {
 }
 
 export interface StudentRemark {
-  id: number;
-  registration: number;
-  user: number;
+  id: string;
+  registration: string;
+  user: string;
   userName: string;
   remark: string;
   createdAt: string;
@@ -148,7 +148,7 @@ export interface Registration {
   documents?: any[]; // Backend returns snake_case document objects
   student_documents?: StudentDocument[];
   created_by_name?: string;
-  enquiry?: number; // ID of linked enquiry
+  enquiry?: string; // ID of linked enquiry
 }
 
 export interface StudyPreference {
@@ -191,7 +191,7 @@ export interface Installment {
 
 export interface StudentDocument {
   id: string;
-  registration: number;
+  registration: string;
   name: string;
   documentNumber: string;
   status: 'Held' | 'Returned';
@@ -200,7 +200,7 @@ export interface StudentDocument {
   remarks?: string;
   createdBy?: string;
   created_by_name?: string;
-  current_holder?: number;
+  current_holder?: string;
   current_holder_name?: string;
 }
 
@@ -224,11 +224,11 @@ export interface Document {
 
 export interface DocumentTransfer {
   id: string;
-  sender: number;
+  sender: string;
   sender_name: string;
-  receiver: number;
+  receiver: string;
   receiver_name: string;
-  documents: number[];
+  documents: string[];
   documents_details?: Document[];
   status: 'Pending' | 'Accepted' | 'Rejected';
   created_at: string;
@@ -244,7 +244,7 @@ export interface Payment {
   status: 'Success' | 'Pending' | 'Failed';
   method: 'Cash' | 'Card' | 'UPI' | 'Other';
   refunds?: {
-    id: number;
+    id: string;
     amount: number;
     status: 'Pending' | 'Approved' | 'Rejected';
     reason: string;
@@ -267,18 +267,18 @@ export interface ReportMetrics {
 }
 
 export interface ApprovalRequest {
-  id: number;
+  id: string;
   action: 'DELETE' | 'UPDATE';
   entity_type: string;
-  entity_id: number;
+  entity_id: string;
   entity_name: string;
   message: string;
   status: 'Pending' | 'Approved' | 'Rejected';
   review_note?: string;
-  requested_by: number;
+  requested_by: string;
   created_at: string;
   reviewed_at?: string;
-  reviewed_by?: number;
+  reviewed_by?: string;
   pending_changes?: any;
 }
 export interface DashboardAnalytics {
@@ -294,14 +294,14 @@ export interface Task {
   id: string;
   title: string;
   description?: string;
-  assigned_to?: number;
+  assigned_to?: string;
   assigned_to_name?: string;
-  assignedTo?: number; // Mapped for frontend
+  assignedTo?: string; // Mapped for frontend
   due_date?: string;
   dueDate?: string;     // Mapped for frontend
   status: 'Todo' | 'In Progress' | 'Done' | 'Pending' | 'Completed';
   priority: 'Low' | 'Medium' | 'High';
-  registration?: number;
+  registration?: string;
   position?: number;
   comments_count?: number;
   created_at: string;
@@ -310,7 +310,7 @@ export interface Task {
 export interface FollowUpComment {
   id: string;
   followup: string;
-  user: number;
+  user: string;
   user_name: string;
   user_email: string;
   comment: string;
@@ -321,13 +321,14 @@ export interface FollowUpComment {
   parent_comment: string | null;
 }
 
-export interface DocumentTransfer {
+// Redundant definition remove or update
+export interface DocumentTransferV2 {
   id: string;
-  sender: number;
-  receiver: number;
+  sender: string;
+  receiver: string;
   sender_name: string;
   receiver_name: string;
-  documents: number[];
+  documents: string[];
   documents_details?: Document[];
   transferred_at: string;
   status: 'Pending' | 'Accepted' | 'Rejected';
@@ -338,7 +339,7 @@ export interface Appointment {
   id: string;
   studentName: string;
   studentEmail: string;
-  counselor: number; // User ID
+  counselor: string; // User ID
   counselor_name?: string;
   date: string; // ISO date or YYYY-MM-DD
   time: string; // HH:MM

@@ -1,7 +1,9 @@
 from django.db import models
+import uuid
 from django.contrib.auth.models import AbstractUser
 
 class User(AbstractUser):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ROLE_CHOICES = (
         ('DEV_ADMIN', 'Dev Admin'),
         ('COMPANY_ADMIN', 'Company Admin'),
@@ -41,6 +43,7 @@ class User(AbstractUser):
     rsa_private_key_encrypted = models.TextField(blank=True, null=True, help_text="RSA private key encrypted with user password")
 
 class Enquiry(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     STATUS_CHOICES = (('New', 'New'), ('Converted', 'Converted'), ('Closed', 'Closed'))
     
     date = models.DateTimeField(auto_now_add=True)
@@ -104,6 +107,7 @@ class Enquiry(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_enquiries')
 
 class Registration(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     registration_no = models.CharField(max_length=50, unique=True)
     student_name = models.CharField(max_length=255)
     mobile = models.CharField(max_length=20)
@@ -168,6 +172,7 @@ class Registration(models.Model):
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='created_registrations')
 
 class Enrollment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     enrollment_no = models.CharField(max_length=50, unique=True)
     student = models.ForeignKey(Registration, on_delete=models.CASCADE)
     program_name = models.CharField(max_length=255)
@@ -187,6 +192,7 @@ class Enrollment(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 class Installment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     enrollment = models.ForeignKey(Enrollment, related_name='installments', on_delete=models.CASCADE)
     number = models.IntegerField()
     due_date = models.DateField()
@@ -194,6 +200,7 @@ class Installment(models.Model):
     status = models.CharField(max_length=20, default='Pending')
 
 class Payment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student_name = models.CharField(max_length=255)
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     date = models.DateTimeField(auto_now_add=True)
@@ -204,6 +211,7 @@ class Payment(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class Refund(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     payment = models.ForeignKey(Payment, on_delete=models.CASCADE, related_name='refunds')
     amount = models.DecimalField(max_digits=10, decimal_places=2)
     refund_date = models.DateTimeField(auto_now_add=True)
@@ -225,6 +233,7 @@ class Refund(models.Model):
         return f"Refund ₹{self.amount} for {self.student_name} - {self.status}"
 
 class Document(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     file_name = models.CharField(max_length=255)
     file = models.FileField(upload_to='documents/', null=True, blank=True)
     description = models.CharField(max_length=255, blank=True, default='')
@@ -239,6 +248,7 @@ class Document(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class StudentDocument(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='student_documents')
     name = models.CharField(max_length=255) # PAN, Aadhaar, etc.
     document_number = models.CharField(max_length=255, blank=True, default='')
@@ -251,6 +261,7 @@ class StudentDocument(models.Model):
     current_holder = models.ForeignKey(User, related_name='held_physical_documents', on_delete=models.SET_NULL, null=True, blank=True)
 
 class StudentRemark(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     registration = models.ForeignKey(Registration, on_delete=models.CASCADE, related_name='remarks')
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='student_remarks')
     remark = models.TextField()
@@ -264,6 +275,7 @@ class StudentRemark(models.Model):
         return f"Remark for {self.registration.student_name} by {self.user.username if self.user else 'Unknown'}"
 
 class DocumentTransfer(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     sender = models.ForeignKey(User, related_name='sent_transfers', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_transfers', on_delete=models.CASCADE)
     documents = models.ManyToManyField(Document)
@@ -277,6 +289,7 @@ class DocumentTransfer(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class PhysicalDocumentTransfer(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     sender = models.ForeignKey(User, related_name='sent_physical_transfers', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_physical_transfers', on_delete=models.CASCADE)
     documents = models.ManyToManyField(StudentDocument)
@@ -302,6 +315,7 @@ class PhysicalDocumentTransfer(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class TransferTimeline(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     transfer = models.ForeignKey(PhysicalDocumentTransfer, on_delete=models.CASCADE, related_name='timeline')
     status = models.CharField(max_length=50)
     location = models.CharField(max_length=255, blank=True, default='')
@@ -314,6 +328,7 @@ class TransferTimeline(models.Model):
         ordering = ['-created_at']
 
 class Task(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     title = models.CharField(max_length=255)
     description = models.TextField(blank=True, default='')
     assigned_to = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -327,6 +342,7 @@ class Task(models.Model):
         ordering = ['position', 'due_date']
 
 class Appointment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student_name = models.CharField(max_length=255)
     student_email = models.EmailField(blank=True)
     counselor = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -347,6 +363,7 @@ class Appointment(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class University(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     country = models.CharField(max_length=100)
     city = models.CharField(max_length=100, default='')
@@ -360,6 +377,7 @@ class University(models.Model):
     company_id = models.CharField(max_length=100, default='', blank=True)
 
 class Template(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     template_type = models.CharField(max_length=50, blank=True, default='')
     category = models.CharField(max_length=20, choices=(
@@ -372,6 +390,7 @@ class Template(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class Notification(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE)
     title = models.CharField(max_length=255)
     message = models.CharField(max_length=255)
@@ -386,6 +405,7 @@ class Notification(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class Commission(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     agent = models.ForeignKey('Agent', on_delete=models.CASCADE, related_name='commissions', null=True, blank=True)
     agent_name = models.CharField(max_length=255)
     student_name = models.CharField(max_length=255, blank=True)
@@ -401,6 +421,7 @@ class Commission(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class LeadSource(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=100)
     type = models.CharField(max_length=50, choices=(
         ('Organic', 'Organic'),
@@ -417,6 +438,7 @@ class LeadSource(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class VisaTracking(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     student_name = models.CharField(max_length=255)
     student = models.ForeignKey(Registration, on_delete=models.CASCADE, null=True, blank=True)
     passport_no = models.CharField(max_length=50)
@@ -440,6 +462,7 @@ class VisaTracking(models.Model):
     company_id= models.CharField(max_length=100, default='')
 
 class FollowUp(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     enquiry = models.ForeignKey(Enquiry, on_delete=models.CASCADE)
     scheduled_for = models.DateTimeField()
     type = models.CharField(max_length=50, choices=(
@@ -474,6 +497,7 @@ class FollowUp(models.Model):
         return self.enquiry.candidate_name if self.enquiry else '-'
 
 class FollowUpComment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     followup = models.ForeignKey(FollowUp, on_delete=models.CASCADE, related_name='comments')
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     comment = models.TextField()
@@ -490,6 +514,7 @@ class FollowUpComment(models.Model):
         return f"Comment by {self.user.username if self.user else 'Unknown'} on {self.followup.id}"
 
 class ChatConversation(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     participants = models.ManyToManyField(User, related_name='conversations')
     is_group = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -497,6 +522,7 @@ class ChatConversation(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class ChatMessage(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.ForeignKey(ChatConversation, related_name='messages', on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
     
@@ -518,6 +544,7 @@ class ChatMessage(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class GroupChat(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     conversation = models.OneToOneField(ChatConversation, on_delete=models.CASCADE, related_name='group_info')
     group_name = models.CharField(max_length=255)
     group_avatar = models.URLField(blank=True, null=True)
@@ -527,6 +554,7 @@ class GroupChat(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class Agent(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     email = models.EmailField()
     commission_type = models.CharField(max_length=20, choices=(
@@ -542,6 +570,7 @@ class Agent(models.Model):
     company_id = models.CharField(max_length=100, default='')
 
 class SignupRequest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     company_name = models.CharField(max_length=255)
     admin_name = models.CharField(max_length=255)
     email = models.EmailField(unique=True)
@@ -571,6 +600,7 @@ class SignupRequest(models.Model):
         return f"{self.company_name} - {self.email} ({self.status})"
 
 class ApprovalRequest(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     """Tracks delete/edit requests from employees requiring admin approval"""
     ACTION_CHOICES = [
         ('DELETE', 'Delete'),
@@ -584,7 +614,7 @@ class ApprovalRequest(models.Model):
     
     action = models.CharField(max_length=10, choices=ACTION_CHOICES)
     entity_type = models.CharField(max_length=50)
-    entity_id = models.IntegerField()
+    entity_id = models.CharField(max_length=50) # UUID as string
     entity_name = models.CharField(max_length=255)
     message = models.TextField()
     
@@ -606,6 +636,7 @@ class ApprovalRequest(models.Model):
         return f"{self.action} {self.entity_type} #{self.entity_id} by {self.requested_by.username}"
 
 class Company(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     name = models.CharField(max_length=255)
     email = models.EmailField(blank=True, default='')
     phone = models.CharField(max_length=50, blank=True, default='')
@@ -621,6 +652,7 @@ class Company(models.Model):
         return self.name
 
 class ActivityLog(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     ACTION_TYPES = (
         ('login', 'Login'),
         ('logout', 'Logout'),
@@ -656,6 +688,7 @@ class ActivityLog(models.Model):
         return f"{self.user.username} - {self.action_type} at {self.timestamp}"
 
 class Earning(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     SOURCE_TYPES = (
         ('registration', 'Registration'),
         ('payment', 'Payment'),

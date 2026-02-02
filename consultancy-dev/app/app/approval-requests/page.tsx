@@ -37,7 +37,7 @@ export default function ApprovalRequestsPage() {
     });
 
     const approveMutation = useMutation({
-        mutationFn: async ({ id, note }: { id: number; note: string }) => {
+        mutationFn: async ({ id, note }: { id: string; note: string }) => {
             await apiClient.approvalRequests.approve(id, note);
         },
         onSuccess: () => {
@@ -55,7 +55,7 @@ export default function ApprovalRequestsPage() {
     });
 
     const rejectMutation = useMutation({
-        mutationFn: async ({ id, note }: { id: number; note: string }) => {
+        mutationFn: async ({ id, note }: { id: string; note: string }) => {
             await apiClient.approvalRequests.reject(id, note);
         },
         onSuccess: () => {

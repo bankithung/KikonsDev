@@ -227,7 +227,7 @@ export default function FollowUpsPage() {
       return;
     }
     createMutation.mutate({
-      enquiry: parseInt(newFollowUp.enquiryId),
+      enquiry: newFollowUp.enquiryId,
       type: newFollowUp.type,
       priority: newFollowUp.priority,
       notes: newFollowUp.notes,

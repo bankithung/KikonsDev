@@ -15,7 +15,7 @@ export default function AppointmentDetailPage() {
 
     const { data: appointment, isLoading } = useQuery({
         queryKey: ['appointment', id],
-        queryFn: () => apiClient.appointments.get(parseInt(id)),
+        queryFn: () => apiClient.appointments.get(id),
         enabled: !!id,
     });
 

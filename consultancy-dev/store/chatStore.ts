@@ -78,7 +78,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
     try {
       // Call real API
-      const conversation = await apiClient.chat.createConversation([parseInt(userId)]);
+      const conversation = await apiClient.chat.createConversation([userId]);
 
       const newConversation: ChatConversation = {
         id: String(conversation.id),

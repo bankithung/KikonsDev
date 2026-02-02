@@ -42,8 +42,8 @@ export function PhysicalDocumentList() {
     const filteredUsers = users?.filter((u: any) => u.id !== currentUser?.id) || [];
 
     // Create a map of registration ID to student name
-    const regMap = registrations?.reduce((acc: Record<number, string>, reg) => {
-        acc[parseInt(reg.id)] = reg.studentName;
+    const regMap = registrations?.reduce((acc: Record<string, string>, reg) => {
+        acc[reg.id] = reg.studentName;
         return acc;
     }, {}) || {};
 

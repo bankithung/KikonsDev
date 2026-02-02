@@ -28,7 +28,7 @@ export default function EnquiryDetailsPage() {
       await apiClient.approvalRequests.create({
         action: 'UPDATE',
         entity_type: 'enquiry',
-        entity_id: Number(id),
+        entity_id: id,
         entity_name: enquiry.candidateName,
         message: 'Request to update enquiry details',
         pending_changes: data,

@@ -61,7 +61,7 @@ export default function EmployeeProfilePage() {
         queryKey: ['user', id],
         queryFn: async () => {
             const users = await apiClient.users.list();
-            return users.find((u: any) => u.id === parseInt(id));
+            return users.find((u: any) => u.id === id);
         },
         enabled: !!id,
     });
@@ -437,7 +437,7 @@ export default function EmployeeProfilePage() {
                             </Card>
 
                             {/* Account Actions */}
-                            {(currentUser?.role === 'COMPANY_ADMIN' || currentUser?.role === 'DEV_ADMIN') && currentUser?.id !== parseInt(id) && (
+                            {(currentUser?.role === 'COMPANY_ADMIN' || currentUser?.role === 'DEV_ADMIN') && currentUser?.id !== id && (
                                 <Card className="border border-slate-200 shadow-sm">
                                     <CardContent className="p-4">
                                         <div className="flex justify-between items-center">

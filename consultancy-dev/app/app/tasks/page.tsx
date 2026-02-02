@@ -1020,7 +1020,7 @@ export default function TasksPage() {
                                                     <Label className="text-xs font-medium text-slate-600">Assign to</Label>
                                                     <Select
                                                         value={String(editingTask.assignedTo || editingTask.assigned_to || '')}
-                                                        onValueChange={(val) => setEditingTask({ ...editingTask, assignedTo: parseInt(val) })}
+                                                        onValueChange={(val) => setEditingTask({ ...editingTask, assignedTo: val })}
                                                     >
                                                         <SelectTrigger className="h-9 text-sm">
                                                             <SelectValue placeholder="Select..." />

@@ -168,7 +168,7 @@ export default function MyStudentsPage() {
 
     // Transfer mutation
     const transferMutation = useMutation({
-        mutationFn: async ({ students, toUserId }: { students: StudentItem[], toUserId: number }) => {
+        mutationFn: async ({ students, toUserId }: { students: StudentItem[], toUserId: string }) => {
             const promises = students.map(async (student) => {
                 const realId = student.id.split('-')[1];
                 if (student.type === 'enquiry') {
@@ -206,7 +206,7 @@ export default function MyStudentsPage() {
         const studentsToTransfer = allStudents.filter(s => selectedStudents.includes(s.id));
         transferMutation.mutate({
             students: studentsToTransfer,
-            toUserId: parseInt(transferTo)
+            toUserId: transferTo
         });
     };
 

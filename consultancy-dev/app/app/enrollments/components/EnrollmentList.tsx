@@ -106,7 +106,7 @@ export function EnrollmentList({ searchTerm = '' }: EnrollmentListProps) {
       await apiClient.approvalRequests.create({
         action: 'DELETE',
         entity_type: 'enrollment',
-        entity_id: Number(actionEnroll.id),
+        entity_id: actionEnroll.id,
         entity_name: actionEnroll.studentName,
         message: data.message,
       });

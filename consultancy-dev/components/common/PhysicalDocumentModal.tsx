@@ -10,7 +10,7 @@ import { Loader2 } from 'lucide-react';
 interface PhysicalDocumentModalProps {
     open: boolean;
     onClose: () => void;
-    registrationId: number;
+    registrationId: string;
     onSuccess: () => void;
 }
 

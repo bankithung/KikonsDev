@@ -52,8 +52,8 @@ export function PhysicalDocumentTransfer() {
         queryFn: apiClient.physicalTransfers.list,
     });
 
-    const regMap = registrations?.reduce((acc: Record<number, string>, reg) => {
-        acc[parseInt(reg.id)] = reg.studentName;
+    const regMap = registrations?.reduce((acc: Record<string, string>, reg) => {
+        acc[reg.id] = reg.studentName;
         return acc;
     }, {}) || {};
 

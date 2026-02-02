@@ -70,7 +70,7 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
     const queryClient = useQueryClient();
     const { user } = useAuthStore();
     const [activeTab, setActiveTab] = useState('overview');
-    const [selectedDocs, setSelectedDocs] = useReactState<number[]>([]);
+    const [selectedDocs, setSelectedDocs] = useReactState<string[]>([]);
     const [documentView, setDocumentView] = useState<'digital' | 'physical'>('digital');
     const [journeyView, setJourneyView] = useState<'enquiry' | 'registration' | 'enrollment'>('enquiry');
     const [showPhysicalDocModal, setShowPhysicalDocModal] = useState(false);
@@ -133,7 +133,7 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
         onError: () => toast.error('Failed to update')
     });
     const returnDocsMutation = useMutation({
-        mutationFn: (docIds: number[]) => apiClient.studentDocuments.returnDocs(docIds.map(String)),
+        mutationFn: (docIds: string[]) => apiClient.studentDocuments.returnDocs(docIds),
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['student-documents'] });
             setSelectedDocs([]); toast.success('Returned');
@@ -595,7 +595,7 @@ export function StudentProfileView({ type, id }: StudentProfileViewProps) {
                 <PhysicalDocumentModal
                     open={showPhysicalDocModal}
                     onClose={() => setShowPhysicalDocModal(false)}
-                    registrationId={Number(registrationData.id)}
+                    registrationId={registrationData.id}
                     onSuccess={() => {
                         queryClient.invalidateQueries({ queryKey: ['student-documents'] });
                         queryClient.invalidateQueries({ queryKey: ['registration'] });
