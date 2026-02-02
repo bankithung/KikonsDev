@@ -649,12 +649,7 @@ export const apiClient = {
     }
   },
 
-  universities: {
-    list: async (): Promise<any[]> => {
-      const res = await api.get('universities/');
-      return res.data;
-    },
-  },
+
 
   documents: {
     list: async (): Promise<Document[]> => {
@@ -917,33 +912,7 @@ export const apiClient = {
   },
 
   // NEW: Universities
-  universities: {
-    list: async () => {
-      const res = await api.get('universities/');
-      return res.data.map((u: any) => ({
-        ...u,
-        tuitionFee: {
-          min: u.tuition_fee_min,
-          max: u.tuition_fee_max
-        },
-        admissionDeadline: u.admission_deadline
-      }));
-    },
-    create: async (data: any) => {
-      const payload = {
-        ...data,
-        tuition_fee_min: data.tuitionFee?.min || 0,
-        tuition_fee_max: data.tuitionFee?.max || 0,
-        admission_deadline: data.admissionDeadline || data.deadline || '',
-        ranking: data.ranking || 0,
-        rating: data.rating || 0,
-        programs: data.programs || [],
-        requirements: data.requirements || []
-      };
-      const res = await api.post('universities/', payload);
-      return res.data;
-    }
-  },
+
 
   // NEW: Templates
   templates: {
@@ -1207,51 +1176,7 @@ export const apiClient = {
     return res.data;
   },
 
-  // NEW: Chat System
-  chat: {
-    getConversations: async () => {
-      const res = await api.get('chat-conversations/');
-      return res.data;
-    },
-    getMessages: async (conversationId: string) => {
-      const res = await api.get(`chat-conversations/${conversationId}/messages/`);
-      return res.data.map((m: any) => ({
-        ...m,
-        senderId: m.sender,
-        senderName: m.sender_name,
-        senderAvatar: m.sender_avatar
-      }));
-    },
-    sendMessage: async (conversationId: string, text: string) => {
-      // Import authStore dynamically to avoid circular dependencies
-      const { useAuthStore } = await import('@/store/authStore');
-      const currentUser = useAuthStore.getState().user;
 
-      if (!currentUser?.id) {
-        throw new Error('User not authenticated');
-      }
-
-      const res = await api.post('chat-messages/', {
-        conversation: parseInt(conversationId),
-        sender: currentUser.id,
-        text
-      });
-      return res.data;
-    },
-    createConversation: async (participantIds: number[]) => {
-      const res = await api.post('chat-conversations/', {
-        participants: participantIds
-      });
-      return res.data;
-    },
-    createGroup: async (conversationId: string, groupName: string) => {
-      const res = await api.post('group-chats/', {
-        conversation: conversationId,
-        group_name: groupName
-      });
-      return res.data;
-    }
-  },
 
   // NEW: Signup Requests (Dev Tools)
   signupRequests: {
@@ -1581,6 +1506,42 @@ export const apiClient = {
       const res = await api.delete(`universities/${id}/`);
       return res.data;
     },
+  },
+
+  // Chat API - End-to-End Encrypted Messaging
+  chat: {
+    getConversations: async () => {
+      const res = await api.get('chat/conversations/');
+      return res.data;
+    },
+    getMessages: async (conversationId: string) => {
+      const res = await api.get(`chat/conversations/${conversationId}/messages/`);
+      return res.data;
+    },
+    sendMessage: async (conversationId: string, content: any) => {
+      const res = await api.post('chat/send/', {
+        conversation_id: conversationId,
+        content
+      });
+      return res.data;
+    },
+    createConversation: async (participantIds: number[]) => {
+      const res = await api.post('chat/create/', {
+        participant_ids: participantIds
+      });
+      return res.data;
+    },
+    markAsRead: async (messageId: string) => {
+      const res = await api.post(`chat/messages/${messageId}/read/`);
+      return res.data;
+    },
+    createGroup: async (conversationId: string, groupName: string) => {
+      const res = await api.post('group-chats/', {
+        conversation: conversationId,
+        group_name: groupName
+      });
+      return res.data;
+    }
   },
 
 };

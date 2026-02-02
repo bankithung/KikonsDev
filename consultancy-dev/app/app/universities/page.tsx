@@ -175,8 +175,8 @@ export default function UniversitiesPage() {
     return matchesSearch && matchesCountry && matchesProgram;
   });
 
-  const countries = Array.from(new Set(universities.map((u: University) => u.country)));
-  const allPrograms = Array.from(new Set(universities.flatMap((u: University) => u.programs)));
+  const countries = Array.from(new Set(universities.map((u: University) => u.country))) as string[];
+  const allPrograms = Array.from(new Set(universities.flatMap((u: University) => u.programs))) as string[];
 
   return (
     <div className="space-y-4">

@@ -9,7 +9,7 @@ import { useAuthStore } from '@/store/authStore';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { GroupChat } from '@/lib/chatTypes';
+import { GroupChat, ChatMessage } from '@/lib/chatTypes';
 import { apiClient } from '@/lib/apiClient';
 
 interface ChatWindowProps {
@@ -33,13 +33,22 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
     refetchInterval: 10000,
   });
 
-  // Sync React Query data to Chat Store
+  // Sync React Query data to Chat Store (merge, don't replace optimistic messages)
   useEffect(() => {
     if (messages) {
       useChatStore.setState(state => ({
-        conversations: state.conversations.map(conv =>
-          conv.id === conversationId ? { ...conv, messages } : conv
-        )
+        conversations: state.conversations.map(conv => {
+          if (conv.id === conversationId) {
+            const existingMessages = conv.messages || [];
+            // Keep optimistic messages (ones starting with msg_)
+            const optimisticMessages = existingMessages.filter(m => m.id.startsWith('msg_'));
+            // Merge with server messages (don't duplicate)
+            const serverMessageIds = new Set(messages.map((m: any) => m.id));
+            const finalOptimistic = optimisticMessages.filter(m => !serverMessageIds.has(m.id));
+            return { ...conv, messages: [...messages, ...finalOptimistic] };
+          }
+          return conv;
+        })
       }));
     }
   }, [messages, conversationId]);
@@ -156,8 +165,8 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
         )}
       </AnimatePresence>
 
-      <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-slate-50 custom-scrollbar">
-        {conversation.messages.map((msg) => {
+      <div className="flex-1 overflow-y-auto p-4 space-y-2 bg-slate-50 custom-scrollbar">
+        {(messages || conversation.messages || []).map((msg: ChatMessage) => {
           const isCurrentUser = currentUser && String(msg.senderId) === String(currentUser.id);
           const isSystemMessage = msg.senderId === 'system';
 
@@ -173,12 +182,12 @@ export function ChatWindow({ conversationId }: ChatWindowProps) {
 
           return (
             <div key={msg.id} className={`flex ${isCurrentUser ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[75%] ${isCurrentUser ? 'bg-teal-600 text-white' : 'bg-white text-slate-900 border border-slate-200'} rounded-2xl px-4 py-2.5 shadow-sm`}>
+              <div className={`max-w-[75%] ${isCurrentUser ? 'bg-teal-500 text-white' : 'bg-white text-slate-900'} rounded-2xl px-3.5 py-2`}>
                 {isGroup && !isCurrentUser && (
                   <p className="text-xs font-semibold mb-1 opacity-70">{msg.senderName}</p>
                 )}
-                <p className="text-sm leading-relaxed">{msg.text}</p>
-                <p className={`text-xs mt-1 ${isCurrentUser ? 'text-teal-100' : 'text-slate-400'}`}>
+                <p className="text-[13px] leading-relaxed">{msg.text}</p>
+                <p className={`text-[11px] mt-0.5 ${isCurrentUser ? 'text-teal-50' : 'text-slate-400'}`}>
                   {format(new Date(msg.timestamp), 'HH:mm')}
                 </p>
               </div>

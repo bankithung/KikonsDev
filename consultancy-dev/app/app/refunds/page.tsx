@@ -35,7 +35,7 @@ export default function RefundsPage() {
 
   const { data: refunds = [], isLoading } = useQuery<Refund[]>({
     queryKey: ['refunds'],
-    queryFn: apiClient.refunds.list,
+    queryFn: () => apiClient.refunds.list(),
   });
 
   const createRefundMutation = useMutation({

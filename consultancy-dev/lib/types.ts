@@ -9,6 +9,7 @@ export interface User {
   role: Role;
   company_id?: string;
   avatar?: string;
+  is_active?: boolean;
 
   // Extended Profile
   gender?: 'Male' | 'Female' | 'Other';

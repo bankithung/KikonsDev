@@ -258,9 +258,16 @@ export default function UsersPage() {
     }
   };
 
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+
   const handleDelete = (id: string) => {
-    if (confirm('Remove this user?')) {
-      deleteMutation.mutate(id);
+    setDeleteUserId(id);
+  };
+
+  const confirmDelete = () => {
+    if (deleteUserId) {
+      deleteMutation.mutate(deleteUserId);
+      setDeleteUserId(null);
     }
   };
 
@@ -457,147 +464,157 @@ export default function UsersPage() {
       <Dialog.Root open={isModalOpen} onOpenChange={setIsModalOpen}>
         <Dialog.Portal>
           <Dialog.Overlay className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 transition-all duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
-          <Dialog.Content className="fixed left-[50%] top-[50%] z-50 grid w-full max-w-5xl translate-x-[-50%] translate-y-[-50%] gap-4 rounded-xl border bg-white shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 h-[85vh] flex flex-col p-0 overflow-hidden">
+          <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-[95vw] sm:w-[90vw] md:w-full md:max-w-4xl translate-x-[-50%] translate-y-[-50%] rounded-xl border border-slate-200 bg-white shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 h-[90vh] sm:h-[85vh] flex flex-col overflow-hidden">
 
-            {/* Header */}
-            <div className={`px-8 py-5 border-b flex items-center justify-between shrink-0 ${modalMode === 'create' ? 'bg-teal-600' : modalMode === 'edit' ? 'bg-blue-600' : 'bg-slate-800'
+            {/* Header - Fixed 72px */}
+            <div className={`h-[72px] px-4 sm:px-6 py-3.5 border-b flex items-center justify-between shrink-0 ${modalMode === 'create' ? 'bg-teal-600' : modalMode === 'edit' ? 'bg-blue-600' : 'bg-slate-800'
               }`}>
-              <div className="text-white">
-                <Dialog.Title className="text-xl font-bold font-heading tracking-tight">
+              <div className="text-white flex-1 min-w-0">
+                <Dialog.Title className="text-base sm:text-lg font-bold font-heading tracking-tight truncate">
                   {modalMode === 'create' ? 'Add New Team Member' : modalMode === 'edit' ? 'Edit User Profile' : 'View User Profile'}
                 </Dialog.Title>
-                <Dialog.Description className="text-teal-100/80 text-xs mt-0.5 font-medium">
+                <Dialog.Description className="text-white/70 text-[10px] sm:text-[11px] mt-0.5 font-medium truncate">
                   {modalMode === 'create' ? 'Enter employee details to create account' : modalMode === 'edit' ? 'Update personal or role information' : 'Complete user profile details'}
                 </Dialog.Description>
               </div>
-              <button onClick={handleCloseModal} className="text-white/70 hover:text-white transition-colors p-1.5 hover:bg-white/10 rounded-full">
-                <X size={20} />
+              <button onClick={handleCloseModal} className="text-white/70 hover:text-white transition-colors p-1.5 hover:bg-white/10 rounded-full ml-2 shrink-0">
+                <X size={18} />
               </button>
             </div>
 
-            {/* Scrollable Content */}
-            <div className="flex-1 overflow-y-auto p-8 bg-slate-50/50">
-              <div className="max-w-4xl mx-auto space-y-8">
+            {/* Tabs Bar - Fixed 60px */}
+            <Tabs defaultValue="personal" className="flex-1 flex flex-col overflow-hidden min-h-0">
+              <div className="h-[60px] px-4 sm:px-5 pt-3 pb-2 bg-slate-50/50 border-b border-slate-100 shrink-0">
+                <TabsList className="grid w-full grid-cols-3 h-[44px] bg-white border border-slate-200 p-0.5 rounded-lg gap-0.5 shadow-sm">
+                  <TabsTrigger value="personal" className="h-full rounded-md data-[state=active]:bg-teal-50 data-[state=active]:text-teal-700 data-[state=active]:shadow-sm font-medium text-slate-600 text-[11px] sm:text-xs transition-all duration-200 hover:bg-slate-50">
+                    <UserIcon size={14} className="mr-1 sm:mr-1.5 shrink-0" />
+                    <span className="truncate">Personal</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="employment" className="h-full rounded-md data-[state=active]:bg-blue-50 data-[state=active]:text-blue-700 data-[state=active]:shadow-sm font-medium text-slate-600 text-[11px] sm:text-xs transition-all duration-200 hover:bg-slate-50">
+                    <Briefcase size={14} className="mr-1 sm:mr-1.5 shrink-0" />
+                    <span className="truncate">Employment</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="assignment" className="h-full rounded-md data-[state=active]:bg-indigo-50 data-[state=active]:text-indigo-700 data-[state=active]:shadow-sm font-medium text-slate-600 text-[11px] sm:text-xs transition-all duration-200 hover:bg-slate-50">
+                    <MapPin size={14} className="mr-1 sm:mr-1.5 shrink-0" />
+                    <span className="truncate">Location</span>
+                  </TabsTrigger>
+                </TabsList>
+              </div>
 
-                <form id="userForm" onSubmit={handleSubmit} className="space-y-8">
-                  <Tabs defaultValue="personal" className="w-full">
-                    <TabsList className="grid w-full grid-cols-3 mb-8 bg-slate-100 p-1.5 h-auto rounded-lg gap-1.5">
-                      <TabsTrigger value="personal" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-teal-700 data-[state=active]:shadow-sm rounded-md font-medium text-slate-500 text-sm transition-all duration-200">
-                        <UserIcon size={16} className="mr-2.5" /> Personal Details
-                      </TabsTrigger>
-                      <TabsTrigger value="employment" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-blue-600 data-[state=active]:shadow-sm rounded-md font-medium text-slate-500 text-sm transition-all duration-200">
-                        <Briefcase size={16} className="mr-2.5" /> Employment
-                      </TabsTrigger>
-                      <TabsTrigger value="assignment" className="py-2.5 data-[state=active]:bg-white data-[state=active]:text-indigo-600 data-[state=active]:shadow-sm rounded-md font-medium text-slate-500 text-sm transition-all duration-200">
-                        <MapPin size={16} className="mr-2.5" /> Location & Assignment
-                      </TabsTrigger>
-                    </TabsList>
+              {/* Scrollable Content Area */}
+              <div className="flex-1 overflow-y-auto bg-slate-50/50 min-h-0">
+                <div className="p-4 sm:p-5">
+                  <form id="userForm" onSubmit={handleSubmit}>
 
-                    <TabsContent value="personal" className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        {/* Core Identity */}
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Username <span className="text-red-500">*</span></Label>
-                          <Input disabled={isView} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="jdoe" className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-10 font-medium" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Email Address <span className="text-red-500">*</span></Label>
-                          <Input disabled={isView} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@company.com" className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-10" />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">First Name</Label>
-                          <Input disabled={isView} value={firstName} onChange={(e) => setFirstName(e.target.value)} className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-10" />
-                        </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Last Name</Label>
-                          <Input disabled={isView} value={lastName} onChange={(e) => setLastName(e.target.value)} className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-10" />
-                        </div>
-
-                        {/* Extended Personal */}
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Phone Number</Label>
-                          <Input disabled={isView} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+91 98765 43210" className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-10" />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Gender</Label>
-                          <Select disabled={isView} value={gender} onValueChange={setGender}>
-                            <SelectTrigger className="bg-white border-slate-200 h-10">
-                              <SelectValue placeholder="Select Gender" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="Male">Male</SelectItem>
-                              <SelectItem value="Female">Female</SelectItem>
-                              <SelectItem value="Other">Other</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Date of Birth</Label>
-                          <Input disabled={isView} type="date" value={dob ? format(dob, 'yyyy-MM-dd') : ''} onChange={(e) => setDob(e.target.value ? new Date(e.target.value) : undefined)} className="bg-white border-slate-200 h-10" />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Father's / Mother's Name</Label>
-                          <Input disabled={isView} value={parentsName} onChange={(e) => setParentsName(e.target.value)} className="bg-white border-slate-200 h-10" />
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Religion</Label>
-                          {isView ? (
-                            <Input disabled value={religion} className="bg-slate-50 h-10" />
-                          ) : (
-                            <SearchableSelect
-                              options={religionOptions}
-                              value={religion}
-                              onChange={setReligion}
-                              placeholder="Select Religion"
-                            />
-                          )}
-                        </div>
-
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">State of Origin</Label>
-                          {isView ? (
-                            <Input disabled value={stateFrom} className="bg-slate-50 h-10" />
-                          ) : (
-                            <SearchableSelect
-                              options={stateFromOptions}
-                              value={stateFrom}
-                              onChange={setStateFrom}
-                              placeholder="Search State..."
-                            />
-                          )}
-                        </div>
-
-                        {/* Password Scoped */}
-                        {(modalMode !== 'view') && (
-                          <div className="col-span-full pt-4 border-t border-slate-100">
-                            <div className="space-y-2 max-w-md">
-                              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                {modalMode === 'create' ? 'Set Password' : 'Change Password'} {modalMode === 'create' && <span className="text-red-500">*</span>}
-                              </Label>
-                              <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={modalMode === 'edit' ? 'Leave blank to keep current' : '••••••••'} className="bg-white border-slate-200 focus:border-teal-500 h-10" />
-                            </div>
-                            <div className="space-y-2 max-w-md">
-                              <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                Confirm Password {modalMode === 'create' && <span className="text-red-500">*</span>}
-                              </Label>
-                              <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="bg-white border-slate-200 focus:border-teal-500 h-10" />
-                            </div>
+                    <TabsContent value="personal" className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                      <div className="bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          {/* Core Identity */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Username <span className="text-red-500">*</span></Label>
+                            <Input disabled={isView} value={username} onChange={(e) => setUsername(e.target.value)} placeholder="jdoe" className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-9 text-sm" />
                           </div>
-                        )}
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Email Address <span className="text-red-500">*</span></Label>
+                            <Input disabled={isView} type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="john@company.com" className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-9 text-sm" />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">First Name</Label>
+                            <Input disabled={isView} value={firstName} onChange={(e) => setFirstName(e.target.value)} className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-9 text-sm" />
+                          </div>
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Last Name</Label>
+                            <Input disabled={isView} value={lastName} onChange={(e) => setLastName(e.target.value)} className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-9 text-sm" />
+                          </div>
+
+                          {/* Extended Personal */}
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Phone Number</Label>
+                            <Input disabled={isView} value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="+91 98765 43210" className="bg-white border-slate-200 focus:border-teal-500 focus:ring-teal-500/20 h-9 text-sm" />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Gender</Label>
+                            <Select disabled={isView} value={gender} onValueChange={setGender}>
+                              <SelectTrigger className="bg-white border-slate-200 h-9 text-sm">
+                                <SelectValue placeholder="Select Gender" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="Male">Male</SelectItem>
+                                <SelectItem value="Female">Female</SelectItem>
+                                <SelectItem value="Other">Other</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Date of Birth</Label>
+                            <Input disabled={isView} type="date" value={dob ? format(dob, 'yyyy-MM-dd') : ''} onChange={(e) => setDob(e.target.value ? new Date(e.target.value) : undefined)} className="bg-white border-slate-200 h-9 text-sm" />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Father's / Mother's Name</Label>
+                            <Input disabled={isView} value={parentsName} onChange={(e) => setParentsName(e.target.value)} className="bg-white border-slate-200 h-9 text-sm" />
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">Religion</Label>
+                            {isView ? (
+                              <Input disabled value={religion} className="bg-slate-50 border-slate-200 h-9 text-sm" />
+                            ) : (
+                              <SearchableSelect
+                                options={religionOptions}
+                                value={religion}
+                                onChange={setReligion}
+                                placeholder="Select Religion"
+                              />
+                            )}
+                          </div>
+
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-slate-600">State of Origin</Label>
+                            {isView ? (
+                              <Input disabled value={stateFrom} className="bg-slate-50 border-slate-200 h-9 text-sm" />
+                            ) : (
+                              <SearchableSelect
+                                options={stateFromOptions}
+                                value={stateFrom}
+                                onChange={setStateFrom}
+                                placeholder="Search State..."
+                              />
+                            )}
+                          </div>
+
+                          {/* Password Scoped */}
+                          {(modalMode !== 'view') && (
+                            <div className="col-span-full pt-3 border-t border-slate-100">
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="space-y-1.5">
+                                  <Label className="text-[11px] font-semibold text-slate-600">
+                                    {modalMode === 'create' ? 'Set Password' : 'Change Password'} {modalMode === 'create' && <span className="text-red-500">*</span>}
+                                  </Label>
+                                  <Input type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} placeholder={modalMode === 'edit' ? 'Leave blank to keep current' : '••••••••'} className="bg-white border-slate-200 focus:border-teal-500 h-9 text-sm" />
+                                </div>
+                                <div className="space-y-1.5">
+                                  <Label className="text-[11px] font-semibold text-slate-600">
+                                    Confirm Password {modalMode === 'create' && <span className="text-red-500">*</span>}
+                                  </Label>
+                                  <Input type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} placeholder="••••••••" className="bg-white border-slate-200 focus:border-teal-500 h-9 text-sm" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="employment" className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 bg-white p-6 rounded-lg border border-slate-200 shadow-sm">
-                        <div className="space-y-2 md:col-span-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">System Role <span className="text-red-500">*</span></Label>
+                    <TabsContent value="employment" className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 bg-white p-4 rounded-lg border border-slate-200 shadow-sm">
+                        <div className="space-y-1.5 md:col-span-2">
+                          <Label className="text-[11px] font-semibold text-slate-600">System Role <span className="text-red-500">*</span></Label>
                           {isView ? (
-                            <div className="p-2.5 bg-slate-50 border rounded-md text-sm font-medium text-slate-700">{role}</div>
+                            <div className="p-2 bg-slate-50 border border-slate-200 rounded-md text-sm font-medium text-slate-700">{role}</div>
                           ) : (
                             <SearchableSelect
                               options={roleOptions}
@@ -606,41 +623,41 @@ export default function UsersPage() {
                               placeholder="Select Role..."
                             />
                           )}
-                          <p className="text-[10px] text-slate-400">Determines access permissions and dashboard variability.</p>
+                          <p className="text-[10px] text-slate-400 mt-1">Determines access permissions and dashboard variability.</p>
                         </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Date of Joining</Label>
-                          <Input disabled={isView} type="date" value={doj ? format(doj, 'yyyy-MM-dd') : ''} onChange={(e) => setDoj(e.target.value ? new Date(e.target.value) : undefined)} className="bg-white border-slate-200 h-10" />
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-semibold text-slate-600">Date of Joining</Label>
+                          <Input disabled={isView} type="date" value={doj ? format(doj, 'yyyy-MM-dd') : ''} onChange={(e) => setDoj(e.target.value ? new Date(e.target.value) : undefined)} className="bg-white border-slate-200 h-9 text-sm" />
                         </div>
 
-                        <div className="space-y-2">
-                          <Label className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Salary (CTC)</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-semibold text-slate-600">Salary (CTC)</Label>
                           <div className="relative">
-                            <span className="absolute left-3 top-2.5 text-slate-400 text-sm font-medium">₹</span>
-                            <Input disabled={isView} type="number" value={salary} onChange={(e) => setSalary(e.target.value)} className="pl-8 bg-white border-slate-200 h-10" placeholder="0.00" />
+                            <span className="absolute left-3 top-2 text-slate-400 text-sm font-medium">₹</span>
+                            <Input disabled={isView} type="number" value={salary} onChange={(e) => setSalary(e.target.value)} className="pl-8 bg-white border-slate-200 h-9 text-sm" placeholder="0.00" />
                           </div>
                         </div>
                       </div>
                     </TabsContent>
 
-                    <TabsContent value="assignment" className="space-y-6 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
-                      <div className="bg-indigo-50/50 p-6 rounded-lg border border-indigo-100 space-y-6">
-                        <div className="flex items-start gap-4 mb-2">
-                          <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg shrink-0">
-                            <MapPin size={20} />
+                    <TabsContent value="assignment" className="space-y-4 animate-in fade-in-50 slide-in-from-bottom-2 duration-300">
+                      <div className="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
+                        <div className="flex items-start gap-3 mb-3">
+                          <div className="p-1.5 bg-indigo-100 text-indigo-600 rounded-lg shrink-0">
+                            <MapPin size={16} />
                           </div>
                           <div>
-                            <h3 className="font-semibold text-indigo-900">Work Location Assignment</h3>
-                            <p className="text-xs text-indigo-700/70 leading-relaxed">Assign the geographic area of responsibility for this employee.</p>
+                            <h3 className="font-semibold text-sm text-indigo-900">Work Location Assignment</h3>
+                            <p className="text-[11px] text-indigo-700/70 leading-relaxed">Assign the geographic area of responsibility for this employee.</p>
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold text-indigo-900/70 uppercase tracking-wider">Assigned State</Label>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-indigo-900/70">Assigned State</Label>
                             {isView ? (
-                              <Input disabled value={assignedState} className="bg-white/50 border-indigo-200 h-10 text-indigo-900" />
+                              <Input disabled value={assignedState} className="bg-white/50 border-indigo-200 h-9 text-sm text-indigo-900" />
                             ) : (
                               <SearchableSelect
                                 options={stateOptions}
@@ -654,10 +671,10 @@ export default function UsersPage() {
                             )}
                           </div>
 
-                          <div className="space-y-2">
-                            <Label className="text-xs font-bold text-indigo-900/70 uppercase tracking-wider">Assigned District</Label>
+                          <div className="space-y-1.5">
+                            <Label className="text-[11px] font-semibold text-indigo-900/70">Assigned District</Label>
                             {isView ? (
-                              <Input disabled value={assignedDistrict} className="bg-white/50 border-indigo-200 h-10 text-indigo-900" />
+                              <Input disabled value={assignedDistrict} className="bg-white/50 border-indigo-200 h-9 text-sm text-indigo-900" />
                             ) : (
                               <SearchableSelect
                                 options={districtOptions}
@@ -669,21 +686,21 @@ export default function UsersPage() {
                             )}
                           </div>
 
-                          <div className="space-y-2 md:col-span-2">
-                            <Label className="text-xs font-bold text-indigo-900/70 uppercase tracking-wider">Specific Location / Branch</Label>
-                            <Input disabled={isView} value={assignedLocation} onChange={(e) => setAssignedLocation(e.target.value)} placeholder="e.g. MG Road Branch, 2nd Floor" className="bg-white border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500/20 h-10" />
+                          <div className="space-y-1.5 md:col-span-2">
+                            <Label className="text-[11px] font-semibold text-indigo-900/70">Specific Location / Branch</Label>
+                            <Input disabled={isView} value={assignedLocation} onChange={(e) => setAssignedLocation(e.target.value)} placeholder="e.g. MG Road Branch, 2nd Floor" className="bg-white border-indigo-200 focus:border-indigo-500 focus:ring-indigo-500/20 h-9 text-sm" />
                           </div>
                         </div>
                       </div>
                     </TabsContent>
-                  </Tabs>
-                </form>
+                  </form>
+                </div>
               </div>
-            </div>
+            </Tabs>
 
-            {/* Footer */}
-            <div className="p-6 border-t bg-slate-50 flex justify-end gap-3 shrink-0">
-              <Button type="button" variant="outline" onClick={handleCloseModal} className="h-10 px-6 border-slate-300 text-slate-700 hover:bg-slate-100 font-medium">
+            {/* Footer - Fixed 60px */}
+            <div className="h-[60px] px-4 sm:px-6 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-end gap-2.5 shrink-0">
+              <Button type="button" variant="outline" onClick={handleCloseModal} className="h-11 px-4 sm:px-6 text-sm border-slate-300 text-slate-700 hover:bg-slate-100 font-medium">
                 Cancel
               </Button>
               {isView && (
@@ -694,10 +711,11 @@ export default function UsersPage() {
                       router.push(`/app/counselors/${selectedUser.id}`);
                     }
                   }}
-                  className="h-10 px-6 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition-all"
+                  className="h-11 px-4 sm:px-6 text-sm bg-indigo-600 hover:bg-indigo-700 text-white font-semibold shadow-md transition-all"
                 >
-                  <Eye className="mr-2 h-4 w-4" />
-                  View Profile
+                  <Eye className="mr-1.5 h-4 w-4" />
+                  <span className="hidden sm:inline">View Profile</span>
+                  <span className="sm:hidden">View</span>
                 </Button>
               )}
               {!isView && (
@@ -705,19 +723,62 @@ export default function UsersPage() {
                   type="submit"
                   form="userForm"
                   disabled={!isFormValid() || createUserMutation.isPending || updateUserMutation.isPending}
-                  className={`h-10 px-8 font-semibold shadow-md transition-all ${!isFormValid() ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' :
+                  className={`h-11 px-4 sm:px-6 text-sm font-semibold shadow-md transition-all ${!isFormValid() ? 'bg-slate-300 text-slate-500 cursor-not-allowed shadow-none' :
                     modalMode === 'create' ? 'bg-teal-600 hover:bg-teal-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'
                     }`}
                 >
-                  {modalMode === 'create' ? 'Create Team Member' : 'Save Changes'}
+                  <span className="hidden sm:inline">{modalMode === 'create' ? 'Create Team Member' : 'Save Changes'}</span>
+                  <span className="sm:hidden">{modalMode === 'create' ? 'Create' : 'Save'}</span>
                 </Button>
               )}
             </div>
 
           </Dialog.Content>
         </Dialog.Portal>
-      </Dialog.Root>
+      </Dialog.Root >
 
-    </div>
+      {/* Delete Confirmation Modal */}
+      < Dialog.Root open={deleteUserId !== null
+      } onOpenChange={(open) => !open && setDeleteUserId(null)}>
+        <Dialog.Portal>
+          <Dialog.Overlay className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 transition-all duration-300 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0" />
+          <Dialog.Content className="fixed left-[50%] top-[50%] z-50 w-full max-w-lg translate-x-[-50%] translate-y-[-50%] rounded-2xl bg-white shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 p-6 overflow-hidden">
+
+            <div className="flex gap-4 mb-6">
+              <div className="w-12 h-12 rounded-full bg-red-100 flex items-center justify-center shrink-0">
+                <Trash2 className="w-6 h-6 text-red-600" />
+              </div>
+              <div className="flex-1">
+                <Dialog.Title className="text-lg font-bold text-slate-900 mb-2">
+                  Delete User
+                </Dialog.Title>
+                <Dialog.Description className="text-sm text-slate-600 leading-relaxed">
+                  Are you sure you want to delete this user? This action cannot be undone.
+                </Dialog.Description>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setDeleteUserId(null)}
+                className="h-11 px-6 text-sm border-slate-300 text-slate-700 hover:bg-slate-50 font-medium"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                onClick={confirmDelete}
+                className="h-11 px-6 text-sm bg-red-600 hover:bg-red-700 text-white font-semibold shadow-md"
+              >
+                Delete
+              </Button>
+            </div>
+          </Dialog.Content>
+        </Dialog.Portal>
+      </Dialog.Root >
+
+    </div >
   );
 }

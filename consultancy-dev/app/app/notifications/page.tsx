@@ -237,7 +237,7 @@ export default function NotificationsPage() {
                 placeholder="Search notifications..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 h-9 text-sm"
+                className="pl-8 h-9 text-sm border-slate-200 focus-visible:border-teal-400"
               />
             </div>
 

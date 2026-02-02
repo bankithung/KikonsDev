@@ -36,6 +36,10 @@ class User(AbstractUser):
     assigned_district = models.CharField(max_length=100, blank=True, null=True)
     assigned_location = models.CharField(max_length=255, blank=True, null=True)
 
+    # E2E Encryption Keys for Chat
+    rsa_public_key = models.TextField(blank=True, null=True, help_text="RSA public key in PEM format")
+    rsa_private_key_encrypted = models.TextField(blank=True, null=True, help_text="RSA private key encrypted with user password")
+
 class Enquiry(models.Model):
     STATUS_CHOICES = (('New', 'New'), ('Converted', 'Converted'), ('Closed', 'Closed'))
     
@@ -495,9 +499,22 @@ class ChatConversation(models.Model):
 class ChatMessage(models.Model):
     conversation = models.ForeignKey(ChatConversation, related_name='messages', on_delete=models.CASCADE)
     sender = models.ForeignKey(User, on_delete=models.CASCADE)
-    text = models.TextField()
+    
+    # Encrypted message content (AES encrypted)
+    encrypted_content = models.TextField(help_text="Message encrypted with AES")
+    
+    # Deprecated: plain text field (keeping for migration compatibility)
+    text = models.TextField(blank=True, default='')
+    
+    # AES key encrypted for each recipient with their RSA public key
+    encrypted_keys = models.JSONField(default=dict, help_text="Format: {user_id: encrypted_aes_key}")
+    
+    # Read receipts
+    is_read = models.BooleanField(default=False)  # Legacy field
+    read_by = models.JSONField(default=list, help_text="List of user IDs who have read this message")
+    
     timestamp = models.DateTimeField(auto_now_add=True)
-    read = models.BooleanField(default=False)
+    read = models.BooleanField(default=False)  # Legacy field
     company_id = models.CharField(max_length=100, default='')
 
 class GroupChat(models.Model):

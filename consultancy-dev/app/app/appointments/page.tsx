@@ -585,7 +585,7 @@ export default function AppointmentsPage() {
                   value={formData.studentName}
                   onChange={(e) => setFormData(p => ({ ...p, studentName: e.target.value }))}
                   placeholder="Enter name"
-                  className="h-9 text-sm"
+                  className="h-9 text-sm border-slate-200"
                   required
                 />
               </div>
@@ -596,7 +596,7 @@ export default function AppointmentsPage() {
                   value={formData.studentEmail}
                   onChange={(e) => setFormData(p => ({ ...p, studentEmail: e.target.value }))}
                   placeholder="client@email.com"
-                  className="h-9 text-sm"
+                  className="h-9 text-sm border-slate-200"
                 />
               </div>
             </div>
@@ -604,7 +604,7 @@ export default function AppointmentsPage() {
             <div className="space-y-1.5">
               <Label className="text-xs font-medium text-slate-600">Assign To *</Label>
               <Select value={formData.counselorId} onValueChange={(v) => setFormData(p => ({ ...p, counselorId: v }))}>
-                <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Select staff member" /></SelectTrigger>
+                <SelectTrigger className="h-9 text-sm border-slate-200"><SelectValue placeholder="Select staff member" /></SelectTrigger>
                 <SelectContent>
                   {companyUsers.map((user) => (
                     <SelectItem key={user.id} value={user.id.toString()}>
@@ -618,11 +618,11 @@ export default function AppointmentsPage() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-slate-600">Date *</Label>
-                <Input type="date" value={formData.date} onChange={(e) => setFormData(p => ({ ...p, date: e.target.value }))} className="h-9 text-sm" required />
+                <Input type="date" value={formData.date} onChange={(e) => setFormData(p => ({ ...p, date: e.target.value }))} className="h-9 text-sm border-slate-200" required />
               </div>
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-slate-600">Time *</Label>
-                <Input type="time" value={formData.time} onChange={(e) => setFormData(p => ({ ...p, time: e.target.value }))} className="h-9 text-sm" required />
+                <Input type="time" value={formData.time} onChange={(e) => setFormData(p => ({ ...p, time: e.target.value }))} className="h-9 text-sm border-slate-200" required />
               </div>
             </div>
 
@@ -630,7 +630,7 @@ export default function AppointmentsPage() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-slate-600">Meeting Type</Label>
                 <Select value={formData.type} onValueChange={(v: any) => setFormData(p => ({ ...p, type: v }))}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm border-slate-200"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="Video Call">Video Call</SelectItem>
                     <SelectItem value="Phone Call">Phone Call</SelectItem>
@@ -641,7 +641,7 @@ export default function AppointmentsPage() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-medium text-slate-600">Duration</Label>
                 <Select value={formData.duration} onValueChange={(v) => setFormData(p => ({ ...p, duration: v }))}>
-                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="h-9 text-sm border-slate-200"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="15">15 Minutes</SelectItem>
                     <SelectItem value="30">30 Minutes</SelectItem>
@@ -658,13 +658,13 @@ export default function AppointmentsPage() {
                 value={formData.notes}
                 onChange={(e) => setFormData(p => ({ ...p, notes: e.target.value }))}
                 placeholder="Optional notes..."
-                className="h-9 text-sm"
+                className="h-9 text-sm border-slate-200"
               />
             </div>
 
-            <div className="flex gap-3 pt-3 border-t border-slate-200">
-              <Button type="button" variant="outline" className="flex-1 h-9 text-xs" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-              <Button type="submit" className="flex-1 h-9 bg-teal-600 hover:bg-teal-700 text-white text-xs">
+            <div className="flex gap-3 pt-3">
+              <Button type="button" variant="outline" className="flex-1 h-11 text-sm" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+              <Button type="submit" className="flex-1 h-11 bg-teal-600 hover:bg-teal-700 text-white text-sm">
                 {editingAppointment ? 'Save Changes' : 'Schedule Appointment'}
               </Button>
             </div>

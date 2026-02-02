@@ -162,3 +162,88 @@ class UpdatesConsumer(AsyncJsonWebsocketConsumer):
         except User.DoesNotExist:
             return None
 
+
+class ChatConsumer(AsyncJsonWebsocketConsumer):
+    """
+    WebSocket consumer for real-time chat messaging
+    Handles message delivery, typing indicators, and read receipts
+    """
+    
+    async def connect(self):
+        """Handle WebSocket connection"""
+        self.user = self.scope.get('user')
+        
+        # Only allow authenticated users
+        if not self.user or not self.user.is_authenticated:
+            await self.close()
+            return
+        
+        # Get conversation_id from URL
+        self.conversation_id = self.scope['url_route']['kwargs']['conversation_id']
+        self.room_group_name = f'chat_{self.conversation_id}'
+        
+        # Join chat room
+        await self.channel_layer.group_add(
+            self.room_group_name,
+            self.channel_name
+        )
+        
+        await self.accept()
+        
+        # Send connection confirmation
+        await self.send_json({
+            'type': 'connection_established',
+            'message': f'Connected to conversation {self.conversation_id}'
+        })
+    
+    async def disconnect(self, close_code):
+        """Handle WebSocket disconnection"""
+        # Leave chat room
+        if hasattr(self, 'room_group_name'):
+            await self.channel_layer.group_discard(
+                self.room_group_name,
+                self.channel_name
+            )
+    
+    async def receive_json(self, content):
+        """Handle messages from WebSocket client"""
+        message_type = content.get('type')
+        
+        if message_type == 'ping':
+            # Keep-alive ping
+            await self.send_json({'type': 'pong'})
+            
+        elif message_type == 'typing':
+            # Broadcast typing indicator to other participants
+            await self.channel_layer.group_send(
+                self.room_group_name,
+                {
+                    'type': 'typing_indicator',
+                    'user_id': str(self.user.id),
+                    'user_name': f"{self.user.first_name} {self.user.last_name}".strip() or self.user.username,
+                    'is_typing': content.get('is_typing', False)
+                }
+            )
+    
+    async def chat_message(self, event):
+        """
+        Handle chat_message events from channel layer
+        Forward message notification to WebSocket client
+        """
+        # Don't send encrypted content - client should fetch via API
+        await self.send_json({
+            'type': 'new_message',
+            'message': event['message']
+        })
+    
+    async def typing_indicator(self, event):
+        """Handle typing indicator broadcast"""
+        # Don't send to the user who is typing
+        if str(event['user_id']) != str(self.user.id):
+            await self.send_json({
+                'type': 'typing',
+                'user_id': event['user_id'],
+                'user_name': event['user_name'],
+                'is_typing': event['is_typing']
+            })
+

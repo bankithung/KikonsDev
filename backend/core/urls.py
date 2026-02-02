@@ -13,6 +13,7 @@ from .views import (
     PhysicalDocumentTransferViewSet
 )
 from .earnings_view import EarningsRevenueView
+from . import chat_views
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -52,4 +53,11 @@ router.register(r'dashboard', DashboardViewSet, basename='dashboard')
 urlpatterns = [
     path('', include(router.urls)),
     path('earnings/revenue/', EarningsRevenueView.as_view(), name='earnings-revenue'),
+    
+    # Chat API endpoints
+    path('chat/conversations/', chat_views.get_conversations, name='chat-conversations'),
+    path('chat/conversations/<int:conversation_id>/messages/', chat_views.get_messages, name='chat-messages'),
+    path('chat/send/', chat_views.send_message, name='chat-send'),
+    path('chat/create/', chat_views.create_conversation, name='chat-create'),
+    path('chat/messages/<int:message_id>/read/', chat_views.mark_as_read, name='chat-mark-read'),
 ]

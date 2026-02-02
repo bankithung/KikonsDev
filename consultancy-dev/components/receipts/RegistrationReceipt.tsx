@@ -8,7 +8,7 @@ import { Printer, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface RegistrationData {
-    id?: number;
+    id?: string | number;
     registrationNo: string;
     studentName: string;
     email: string;

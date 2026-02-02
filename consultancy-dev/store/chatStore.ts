@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import { ChatConversation, MinimizedChat, ChatMessage, GroupChat, GroupMember, User } from '@/lib/chatTypes';
 import { apiClient } from '@/lib/apiClient';
+import { useAuthStore } from '@/store/authStore';
 
 interface ChatState {
   conversations: ChatConversation[];
@@ -32,7 +33,12 @@ export const useChatStore = create<ChatState>((set, get) => ({
   fetchConversations: async () => {
     set({ isLoading: true });
     try {
-      const conversations = await apiClient.chat.getConversations();
+      const conversationsData = await apiClient.chat.getConversations();
+      // Map API response and ensure messages array exists
+      const conversations = conversationsData.map((conv: any) => ({
+        ...conv,
+        messages: conv.messages || [] // Ensure messages array exists
+      }));
       set({ conversations });
     } catch (error) {
       console.error('Failed to fetch conversations:', error);
@@ -186,11 +192,18 @@ export const useChatStore = create<ChatState>((set, get) => ({
   sendMessage: async (conversationId: string, text: string) => {
     const state = get();
 
-    // Optimistic update
+    // Get current user from auth store
+    const currentUser = useAuthStore.getState().user;
+    if (!currentUser) {
+      console.error('No user logged in');
+      return;
+    }
+
+    // Optimistic update - message appears instantly
     const optimisticMessage: ChatMessage = {
       id: `msg_${Date.now()}`,
-      senderId: 'current_user',
-      senderName: 'You',
+      senderId: String(currentUser.id),
+      senderName: `${currentUser.first_name} ${currentUser.last_name}`.trim() || currentUser.username,
       text,
       timestamp: new Date().toISOString(),
       read: true,
@@ -201,7 +214,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         if (conv.id === conversationId) {
           return {
             ...conv,
-            messages: [...conv.messages, optimisticMessage],
+            messages: [...(conv.messages || []), optimisticMessage], // Ensure messages exists
             lastMessage: text,
             lastMessageTime: optimisticMessage.timestamp,
           };
@@ -217,7 +230,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
       set(state => ({
         conversations: state.conversations.map(conv => {
           if (conv.id === conversationId) {
-            const messages = conv.messages.map(msg =>
+            const messages = (conv.messages || []).map(msg =>
               msg.id === optimisticMessage.id ? sentMessage : msg
             );
             return { ...conv, messages };
@@ -235,7 +248,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
           if (conv.id === conversationId) {
             return {
               ...conv,
-              messages: conv.messages.filter(msg => msg.id !== optimisticMessage.id)
+              messages: (conv.messages || []).filter(msg => msg.id !== optimisticMessage.id)
             };
           }
           return conv;
